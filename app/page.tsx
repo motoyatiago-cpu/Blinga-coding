@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const lessons = {
   Python: {
@@ -50,6 +50,7 @@ const lessons = {
 };
 
 type Lang = keyof typeof lessons;
+type MindNode = { title: string; description: string };
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
@@ -60,12 +61,38 @@ export default function Home() {
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([{ role: "ai", text: "你好！我是你的 AI 编程助教。可以问我知识点、报错原因或代码优化。" }]);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [mindNodes, setMindNodes] = useState<MindNode[] | null>(null);
+  const [mapBusy, setMapBusy] = useState(false);
   const lesson = lessons[lang];
 
   const progress = useMemo(() => ({ Python: 68, "C/C++": 42, JavaScript: 55, Java: 31 }[lang]), [lang]);
+  const mapNodes = useMemo(() => {
+    const fallback = lesson.nodes.map((title, index) => ({
+      title,
+      description: ["当前课程中心主题", "按顺序访问元素", "条件满足时重复", "生成数字序列", "提前结束循环", "跳过当前一轮"][index],
+    }));
+    return mindNodes?.length ? [...mindNodes, ...fallback].slice(0, 6) : fallback;
+  }, [lesson, mindNodes]);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, []);
 
   function switchLang(next: Lang) {
-    setLang(next); setCode(lessons[next].code); setActiveTopic(3); setOutput("准备就绪，点击运行代码。");
+    setLang(next); setCode(lessons[next].code); setActiveTopic(3); setOutput("准备就绪，点击运行代码。"); setMindNodes(null);
   }
 
   function runCode() {
@@ -73,11 +100,55 @@ export default function Home() {
     setTimeout(() => { setRunning(false); setOutput(`✓ 运行成功 · 0.08s\n\n${lesson.output}\n\n测试用例  3/3  通过`); }, 650);
   }
 
-  function ask(text = question) {
+  async function callAi(mode: "chat" | "search" | "mindmap", prompt: string, context: string) {
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, prompt, context }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "AI 服务暂时不可用");
+    return data;
+  }
+
+  async function ask(text = question) {
     if (!text.trim()) return;
     const q = text.trim();
     setMessages(m => [...m, { role: "user", text: q }]); setQuestion("");
-    setTimeout(() => setMessages(m => [...m, { role: "ai", text: q.includes("优化") ? "建议用内置聚合函数简化循环：sum(scores) 可直接求和，表达更清晰，时间复杂度仍为 O(n)。" : q.includes("报错") ? "先看报错的最后一行，它通常包含异常类型与直接原因。把完整错误贴给我，我会按“位置 → 原因 → 修复”逐步说明。" : "for 循环会依次取出集合中的元素。这里 score 每轮对应一个成绩，total += score 负责累加，循环结束后再除以元素数量。" }]), 450);
+    setAiBusy(true);
+    try {
+      const data = await callAi("chat", q, `${lesson.kicker}\n${lesson.desc}\n当前代码：\n${code}`);
+      setMessages(m => [...m, { role: "ai", text: data.answer }]);
+    } catch (error) {
+      setMessages(m => [...m, { role: "ai", text: error instanceof Error ? error.message : "AI 服务暂时不可用" }]);
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function searchKnowledge() {
+    if (!searchQuery.trim()) return;
+    setSearchBusy(true); setSearchResult("");
+    try {
+      const data = await callAi("search", searchQuery, `当前学科：${lang}；当前课程：${lesson.title}`);
+      setSearchResult(data.answer);
+    } catch (error) {
+      setSearchResult(error instanceof Error ? error.message : "搜索失败，请稍后重试");
+    } finally {
+      setSearchBusy(false);
+    }
+  }
+
+  async function generateMindMap() {
+    setMapBusy(true);
+    try {
+      const data = await callAi("mindmap", "生成适合初学者的课程知识框架", `${lesson.title}\n${lesson.desc}\n代码示例：\n${code}`);
+      setMindNodes(data.nodes);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "思维导图生成失败");
+    } finally {
+      setMapBusy(false);
+    }
   }
 
   return (
@@ -85,8 +156,9 @@ export default function Home() {
       <header className="topbar">
         <a className="brand" href="#top"><span className="brandmark">&lt;/&gt;</span><span>Code<span>Atlas</span></span></a>
         <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
-        <div className="header-actions"><button className="search">⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><button className="streak">🔥 12 天</button><div className="avatar">林</div></div>
+        <div className="header-actions"><button className="search" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><button className="streak">🔥 12 天</button><div className="avatar">林</div></div>
       </header>
+      {searchOpen && <div className="search-overlay" onMouseDown={e => { if (e.currentTarget === e.target) setSearchOpen(false); }}><div className="search-dialog"><div className="search-dialog-head"><div><b>AI 知识搜索</b><small>输入概念、语法或错误信息</small></div><button onClick={() => setSearchOpen(false)}>×</button></div><div className="search-box"><input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") searchKnowledge(); }} placeholder="例如：Python 列表推导式是什么？"/><button onClick={searchKnowledge} disabled={searchBusy}>{searchBusy ? "搜索中…" : "搜索"}</button></div>{searchResult && <div className="search-answer"><span>✦ AI 解答</span><p>{searchResult}</p></div>}<div className="search-suggestions"><span>热门：</span>{["时间复杂度", "空指针错误", "递归函数"].map(x => <button key={x} onClick={() => setSearchQuery(x)}>{x}</button>)}</div></div></div>}
 
       <div className="workspace" id="top">
         <aside className="sidebar">
@@ -107,14 +179,14 @@ export default function Home() {
 
           <div className="steps"><div><b>1</b><span><strong>准备数据</strong><small>使用集合保存多个成绩</small></span></div><div><b>2</b><span><strong>逐个遍历</strong><small>每轮读取一个元素</small></span></div><div><b>3</b><span><strong>处理结果</strong><small>累加并计算平均值</small></span></div></div>
 
-          <section className="map-section" id="map"><div className="section-heading"><div><span className="eyebrow">AI 自动生成</span><h2>当前课程知识框架</h2></div><div><button onClick={() => alert("已导出为 PNG（演示）")}>⇩ 导出</button><button>⛶ 全屏</button></div></div><div className="mindmap"><div className="map-center">{lesson.nodes[0]}</div><div className="branch b1"><b>{lesson.nodes[1]}</b><small>按顺序访问元素</small></div><div className="branch b2"><b>{lesson.nodes[2]}</b><small>条件满足时重复</small></div><div className="branch b3"><b>{lesson.nodes[3]}</b><small>生成数字序列</small></div><div className="branch b4"><b>{lesson.nodes[4]}</b><small>提前结束循环</small></div><div className="branch b5"><b>{lesson.nodes[5]}</b><small>跳过当前一轮</small></div></div></section>
+          <section className="map-section" id="map"><div className="section-heading"><div><span className="eyebrow">AI 自动生成</span><h2>当前课程知识框架</h2></div><div><button className="generate-map" onClick={generateMindMap} disabled={mapBusy}>{mapBusy ? "生成中…" : "✦ 重新生成"}</button><button onClick={() => alert("已导出为 PNG（演示）")}>⇩ 导出</button><button>⛶ 全屏</button></div></div><div className={`mindmap ${mapBusy ? "is-loading" : ""}`}><div className="map-center">{mapNodes[0].title}</div><div className="branch b1"><b>{mapNodes[1].title}</b><small>{mapNodes[1].description}</small></div><div className="branch b2"><b>{mapNodes[2].title}</b><small>{mapNodes[2].description}</small></div><div className="branch b3"><b>{mapNodes[3].title}</b><small>{mapNodes[3].description}</small></div><div className="branch b4"><b>{mapNodes[4].title}</b><small>{mapNodes[4].description}</small></div><div className="branch b5"><b>{mapNodes[5].title}</b><small>{mapNodes[5].description}</small></div></div></section>
 
           <section className="lab" id="lab"><div className="section-heading"><div><span className="eyebrow purple">动手练习</span><h2>在线代码实验室</h2></div><select value={lang} onChange={e => switchLang(e.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map(x => <option key={x}>{x}</option>)}</select></div><div className="editor-grid"><div className="editor"><div className="editor-tabs"><span>● main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => setCode(lesson.code)}>↺ 重置</button></div><textarea spellCheck={false} value={code} onChange={e => setCode(e.target.value)} /><div className="editor-action"><span>Ln {code.split("\n").length}, Col 1</span><button onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div></div><div className="console"><div className="console-head"><span>终端输出</span><button onClick={() => setOutput("")}>清空</button></div><pre>{output}</pre><div className="judge"><b>自动判题</b><span className={output.includes("3/3") ? "passed" : ""}>{output.includes("3/3") ? "全部通过" : "等待运行"}</span></div></div></div><div className="ai-review"><span className="spark">✦</span><div><b>AI 代码教练</b><p>你的思路是正确的。运行后，我会从可读性、复杂度和边界处理三个维度给出建议。</p></div><button onClick={() => {setChatOpen(true); ask("如何优化这段代码？")}}>获取优化建议 →</button></div></section>
         </section>
       </div>
 
       <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen(!chatOpen)}><span>✦</span>{chatOpen ? "×" : "问 AI"}</button>
-      {chatOpen && <aside className="chat"><div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>在线 · 基于当前课程</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div><div className="chat-context">正在学习：{lesson.title}</div><div className="messages">{messages.map((m, i) => <div key={i} className={`message ${m.role}`}>{m.text}</div>)}</div><div className="chips"><button onClick={() => ask("解释当前知识点")}>解释知识点</button><button onClick={() => ask("帮我分析报错")}>分析报错</button></div><div className="chat-input"><textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault(); ask();}}} placeholder="输入你的编程问题…"/><button onClick={() => ask()}>↑</button></div></aside>}
+      {chatOpen && <aside className="chat"><div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在思考…" : "在线 · 基于当前课程"}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div><div className="chat-context">正在学习：{lesson.title}</div><div className="messages">{messages.map((m, i) => <div key={i} className={`message ${m.role}`}>{m.text}</div>)}{aiBusy && <div className="message ai typing">正在组织答案<span>•••</span></div>}</div><div className="chips"><button onClick={() => ask("解释当前知识点")} disabled={aiBusy}>解释知识点</button><button onClick={() => ask("帮我分析报错")} disabled={aiBusy}>分析报错</button></div><div className="chat-input"><textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault(); ask();}}} placeholder="输入你的编程问题…" disabled={aiBusy}/><button onClick={() => ask()} disabled={aiBusy}>↑</button></div></aside>}
     </main>
   );
 }
