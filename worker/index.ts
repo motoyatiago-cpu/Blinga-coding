@@ -47,7 +47,7 @@ function systemPrompt(mode: AiMode): string {
   }
 
   if (mode === "mindmap") {
-    return `${common} 请从学习内容中提取知识结构。只返回合法 JSON，不要使用 Markdown。格式必须是 {"nodes":[{"title":"中心主题","description":"一句话说明"}, ...]}，共 6 个节点，第一个是中心主题。`;
+    return `${common} 请从学习内容中提取一个高密度、多层级、多分支知识图谱。只返回合法 JSON，不要使用 Markdown。格式必须是 {"nodes":[{"id":"root","parentId":null,"title":"中心主题","description":"一句话说明","color":"#58e6ba"},{"id":"n1","parentId":"root","title":"一级知识点","description":"一句话说明","color":"#9ca8ff"}]}。生成 10 至 16 个节点，必须有 3 个层级，id 唯一，父节点必须先于子节点出现。`;
   }
 
   return `${common} 优先按照“结论 → 原因 → 示例 → 下一步”回答编程问题；分析报错时指出错误位置、原因和修复方法。`;
@@ -104,7 +104,7 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
       body: JSON.stringify({
         model: env.LLM_MODEL || "deepseek-chat",
         temperature: mode === "mindmap" ? 0.2 : 0.5,
-        max_tokens: mode === "mindmap" ? 900 : 1200,
+        max_tokens: mode === "mindmap" ? 1800 : 1200,
         messages: [
           { role: "system", content: systemPrompt(mode) },
           {
@@ -130,13 +130,16 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
     if (mode === "mindmap") {
       const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
       const parsed = JSON.parse(cleaned) as {
-        nodes?: Array<{ title?: string; description?: string }>;
+        nodes?: Array<{ id?: string; parentId?: string | null; title?: string; description?: string; color?: string }>;
       };
-      const nodes = (parsed.nodes || []).slice(0, 8).map((node) => ({
+      const nodes = (parsed.nodes || []).slice(0, 18).map((node, index) => ({
+        id: String(node.id || `n${index}`).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 36) || `n${index}`,
+        parentId: node.parentId == null ? null : String(node.parentId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 36),
         title: String(node.title || "").slice(0, 40),
         description: String(node.description || "").slice(0, 100),
+        color: /^#[0-9a-f]{6}$/i.test(String(node.color || "")) ? node.color : "#9ca8ff",
       })).filter((node) => node.title);
-      if (nodes.length < 2) throw new Error("Invalid mind map");
+      if (nodes.length < 3) throw new Error("Invalid mind map");
       return jsonResponse({ nodes });
     }
 

@@ -1,192 +1,447 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  Background,
+  Controls,
+  Handle,
+  MiniMap,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  addEdge,
+  useEdgesState,
+  useNodesState,
+  type Connection,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-const lessons = {
+type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
+type Course = {
+  icon: string;
+  color: string;
+  topics: string[];
+  title: string;
+  kicker: string;
+  desc: string;
+  code: string;
+  output: string;
+};
+type KnowledgeData = {
+  title: string;
+  description: string;
+  color: string;
+  depth: number;
+};
+type KnowledgeNode = Node<KnowledgeData, "knowledge">;
+
+const lessons: Record<Lang, Course> = {
   Python: {
     icon: "Py",
-    color: "#49d6a8",
+    color: "#58e6ba",
     topics: ["快速入门", "变量与类型", "条件判断", "循环结构", "函数", "列表与字典", "面向对象"],
     title: "Python 循环结构",
     kicker: "Python · 基础语法 · 第 04 节",
-    desc: "循环让程序重复执行一段逻辑。Python 提供 for 与 while 两种主要循环方式，本节将用一个成绩统计器理解遍历、条件和累加。",
-    code: `scores = [86, 92, 74, 100, 65]\n\ntotal = 0\nfor score in scores:\n    total += score\n\naverage = total / len(scores)\nprint(f\"平均分：{average:.1f}\")`,
+    desc: "循环让程序重复执行一段逻辑。Python 提供 for 与 while 两种主要循环方式，本节将用成绩统计器理解遍历、条件和累加。",
+    code: `scores = [86, 92, 74, 100, 65]\n\ntotal = 0\nfor score in scores:\n    total += score\n\naverage = total / len(scores)\nprint(f"平均分：{average:.1f}")`,
     output: "平均分：83.4",
-    nodes: ["循环结构", "for 遍历", "while 条件", "range()", "break", "continue"],
   },
   "C/C++": {
     icon: "C+",
-    color: "#8f9cff",
+    color: "#9ca8ff",
     topics: ["环境配置", "数据类型", "流程控制", "数组", "指针", "函数", "类与对象"],
     title: "C++ 数组与遍历",
     kicker: "C++ · 核心语法 · 第 04 节",
     desc: "数组将相同类型的数据连续存储。结合范围 for 循环，可以安全而清晰地访问每一个元素。",
-    code: `#include <iostream>\nusing namespace std;\n\nint main() {\n  int scores[] = {86, 92, 74, 100, 65};\n  int total = 0;\n  for (int score : scores) total += score;\n  cout << \"总分：\" << total << endl;\n  return 0;\n}`,
+    code: `#include <iostream>\nusing namespace std;\n\nint main() {\n  int scores[] = {86, 92, 74, 100, 65};\n  int total = 0;\n  for (int score : scores) total += score;\n  cout << "总分：" << total << endl;\n  return 0;\n}`,
     output: "总分：417",
-    nodes: ["数组", "声明", "索引访问", "范围 for", "内存连续", "边界安全"],
   },
   JavaScript: {
     icon: "JS",
-    color: "#f7c65e",
+    color: "#ffd36a",
     topics: ["语言基础", "变量与作用域", "数组方法", "DOM 操作", "异步编程", "ES6+", "工程化"],
     title: "JavaScript 数组方法",
     kicker: "JavaScript · ES6+ · 第 03 节",
-    desc: "map、filter 与 reduce 是处理集合的三个核心方法。它们能把复杂循环表达成清晰的数据变换管道。",
-    code: `const scores = [86, 92, 74, 100, 65];\n\nconst passed = scores.filter(score => score >= 80);\nconst total = passed.reduce((sum, n) => sum + n, 0);\n\nconsole.log(\`优秀人数：\${passed.length}\`);\nconsole.log(\`优秀组总分：\${total}\`);`,
+    desc: "map、filter 与 reduce 是处理集合的三个核心方法，能把复杂循环表达成清晰的数据变换管道。",
+    code: `const scores = [86, 92, 74, 100, 65];\nconst passed = scores.filter(score => score >= 80);\nconst total = passed.reduce((sum, n) => sum + n, 0);\n\nconsole.log(\`优秀人数：\${passed.length}\`);\nconsole.log(\`优秀组总分：\${total}\`);`,
     output: "优秀人数：3\n优秀组总分：278",
-    nodes: ["数组方法", "map 映射", "filter 筛选", "reduce 聚合", "链式调用", "纯函数"],
   },
   Java: {
     icon: "Jv",
-    color: "#ff8c6b",
+    color: "#ff9677",
     topics: ["快速入门", "变量与类型", "控制流", "数组与集合", "方法", "类与对象", "异常处理"],
     title: "Java 集合遍历",
     kicker: "Java · 集合框架 · 第 04 节",
     desc: "List 是 Java 中最常用的有序集合。增强 for 循环让遍历集合更加简洁，同时保持静态类型安全。",
-    code: `import java.util.List;\n\nclass Main {\n  public static void main(String[] args) {\n    List<Integer> scores = List.of(86, 92, 74, 100, 65);\n    int total = 0;\n    for (int score : scores) total += score;\n    System.out.println(\"总分：\" + total);\n  }\n}`,
+    code: `import java.util.List;\n\nclass Main {\n  public static void main(String[] args) {\n    List<Integer> scores = List.of(86, 92, 74, 100, 65);\n    int total = 0;\n    for (int score : scores) total += score;\n    System.out.println("总分：" + total);\n  }\n}`,
     output: "总分：417",
-    nodes: ["List 集合", "泛型", "创建集合", "增强 for", "访问元素", "不可变集合"],
   },
 };
 
-type Lang = keyof typeof lessons;
-type MindNode = { title: string; description: string };
+const starterNodes: KnowledgeNode[] = [
+  { id: "root", type: "knowledge", position: { x: 420, y: 180 }, data: { title: "循环结构", description: "控制重复执行的核心语法", color: "#58e6ba", depth: 0 } },
+  { id: "for", type: "knowledge", position: { x: 80, y: 40 }, data: { title: "for 遍历", description: "依次访问可迭代对象", color: "#8ba8ff", depth: 1 } },
+  { id: "while", type: "knowledge", position: { x: 80, y: 300 }, data: { title: "while 条件", description: "条件成立时持续执行", color: "#8ba8ff", depth: 1 } },
+  { id: "range", type: "knowledge", position: { x: 740, y: 40 }, data: { title: "range()", description: "生成整数序列", color: "#c39cff", depth: 1 } },
+  { id: "control", type: "knowledge", position: { x: 740, y: 300 }, data: { title: "流程控制", description: "改变循环执行路径", color: "#c39cff", depth: 1 } },
+  { id: "break", type: "knowledge", position: { x: 1040, y: 235 }, data: { title: "break", description: "提前终止循环", color: "#ff9f7a", depth: 2 } },
+  { id: "continue", type: "knowledge", position: { x: 1040, y: 385 }, data: { title: "continue", description: "跳过当前轮次", color: "#ff9f7a", depth: 2 } },
+];
+const starterEdges: Edge[] = [
+  ["root", "for"], ["root", "while"], ["root", "range"], ["root", "control"],
+  ["control", "break"], ["control", "continue"],
+].map(([source, target]) => ({ id: `${source}-${target}`, source, target, animated: true }));
+
+const GraphActions = createContext<{
+  updateNode: (id: string, patch: Partial<KnowledgeData>) => void;
+  removeNode: (id: string) => void;
+}>({ updateNode: () => undefined, removeNode: () => undefined });
+
+function KnowledgeCard({ id, data, selected }: NodeProps<KnowledgeNode>) {
+  const { updateNode, removeNode } = useContext(GraphActions);
+  return (
+    <article className={`knowledge-node ${selected ? "selected" : ""}`} style={{ "--node-color": data.color } as React.CSSProperties}>
+      <Handle type="target" position={Position.Left} />
+      <div className="node-topline">
+        <span>{data.depth === 0 ? "核心主题" : `L${data.depth} 知识点`}</span>
+        <button className="node-delete nodrag" onClick={() => removeNode(id)} aria-label="删除节点">×</button>
+      </div>
+      <input
+        className="node-title nodrag"
+        value={data.title}
+        onChange={(event) => updateNode(id, { title: event.target.value })}
+        aria-label="节点标题"
+      />
+      <textarea
+        className="node-description nodrag"
+        value={data.description}
+        onChange={(event) => updateNode(id, { description: event.target.value })}
+        aria-label="节点说明"
+      />
+      <label className="node-color nodrag">
+        <span>文字高亮</span>
+        <input type="color" value={data.color} onChange={(event) => updateNode(id, { color: event.target.value })} />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </article>
+  );
+}
+
+const nodeTypes = { knowledge: KnowledgeCard };
+
+function KnowledgeGraph({ lesson, code }: { lesson: Course; code: string }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<KnowledgeNode>(starterNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(starterEdges);
+  const [busy, setBusy] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>("root");
+
+  const updateNode = useCallback((id: string, patch: Partial<KnowledgeData>) => {
+    setNodes((current) => current.map((node) => node.id === id ? { ...node, data: { ...node.data, ...patch } } : node));
+  }, [setNodes]);
+  const removeNode = useCallback((id: string) => {
+    setNodes((current) => current.filter((node) => node.id !== id));
+    setEdges((current) => current.filter((edge) => edge.source !== id && edge.target !== id));
+  }, [setEdges, setNodes]);
+  const onConnect = useCallback((connection: Connection) => {
+    setEdges((current) => addEdge({ ...connection, animated: true }, current));
+  }, [setEdges]);
+
+  function addKnowledgeNode() {
+    const id = crypto.randomUUID();
+    const parent = selectedId ?? "root";
+    setNodes((current) => [...current, {
+      id,
+      type: "knowledge",
+      position: { x: 600 + Math.random() * 240, y: 120 + Math.random() * 300 },
+      data: { title: "新知识点", description: "双击文字开始编辑", color: "#58e6ba", depth: 2 },
+    }]);
+    setEdges((current) => [...current, { id: `${parent}-${id}`, source: parent, target: id, animated: true }]);
+    setSelectedId(id);
+  }
+
+  async function generateGraph(expand = false) {
+    setBusy(true);
+    try {
+      const focus = expand && selectedId ? nodes.find((node) => node.id === selectedId)?.data.title : "";
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "mindmap",
+          prompt: focus ? `围绕“${focus}”联网扩写 3 层知识图谱` : "生成 3 层、高密度、多分支课程知识图谱",
+          context: `${lesson.title}\n${lesson.desc}\n代码示例：\n${code}`,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "生成失败");
+      const raw = result.nodes as Array<{ id?: string; parentId?: string | null; title: string; description: string; color?: string }>;
+      const normalized: KnowledgeNode[] = raw.map((item, index) => {
+        const depth = item.parentId ? (index < 6 ? 1 : 2) : 0;
+        const laneIndex = depth === 0 ? 0 : index - 1;
+        return {
+          id: item.id || `ai-${index}`,
+          type: "knowledge",
+          position: { x: depth * 360 + 60, y: depth === 0 ? 220 : 40 + (laneIndex % 6) * 145 },
+          data: { title: item.title, description: item.description, color: item.color || (depth === 0 ? "#58e6ba" : "#9ca8ff"), depth },
+        };
+      });
+      const ids = new Set(normalized.map((node) => node.id));
+      const rootId = normalized[0]?.id;
+      const nextEdges: Edge[] = raw.slice(1).map((item, index) => {
+        const target = normalized[index + 1].id;
+        const source = item.parentId && ids.has(item.parentId) ? item.parentId : rootId;
+        return { id: `${source}-${target}`, source, target, animated: true };
+      });
+      setNodes(normalized);
+      setEdges(nextEdges);
+      setSelectedId(rootId);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "AI 图谱生成失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function exportGraph() {
+    const blob = new Blob([JSON.stringify({ nodes, edges }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${lesson.title}-知识图谱.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="feature-section" id="map">
+      <div className="section-heading">
+        <div><span className="eyebrow">AI KNOWLEDGE GRAPH</span><h2>动态知识图谱</h2><p>拖拽节点，直接编辑内容，并用颜色标记核心考点。</p></div>
+        <div className="toolbar">
+          <button onClick={addKnowledgeNode}>＋ 新增节点</button>
+          <button onClick={() => generateGraph(true)} disabled={busy}>✦ 扩写选中</button>
+          <button className="primary" onClick={() => generateGraph()} disabled={busy}>{busy ? "生成中…" : "✦ AI 生成"}</button>
+          <button onClick={exportGraph}>⇩ 导出</button>
+        </div>
+      </div>
+      <div className={`graph-shell glass ${busy ? "is-loading" : ""}`}>
+        <GraphActions.Provider value={{ updateNode, removeNode }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={(_, node) => setSelectedId(node.id)}
+            fitView
+            onlyRenderVisibleElements
+            minZoom={0.35}
+            maxZoom={1.8}
+          >
+            <Background color="#344158" gap={26} size={1} />
+            <MiniMap nodeColor={(node) => (node.data as KnowledgeData).color} pannable zoomable />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+        </GraphActions.Provider>
+      </div>
+    </section>
+  );
+}
+
+function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) => void; lesson: Course }) {
+  const [code, setCode] = useState(lesson.code);
+  const [output, setOutput] = useState("终端已连接 · 等待输入");
+  const [running, setRunning] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setCode(lesson.code);
+    setOutput("终端已连接 · 等待输入");
+  }, [lesson]);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const lines = code.split("\n").length;
+      const pairs = (code.match(/[({[]/g) || []).length - (code.match(/[)}\]]/g) || []).length;
+      setOutput(pairs === 0 ? `● 实时检查通过\n  ${lines} 行 · 未发现括号错误\n\n点击“运行代码”执行测试用例。` : `⚠ 实时检查\n  检测到 ${Math.abs(pairs)} 处括号可能未闭合。`);
+    }, 240);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [code]);
+
+  async function runCode() {
+    setRunning(true);
+    const frames = ["建立隔离运行环境…", "正在编译代码…", "正在执行基础测试…"];
+    for (const frame of frames) {
+      setOutput((current) => `${current}\n› ${frame}`);
+      await new Promise((resolve) => setTimeout(resolve, 180));
+    }
+    setOutput(`✓ 运行成功 · 0.08s\n\n${lesson.output}\n\n自动判题  3 / 3  通过`);
+    setRunning(false);
+  }
+
+  return (
+    <section className="feature-section" id="lab">
+      <div className="section-heading">
+        <div><span className="eyebrow purple">LIVE SANDBOX</span><h2>在线实训沙盒</h2><p>输入变化即时诊断，运行状态与终端结果动态同步。</p></div>
+        <select value={lang} onChange={(event) => setLang(event.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map((key) => <option key={key}>{key}</option>)}</select>
+      </div>
+      <div className="sandbox glass">
+        <div className="editor-pane">
+          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => setCode(lesson.code)}>↺ 重置</button></div>
+          <textarea spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} aria-label="代码编辑器" />
+          <div className="editor-foot"><span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span><button className="run" onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div>
+        </div>
+        <div className="terminal-pane">
+          <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => setOutput("")}>清空</button></div>
+          <pre>{output}</pre>
+          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3") ? "passed" : ""}>{output.includes("3 / 3") ? "全部通过" : "监听中"}</b></div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
-  const [code, setCode] = useState(lessons.Python.code);
-  const [output, setOutput] = useState("准备就绪，点击运行代码。");
-  const [activeTopic, setActiveTopic] = useState(3);
-  const [running, setRunning] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([{ role: "ai", text: "你好！我是你的 AI 编程助教。可以问我知识点、报错原因或代码优化。" }]);
-  const [aiBusy, setAiBusy] = useState(false);
+  const [expanded, setExpanded] = useState<Lang>("Python");
+  const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState("");
-  const [searchBusy, setSearchBusy] = useState(false);
-  const [mindNodes, setMindNodes] = useState<MindNode[] | null>(null);
-  const [mapBusy, setMapBusy] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
+  const [aiBusy, setAiBusy] = useState(false);
   const lesson = lessons[lang];
 
-  const progress = useMemo(() => ({ Python: 68, "C/C++": 42, JavaScript: 55, Java: 31 }[lang]), [lang]);
-  const mapNodes = useMemo(() => {
-    const fallback = lesson.nodes.map((title, index) => ({
-      title,
-      description: ["当前课程中心主题", "按顺序访问元素", "条件满足时重复", "生成数字序列", "提前结束循环", "跳过当前一轮"][index],
-    }));
-    return mindNodes?.length ? [...mindNodes, ...fallback].slice(0, 6) : fallback;
-  }, [lesson, mindNodes]);
-
   useEffect(() => {
-    const onShortcut = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setSearchOpen(true);
       }
       if (event.key === "Escape") setSearchOpen(false);
     };
-    window.addEventListener("keydown", onShortcut);
-    return () => window.removeEventListener("keydown", onShortcut);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function switchLang(next: Lang) {
-    setLang(next); setCode(lessons[next].code); setActiveTopic(3); setOutput("准备就绪，点击运行代码。"); setMindNodes(null);
+  function selectLanguage(key: Lang) {
+    setExpanded((current) => current === key ? key : key);
+    setLang(key);
   }
 
-  function runCode() {
-    setRunning(true); setOutput("正在编译并执行…");
-    setTimeout(() => { setRunning(false); setOutput(`✓ 运行成功 · 0.08s\n\n${lesson.output}\n\n测试用例  3/3  通过`); }, 650);
-  }
-
-  async function callAi(mode: "chat" | "search" | "mindmap", prompt: string, context: string) {
+  async function callAi(mode: "chat" | "search", prompt: string) {
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, prompt, context }),
+      body: JSON.stringify({ mode, prompt, context: `${lesson.kicker}\n${lesson.desc}` }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "AI 服务暂时不可用");
-    return data;
+    return data.answer as string;
+  }
+
+  async function search() {
+    if (!searchQuery.trim()) return;
+    setSearchResult("正在检索课程知识与扩展资料…");
+    try { setSearchResult(await callAi("search", searchQuery)); }
+    catch (error) { setSearchResult(error instanceof Error ? error.message : "搜索失败"); }
   }
 
   async function ask(text = question) {
-    if (!text.trim()) return;
-    const q = text.trim();
-    setMessages(m => [...m, { role: "user", text: q }]); setQuestion("");
+    if (!text.trim() || aiBusy) return;
+    const value = text.trim();
+    setMessages((current) => [...current, { role: "user", text: value }]);
+    setQuestion("");
     setAiBusy(true);
     try {
-      const data = await callAi("chat", q, `${lesson.kicker}\n${lesson.desc}\n当前代码：\n${code}`);
-      setMessages(m => [...m, { role: "ai", text: data.answer }]);
+      const answer = await callAi("chat", value);
+      setMessages((current) => [...current, { role: "ai", text: answer }]);
     } catch (error) {
-      setMessages(m => [...m, { role: "ai", text: error instanceof Error ? error.message : "AI 服务暂时不可用" }]);
-    } finally {
-      setAiBusy(false);
-    }
-  }
-
-  async function searchKnowledge() {
-    if (!searchQuery.trim()) return;
-    setSearchBusy(true); setSearchResult("");
-    try {
-      const data = await callAi("search", searchQuery, `当前学科：${lang}；当前课程：${lesson.title}`);
-      setSearchResult(data.answer);
-    } catch (error) {
-      setSearchResult(error instanceof Error ? error.message : "搜索失败，请稍后重试");
-    } finally {
-      setSearchBusy(false);
-    }
-  }
-
-  async function generateMindMap() {
-    setMapBusy(true);
-    try {
-      const data = await callAi("mindmap", "生成适合初学者的课程知识框架", `${lesson.title}\n${lesson.desc}\n代码示例：\n${code}`);
-      setMindNodes(data.nodes);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "思维导图生成失败");
-    } finally {
-      setMapBusy(false);
-    }
+      setMessages((current) => [...current, { role: "ai", text: error instanceof Error ? error.message : "AI 服务暂时不可用" }]);
+    } finally { setAiBusy(false); }
   }
 
   return (
-    <main>
-      <header className="topbar">
-        <a className="brand" href="#top"><span className="brandmark">&lt;/&gt;</span><span>Code<span>Atlas</span></span></a>
-        <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
-        <div className="header-actions"><button className="search" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><button className="streak">🔥 12 天</button><div className="avatar">林</div></div>
-      </header>
-      {searchOpen && <div className="search-overlay" onMouseDown={e => { if (e.currentTarget === e.target) setSearchOpen(false); }}><div className="search-dialog"><div className="search-dialog-head"><div><b>AI 知识搜索</b><small>输入概念、语法或错误信息</small></div><button onClick={() => setSearchOpen(false)}>×</button></div><div className="search-box"><input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") searchKnowledge(); }} placeholder="例如：Python 列表推导式是什么？"/><button onClick={searchKnowledge} disabled={searchBusy}>{searchBusy ? "搜索中…" : "搜索"}</button></div>{searchResult && <div className="search-answer"><span>✦ AI 解答</span><p>{searchResult}</p></div>}<div className="search-suggestions"><span>热门：</span>{["时间复杂度", "空指针错误", "递归函数"].map(x => <button key={x} onClick={() => setSearchQuery(x)}>{x}</button>)}</div></div></div>}
+    <ReactFlowProvider>
+      <main>
+        <div className="ambient one" /><div className="ambient two" />
+        <header className="topbar glass">
+          <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Code<span>Atlas</span></span></a>
+          <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
+          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><div className="avatar">林</div></div>
+        </header>
 
-      <div className="workspace" id="top">
-        <aside className="sidebar">
-          <div className="side-title"><span>学习路径</span><button>＋</button></div>
-          {(Object.keys(lessons) as Lang[]).map(key => <button className={`language ${lang === key ? "selected" : ""}`} onClick={() => switchLang(key)} key={key}><i style={{ background: lessons[key].color }}>{lessons[key].icon}</i><span>{key}</span><b>{lang === key ? `${progress}%` : "›"}</b></button>)}
-          <div className="topic-list"><p>课程目录</p>{lesson.topics.map((topic, i) => <button key={topic} className={activeTopic === i ? "active-topic" : ""} onClick={() => setActiveTopic(i)}><span>{String(i + 1).padStart(2, "0")}</span>{topic}{i < 2 && <em>✓</em>}</button>)}</div>
-          <div className="progress-card"><div><span>本周目标</span><b>4 / 6 节</b></div><div className="bar"><i style={{width: "67%"}} /></div><small>继续保持，超过 82% 的学习者</small></div>
-        </aside>
+        {searchOpen && <div className="search-overlay" onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
+          <div className="search-dialog glass">
+            <div className="search-dialog-head"><div><b>AI 全局知识搜索</b><small>搜索课程概念、语法或错误信息</small></div><button onClick={() => setSearchOpen(false)}>×</button></div>
+            <div className="search-box"><input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：for 与 while 应该怎么选择？" /><button onClick={search}>搜索</button></div>
+            {searchResult && <div className="search-answer"><span>✦ AI ANSWER</span><p>{searchResult}</p></div>}
+          </div>
+        </div>}
 
-        <section className="content" id="learn">
-          <div className="breadcrumb">学习中心 <span>›</span> {lang} <span>›</span> {lesson.title}</div>
-          <div className="lesson-head"><div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◷ 约 12 分钟</span><span>◉ 3 个练习</span><span className="level">基础</span></div></div><div className="pager"><button>← 上一节</button><button>下一节 →</button></div></div>
+        <div className="workspace">
+          <aside className="sidebar glass" aria-label="课程导航">
+            <div className="sidebar-brandline"><span>COURSE STACK</span><i>4 LANGUAGES</i></div>
+            {(Object.keys(lessons) as Lang[]).map((key) => {
+              const open = expanded === key;
+              const activeIndex = topicByLang[key];
+              return <div className={`accordion ${open ? "open" : ""}`} key={key}>
+                <button className={`language ${lang === key ? "selected" : ""}`} onClick={() => { selectLanguage(key); setExpanded(open ? key : key); }} aria-expanded={open}>
+                  <i style={{ background: lessons[key].color }}>{lessons[key].icon}</i>
+                  <span>{key}</span><b>{open ? "−" : "+"}</b>
+                </button>
+                <div className="accordion-body" aria-hidden={!open}><div>
+                  {lessons[key].topics.map((topic, index) => <button key={topic} className={`topic ${lang === key && activeIndex === index ? "active" : ""}`} onClick={() => { setLang(key); setTopicByLang((current) => ({ ...current, [key]: index })); }}>
+                    <span>{String(index + 1).padStart(2, "0")}</span><em>{topic}</em>{index < 2 && <i>✓</i>}
+                  </button>)}
+                </div></div>
+              </div>;
+            })}
+            <div className="sidebar-tip"><span>✦</span><div><b>AI 学习建议</b><p>完成当前实训后再进入下一节，知识留存率会更高。</p></div></div>
+          </aside>
 
-          <article className="lesson-card"><span className="label">核心概念</span><p>{lesson.desc}</p><div className="note"><b>💡 为什么重要？</b><span>遍历是数据处理的基础模式。掌握后，你可以处理列表、文件内容和用户输入等几乎所有批量数据。</span></div></article>
+          <section className="content" id="learn">
+            <div className="breadcrumb">学习中心 <span>/</span> {lang} <span>/</span> 第 {String(topicByLang[lang] + 1).padStart(2, "0")} 节</div>
+            <div className="lesson-head">
+              <div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◉ 3 个练习</span><span className="level">基础</span><span>已同步至知识图谱</span></div></div>
+              <div className="pager"><button>← 上一节</button><button className="primary">下一节 →</button></div>
+            </div>
 
-          <div className="section-title"><span>01</span><div><h2>从一个实际问题开始</h2><p>计算一组学生成绩的平均值</p></div></div>
-          <div className="code-card"><div className="code-head"><div><i className="dot red"/><i className="dot yellow"/><i className="dot green"/></div><span>example.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => navigator.clipboard?.writeText(code)}>复制</button></div><pre><code>{lesson.code}</code></pre><div className="code-foot"><button onClick={runCode}>▶ 运行示例</button><span>试着修改成绩数据，观察结果变化</span></div></div>
+            <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>先理解问题，再写出循环</h2><p>{lesson.desc}</p><div className="note"><b>💡 为什么重要？</b><span>遍历是数据处理的基础模式。掌握后，你可以处理列表、文件内容和用户输入等几乎所有批量数据。</span></div></article>
 
-          <div className="steps"><div><b>1</b><span><strong>准备数据</strong><small>使用集合保存多个成绩</small></span></div><div><b>2</b><span><strong>逐个遍历</strong><small>每轮读取一个元素</small></span></div><div><b>3</b><span><strong>处理结果</strong><small>累加并计算平均值</small></span></div></div>
+            <div className="code-example glass">
+              <div className="pane-head"><span><i /> lesson-example</span><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
+              <pre><code>{lesson.code}</code></pre>
+              <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">打开实训沙盒 →</a></div>
+            </div>
 
-          <section className="map-section" id="map"><div className="section-heading"><div><span className="eyebrow">AI 自动生成</span><h2>当前课程知识框架</h2></div><div><button className="generate-map" onClick={generateMindMap} disabled={mapBusy}>{mapBusy ? "生成中…" : "✦ 重新生成"}</button><button onClick={() => alert("已导出为 PNG（演示）")}>⇩ 导出</button><button>⛶ 全屏</button></div></div><div className={`mindmap ${mapBusy ? "is-loading" : ""}`}><div className="map-center">{mapNodes[0].title}</div><div className="branch b1"><b>{mapNodes[1].title}</b><small>{mapNodes[1].description}</small></div><div className="branch b2"><b>{mapNodes[2].title}</b><small>{mapNodes[2].description}</small></div><div className="branch b3"><b>{mapNodes[3].title}</b><small>{mapNodes[3].description}</small></div><div className="branch b4"><b>{mapNodes[4].title}</b><small>{mapNodes[4].description}</small></div><div className="branch b5"><b>{mapNodes[5].title}</b><small>{mapNodes[5].description}</small></div></div></section>
+            <KnowledgeGraph lesson={lesson} code={lesson.code} />
+            <Sandbox lang={lang} setLang={setLang} lesson={lesson} />
+          </section>
+        </div>
 
-          <section className="lab" id="lab"><div className="section-heading"><div><span className="eyebrow purple">动手练习</span><h2>在线代码实验室</h2></div><select value={lang} onChange={e => switchLang(e.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map(x => <option key={x}>{x}</option>)}</select></div><div className="editor-grid"><div className="editor"><div className="editor-tabs"><span>● main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => setCode(lesson.code)}>↺ 重置</button></div><textarea spellCheck={false} value={code} onChange={e => setCode(e.target.value)} /><div className="editor-action"><span>Ln {code.split("\n").length}, Col 1</span><button onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div></div><div className="console"><div className="console-head"><span>终端输出</span><button onClick={() => setOutput("")}>清空</button></div><pre>{output}</pre><div className="judge"><b>自动判题</b><span className={output.includes("3/3") ? "passed" : ""}>{output.includes("3/3") ? "全部通过" : "等待运行"}</span></div></div></div><div className="ai-review"><span className="spark">✦</span><div><b>AI 代码教练</b><p>你的思路是正确的。运行后，我会从可读性、复杂度和边界处理三个维度给出建议。</p></div><button onClick={() => {setChatOpen(true); ask("如何优化这段代码？")}}>获取优化建议 →</button></div></section>
-        </section>
-      </div>
-
-      <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen(!chatOpen)}><span>✦</span>{chatOpen ? "×" : "问 AI"}</button>
-      {chatOpen && <aside className="chat"><div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在思考…" : "在线 · 基于当前课程"}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div><div className="chat-context">正在学习：{lesson.title}</div><div className="messages">{messages.map((m, i) => <div key={i} className={`message ${m.role}`}>{m.text}</div>)}{aiBusy && <div className="message ai typing">正在组织答案<span>•••</span></div>}</div><div className="chips"><button onClick={() => ask("解释当前知识点")} disabled={aiBusy}>解释知识点</button><button onClick={() => ask("帮我分析报错")} disabled={aiBusy}>分析报错</button></div><div className="chat-input"><textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault(); ask();}}} placeholder="输入你的编程问题…" disabled={aiBusy}/><button onClick={() => ask()} disabled={aiBusy}>↑</button></div></aside>}
-    </main>
+        <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen((current) => !current)}><span>✦</span>{chatOpen ? "收起" : "问 AI"}</button>
+        {chatOpen && <aside className="chat glass">
+          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在思考…" : `正在学习：${lesson.title}`}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div>
+          <div className="messages">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai">正在组织答案…</div>}</div>
+          <div className="chips"><button onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
+          <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="输入你的编程问题…" /><button onClick={() => ask()}>↑</button></div>
+        </aside>}
+      </main>
+    </ReactFlowProvider>
   );
 }
