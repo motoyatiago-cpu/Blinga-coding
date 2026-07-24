@@ -400,6 +400,17 @@ type InspectionResult = {
   suggestions: string[];
 };
 
+type RunResult = {
+  status: { id: number; description: string };
+  stdout: string;
+  stderr: string;
+  compileOutput: string;
+  message: string;
+  time: string | null;
+  memory: number | null;
+  exitCode: number | null;
+};
+
 /**
  * 代码检测器只负责分析文本，不直接修改 React 状态。
  * 将纯检测逻辑与界面分开，后续替换为 WebWorker 或后端 API 时不需要改动 UI。
@@ -484,12 +495,35 @@ function formatInspection(result: InspectionResult): string {
   return `${status}\n  ${result.lines} 行 · ${result.characters} 个字符${issueText}${suggestionText}`;
 }
 
+function formatRunResult(result: RunResult): string {
+  const succeeded = result.status.id === 3;
+  const timeText = result.time ? ` · ${result.time}s` : "";
+  const memoryText = result.memory ? ` · ${Math.round(result.memory / 1024)} MB` : "";
+  const heading = succeeded
+    ? `✓ 运行成功${timeText}${memoryText}`
+    : `✕ ${result.status.description || "运行失败"}${timeText}`;
+  const sections: string[] = [heading];
+
+  if (result.compileOutput.trim()) sections.push(`编译器输出：\n${result.compileOutput.trim()}`);
+  if (result.stderr.trim()) sections.push(`错误输出：\n${result.stderr.trim()}`);
+  if (result.stdout.trim()) {
+    sections.push(`程序输出：\n${result.stdout.trimEnd()}`);
+  } else if (succeeded) {
+    sections.push("程序正常结束，但没有产生标准输出。");
+  }
+  if (result.message.trim()) sections.push(`运行信息：\n${result.message.trim()}`);
+  if (result.exitCode != null) sections.push(`退出码：${result.exitCode}`);
+
+  return sections.join("\n\n");
+}
+
 function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) => void; lesson: Course }) {
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
   const [running, setRunning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const analysisRevisionRef = useRef(0);
+  const runAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setCode(lesson.code);
@@ -530,14 +564,31 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
     // 主动运行时使尚未完成的自动检测失效，防止检测结果覆盖运行结果。
     analysisRevisionRef.current += 1;
     if (timerRef.current) clearTimeout(timerRef.current);
+    runAbortRef.current?.abort();
+    const controller = new AbortController();
+    runAbortRef.current = controller;
     setRunning(true);
-    const frames = ["建立隔离运行环境…", "正在编译代码…", "正在执行基础测试…"];
-    for (const frame of frames) {
-      setOutput((current) => `${current}\n› ${frame}`);
-      await new Promise((resolve) => setTimeout(resolve, 180));
+    setOutput("› 正在提交最新代码…\n› 正在隔离环境中编译并运行…");
+
+    try {
+      const response = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ language: lang, code, stdin: "" }),
+      });
+      const result = await response.json() as RunResult & { error?: string };
+      if (!response.ok) throw new Error(result.error || "代码执行失败");
+      setOutput(formatRunResult(result));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
+    } finally {
+      if (runAbortRef.current === controller) {
+        runAbortRef.current = null;
+        setRunning(false);
+      }
     }
-    setOutput(`✓ 运行成功 · 0.08s\n\n${lesson.output}\n\n自动判题  3 / 3  通过`);
-    setRunning(false);
   }
 
   return (
@@ -555,7 +606,7 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
         <div className="terminal-pane">
           <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => setOutput("")}>清空</button></div>
           <pre>{output}</pre>
-          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3") ? "passed" : ""}>{output.includes("3 / 3") ? "全部通过" : "监听中"}</b></div>
+          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("✓ 运行成功") ? "passed" : ""}>{running ? "执行中" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
       </div>
     </section>

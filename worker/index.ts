@@ -8,6 +8,8 @@ interface Env {
   LLM_API_KEY?: string;
   LLM_API_BASE_URL?: string;
   LLM_MODEL?: string;
+  CODE_RUNNER_URL?: string;
+  CODE_RUNNER_AUTH_TOKEN?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -25,6 +27,18 @@ interface ExecutionContext {
 type AiMode = "chat" | "search" | "mindmap";
 
 const MAX_AI_INPUT = 6000;
+const MAX_CODE_INPUT = 12_000;
+const MAX_STDIN_INPUT = 2_000;
+const MAX_RUNNER_OUTPUT = 16_000;
+
+type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
+
+const JUDGE0_LANGUAGE_IDS: Record<SupportedLanguage, number> = {
+  Python: 100,
+  "C/C++": 105,
+  JavaScript: 102,
+  Java: 91,
+};
 
 function jsonResponse(data: unknown, status = 200): Response {
   return Response.json(data, {
@@ -149,6 +163,99 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
   }
 }
 
+async function handleRunRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "仅支持 POST 请求" }, 405);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return jsonResponse({ error: "请求来源无效" }, 403);
+  }
+
+  const contentLength = Number(request.headers.get("Content-Length") || "0");
+  if (contentLength > 30_000) {
+    return jsonResponse({ error: "代码内容过大" }, 413);
+  }
+
+  let body: { language?: string; code?: string; stdin?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "请求格式无效" }, 400);
+  }
+
+  const language = String(body.language || "") as SupportedLanguage;
+  const code = String(body.code || "").slice(0, MAX_CODE_INPUT);
+  const stdin = String(body.stdin || "").slice(0, MAX_STDIN_INPUT);
+  if (!(language in JUDGE0_LANGUAGE_IDS)) {
+    return jsonResponse({ error: "暂不支持该编程语言" }, 400);
+  }
+  if (!code.trim()) {
+    return jsonResponse({ error: "请输入需要运行的代码" }, 400);
+  }
+
+  const runnerBaseUrl = (env.CODE_RUNNER_URL || "https://ce.judge0.com").replace(/\/$/, "");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (env.CODE_RUNNER_AUTH_TOKEN) {
+    headers["X-Auth-Token"] = env.CODE_RUNNER_AUTH_TOKEN;
+  }
+
+  try {
+    const upstream = await fetch(
+      `${runnerBaseUrl}/submissions?base64_encoded=false&wait=true&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code`,
+      {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          source_code: code,
+          language_id: JUDGE0_LANGUAGE_IDS[language],
+          stdin,
+          cpu_time_limit: 2,
+          cpu_extra_time: 0.5,
+          wall_time_limit: 5,
+          memory_limit: 128_000,
+          stack_limit: 64_000,
+          max_file_size: 1_024,
+          enable_network: false,
+        }),
+      },
+    );
+
+    if (!upstream.ok) {
+      return jsonResponse({ error: `代码执行服务暂时不可用（${upstream.status}）` }, 502);
+    }
+
+    const result = (await upstream.json()) as {
+      stdout?: string | null;
+      stderr?: string | null;
+      compile_output?: string | null;
+      message?: string | null;
+      status?: { id?: number; description?: string };
+      time?: string | number | null;
+      memory?: number | null;
+      exit_code?: number | null;
+    };
+
+    return jsonResponse({
+      status: {
+        id: Number(result.status?.id || 0),
+        description: String(result.status?.description || "Unknown"),
+      },
+      stdout: String(result.stdout || "").slice(0, MAX_RUNNER_OUTPUT),
+      stderr: String(result.stderr || "").slice(0, MAX_RUNNER_OUTPUT),
+      compileOutput: String(result.compile_output || "").slice(0, MAX_RUNNER_OUTPUT),
+      message: String(result.message || "").slice(0, 2_000),
+      time: result.time == null ? null : String(result.time),
+      memory: result.memory == null ? null : Number(result.memory),
+      exitCode: result.exit_code == null ? null : Number(result.exit_code),
+    });
+  } catch {
+    return jsonResponse({ error: "代码执行超时或服务连接失败，请稍后重试" }, 504);
+  }
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -161,6 +268,10 @@ const worker = {
 
     if (url.pathname === "/api/ai") {
       return handleAiRequest(request, env);
+    }
+
+    if (url.pathname === "/api/run") {
+      return handleRunRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {
