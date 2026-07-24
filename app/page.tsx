@@ -90,6 +90,65 @@ const lessons: Record<Lang, Course> = {
   },
 };
 
+const languageSlugs: Record<Lang, string> = {
+  Python: "python",
+  "C/C++": "c-cpp",
+  JavaScript: "javascript",
+  Java: "java",
+};
+
+const pythonLessons: Course[] = [
+  {
+    ...lessons.Python,
+    title: "Python 快速入门",
+    kicker: "Python · 入门基础 · 第 01 节",
+    desc: "从第一行 Python 程序开始，认识解释器、缩进规则、注释和最基本的输入输出流程，并建立“编写—运行—观察结果”的学习闭环。",
+    code: `name = input("请输入你的名字：")\nprint(f"你好，{name}！")\nprint("欢迎来到 Blinga coding")`,
+    output: "你好，学习者！\n欢迎来到 Blinga coding",
+  },
+  {
+    ...lessons.Python,
+    title: "Python 变量与类型",
+    kicker: "Python · 入门基础 · 第 02 节",
+    desc: "变量用于保存程序状态。本节讲解整数、浮点数、字符串、布尔值、类型转换以及动态类型语言在运行时的行为。",
+    code: `name = "Lin"\nage = 18\nscore = 92.5\nis_passed = score >= 60\n\nprint(type(name), type(age))\nprint(f"{name} 的成绩：{score}，通过：{is_passed}")`,
+    output: "<class 'str'> <class 'int'>\nLin 的成绩：92.5，通过：True",
+  },
+  {
+    ...lessons.Python,
+    title: "Python 条件判断",
+    kicker: "Python · 入门基础 · 第 03 节",
+    desc: "通过 if、elif 和 else 让程序根据不同条件选择执行路径，同时学习比较运算、逻辑运算和条件分支的覆盖顺序。",
+    code: `score = 86\n\nif score >= 90:\n    level = "优秀"\nelif score >= 60:\n    level = "合格"\nelse:\n    level = "需要复习"\n\nprint(level)`,
+    output: "合格",
+  },
+  lessons.Python,
+  {
+    ...lessons.Python,
+    title: "Python 函数",
+    kicker: "Python · 核心语法 · 第 05 节",
+    desc: "函数把可复用逻辑封装为清晰的接口。本节覆盖参数、返回值、默认参数、作用域和单一职责原则。",
+    code: `def calculate_average(scores: list[int]) -> float:\n    if not scores:\n        return 0.0\n    return sum(scores) / len(scores)\n\nresult = calculate_average([86, 92, 74])\nprint(f"平均分：{result:.1f}")`,
+    output: "平均分：84.0",
+  },
+  {
+    ...lessons.Python,
+    title: "Python 列表与字典",
+    kicker: "Python · 数据结构 · 第 06 节",
+    desc: "列表适合保存有序数据，字典适合建立键和值的映射。本节讲解增删改查、遍历、推导式和常见数据组织方式。",
+    code: `students = {\n    "Lin": [86, 92, 74],\n    "Mia": [95, 88, 91],\n}\n\nfor name, scores in students.items():\n    average = sum(scores) / len(scores)\n    print(name, round(average, 1))`,
+    output: "Lin 84.0\nMia 91.3",
+  },
+  {
+    ...lessons.Python,
+    title: "Python 面向对象",
+    kicker: "Python · 进阶能力 · 第 07 节",
+    desc: "通过类和对象把数据与行为组织在一起，理解构造方法、实例属性、方法调用、封装和继承的基本思想。",
+    code: `class Student:\n    def __init__(self, name: str, scores: list[int]):\n        self.name = name\n        self.scores = scores\n\n    def average(self) -> float:\n        return sum(self.scores) / len(self.scores)\n\nstudent = Student("Lin", [86, 92, 74])\nprint(student.name, student.average())`,
+    output: "Lin 84.0",
+  },
+];
+
 const lessonGuides: Record<Lang, {
   summary: string;
   principles: Array<{ title: string; text: string; badge: string }>;
@@ -455,7 +514,6 @@ function GraphDocumentExport({ lesson }: { lesson: Course }) {
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
-  const [expanded, setExpanded] = useState<Lang | null>("Python");
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -465,7 +523,16 @@ export default function Home() {
   const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
   const [aiBusy, setAiBusy] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const lesson = lessons[lang];
+  const selectedTopicIndex = topicByLang[lang];
+  const baseLesson = lessons[lang];
+  const lesson = lang === "Python"
+    ? pythonLessons[selectedTopicIndex]
+    : {
+        ...baseLesson,
+        title: `${lang} ${baseLesson.topics[selectedTopicIndex]}`,
+        kicker: `${lang} · 分级课程 · 第 ${String(selectedTopicIndex + 1).padStart(2, "0")} 节`,
+        desc: `本节将系统讲解 ${lang} 的“${baseLesson.topics[selectedTopicIndex]}”，并通过执行过程、代码示例、易错点和在线练习帮助你完成从理解到应用。`,
+      };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -483,10 +550,18 @@ export default function Home() {
     if (searchOpen) window.setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [searchOpen]);
 
-  function selectLanguage(key: Lang) {
-    setExpanded((current) => current === key ? null : key);
-    setLang(key);
-  }
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedLanguage = params.get("lang") as Lang | null;
+    const requestedTopic = Number(params.get("topic"));
+    if (requestedLanguage && requestedLanguage in lessons) {
+      setLang(requestedLanguage);
+      if (Number.isInteger(requestedTopic)) {
+        const safeTopic = Math.max(0, Math.min(lessons[requestedLanguage].topics.length - 1, requestedTopic));
+        setTopicByLang((current) => ({ ...current, [requestedLanguage]: safeTopic }));
+      }
+    }
+  }, []);
 
   async function callAi(mode: "chat" | "search", prompt: string) {
     const response = await fetch("/api/ai", {
@@ -541,21 +616,14 @@ export default function Home() {
         <div className="workspace">
           <aside className="sidebar glass" aria-label="课程导航">
             <div className="sidebar-brandline"><span>COURSE STACK</span><i>4 LANGUAGES</i></div>
-            {(Object.keys(lessons) as Lang[]).map((key) => {
-              const open = expanded === key;
-              const activeIndex = topicByLang[key];
-              return <div className={`accordion ${open ? "open" : ""}`} key={key}>
-                <button className={`language ${lang === key ? "selected" : ""}`} onClick={() => selectLanguage(key)} aria-expanded={open}>
+            <div className="language-tier">
+              {(Object.keys(lessons) as Lang[]).map((key) =>
+                <a className={`language ${lang === key ? "selected" : ""}`} href={`/courses/${languageSlugs[key]}`} key={key}>
                   <i style={{ background: lessons[key].color }}>{lessons[key].icon}</i>
-                  <span>{key}</span><b>{open ? "−" : "+"}</b>
-                </button>
-                <div className="accordion-body" aria-hidden={!open}><div>
-                  {lessons[key].topics.map((topic, index) => <button key={topic} className={`topic ${lang === key && activeIndex === index ? "active" : ""}`} onClick={() => { setLang(key); setTopicByLang((current) => ({ ...current, [key]: index })); }}>
-                    <span>{String(index + 1).padStart(2, "0")}</span><em>{topic}</em>{index < 2 && <i>✓</i>}
-                  </button>)}
-                </div></div>
-              </div>;
-            })}
+                  <span>{key}<small>查看分级课程</small></span><b>→</b>
+                </a>
+              )}
+            </div>
             <div className="sidebar-tip"><span>✦</span><div><b>AI 学习建议</b><p>完成当前实训后再进入下一节，知识留存率会更高。</p></div></div>
           </aside>
 
