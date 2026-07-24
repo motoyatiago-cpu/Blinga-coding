@@ -393,11 +393,103 @@ function KnowledgeGraph({ lesson, code }: { lesson: Course; code: string }) {
   );
 }
 
+type InspectionResult = {
+  lines: number;
+  characters: number;
+  issues: string[];
+  suggestions: string[];
+};
+
+/**
+ * 代码检测器只负责分析文本，不直接修改 React 状态。
+ * 将纯检测逻辑与界面分开，后续替换为 WebWorker 或后端 API 时不需要改动 UI。
+ */
+function inspectSourceCode(source: string, lang: Lang): InspectionResult {
+  const rows = source.split("\n");
+  const issues: string[] = [];
+  const suggestions: string[] = [];
+  const bracketStack: Array<{ value: string; line: number }> = [];
+  const closingToOpening: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+  let quote: "'" | '"' | "`" | null = null;
+  let escaped = false;
+  let line = 1;
+
+  for (const character of source) {
+    if (character === "\n") line += 1;
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === "`") {
+      quote = character;
+      continue;
+    }
+    if ("([{".includes(character)) bracketStack.push({ value: character, line });
+    if (")]}".includes(character)) {
+      const opening = bracketStack.pop();
+      if (!opening || opening.value !== closingToOpening[character]) {
+        issues.push(`第 ${line} 行附近存在不匹配的“${character}”`);
+      }
+    }
+  }
+  bracketStack.forEach((item) => issues.push(`第 ${item.line} 行的“${item.value}”尚未闭合`));
+
+  if (!source.trim()) issues.push("代码内容为空，请先输入代码");
+  if (rows.some((row) => row.includes("\t"))) suggestions.push("建议将 Tab 统一转换为 4 个空格，避免不同环境下缩进不一致");
+  if (rows.some((row) => row.length > 100)) suggestions.push("检测到超过 100 个字符的长行，建议拆分以提升可读性");
+
+  if (lang === "Python") {
+    rows.forEach((row, index) => {
+      const statement = row.trim();
+      if (/^(if|elif|else|for|while|def|class|try|except|finally|with)\b/.test(statement)
+        && !statement.endsWith(":")
+        && !statement.startsWith("#")) {
+        issues.push(`第 ${index + 1} 行的 Python 代码块可能缺少冒号`);
+      }
+    });
+    if (source.includes("== None")) suggestions.push("建议使用“is None”替代“== None”");
+  }
+  if (lang === "JavaScript" && /\bvar\s+/.test(source)) {
+    suggestions.push("建议优先使用 const 或 let，减少 var 带来的作用域问题");
+  }
+  if (lang === "C/C++" && source.includes("using namespace std;")) {
+    suggestions.push("较大项目中建议显式使用 std:: 前缀，避免命名冲突");
+  }
+  if (lang === "Java" && !source.includes("class ")) {
+    suggestions.push("Java 可执行示例通常需要声明类和 main 方法");
+  }
+  if (!suggestions.length && source.trim()) {
+    suggestions.push("代码结构清晰，可以点击“运行代码”继续执行测试用例");
+  }
+
+  return { lines: rows.length, characters: source.length, issues, suggestions };
+}
+
+function formatInspection(result: InspectionResult): string {
+  const status = result.issues.length
+    ? `⚠ 实时检测发现 ${result.issues.length} 个问题`
+    : "● 实时检查通过";
+  const issueText = result.issues.length
+    ? `\n\n问题定位：\n${result.issues.map((issue) => `  • ${issue}`).join("\n")}`
+    : "\n  未发现明显语法结构问题";
+  const suggestionText = `\n\n自动修改建议：\n${result.suggestions.map((suggestion) => `  → ${suggestion}`).join("\n")}`;
+  return `${status}\n  ${result.lines} 行 · ${result.characters} 个字符${issueText}${suggestionText}`;
+}
+
 function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) => void; lesson: Course }) {
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
   const [running, setRunning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const analysisRevisionRef = useRef(0);
 
   useEffect(() => {
     setCode(lesson.code);
@@ -405,16 +497,39 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
   }, [lesson]);
 
   useEffect(() => {
+    // 数据流第 2 步：每次 code 变化都取消上一轮计时，重新开始 500ms 防抖。
+    // 用户连续输入期间不会真正执行检测，因此不会浪费 CPU 或后端 API 配额。
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const lines = code.split("\n").length;
-      const pairs = (code.match(/[({[]/g) || []).length - (code.match(/[)}\]]/g) || []).length;
-      setOutput(pairs === 0 ? `● 实时检查通过\n  ${lines} 行 · 未发现括号错误\n\n点击“运行代码”执行测试用例。` : `⚠ 实时检查\n  检测到 ${Math.abs(pairs)} 处括号可能未闭合。`);
-    }, 240);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [code]);
+    const revision = ++analysisRevisionRef.current;
+    setOutput("● 已监听到输入\n  等待 500ms，输入暂停后自动检测…");
+
+    timerRef.current = setTimeout(async () => {
+      setOutput("◌ 正在检测代码结构与常见问题…");
+
+      // 数据流第 3 步：执行检测。这里保持异步接口形式，未来可直接替换成 fetch 或 WebWorker。
+      const result = await Promise.resolve(inspectSourceCode(code, lang));
+
+      // 如果检测期间用户又输入了内容，则丢弃这次旧结果，避免旧响应覆盖新代码。
+      if (revision !== analysisRevisionRef.current) return;
+
+      // 数据流第 4 步：写入 output 状态，React 只更新现有终端文本，不改变页面结构。
+      setOutput(formatInspection(result));
+    }, 500);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [code, lang]);
+
+  function handleCodeInput(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    // 数据流第 1 步：React onChange 对应文本框原生 input 事件，每次键入都同步最新代码。
+    setCode(event.target.value);
+  }
 
   async function runCode() {
+    // 主动运行时使尚未完成的自动检测失效，防止检测结果覆盖运行结果。
+    analysisRevisionRef.current += 1;
+    if (timerRef.current) clearTimeout(timerRef.current);
     setRunning(true);
     const frames = ["建立隔离运行环境…", "正在编译代码…", "正在执行基础测试…"];
     for (const frame of frames) {
@@ -434,7 +549,7 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
       <div className="sandbox glass">
         <div className="editor-pane">
           <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => setCode(lesson.code)}>↺ 重置</button></div>
-          <textarea spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} aria-label="代码编辑器" />
+          <textarea spellCheck={false} value={code} onChange={handleCodeInput} aria-label="代码编辑器" />
           <div className="editor-foot"><span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span><button className="run" onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div>
         </div>
         <div className="terminal-pane">
