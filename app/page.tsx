@@ -615,14 +615,30 @@ export default function Home() {
 
         <div className="workspace">
           <aside className="sidebar glass" aria-label="课程导航">
-            <div className="sidebar-brandline"><span>COURSE STACK</span><i>4 LANGUAGES</i></div>
-            <div className="language-tier">
-              {(Object.keys(lessons) as Lang[]).map((key) =>
-                <a className={`language ${lang === key ? "selected" : ""}`} href={`/courses/${languageSlugs[key]}`} key={key}>
-                  <i style={{ background: lessons[key].color }}>{lessons[key].icon}</i>
-                  <span>{key}<small>查看分级课程</small></span><b>→</b>
+            <a className="course-nav-back" href="/">← 全部编程语言</a>
+            <div className="sidebar-brandline"><span>CURRENT COURSE</span><i>LEVEL 02</i></div>
+            <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
+              <i style={{ background: lessons[lang].color }}>{lessons[lang].icon}</i>
+              <span>{lang}<small>分级课程 · {lesson.topics.length} 个知识点</small></span><b>⌂</b>
+            </a>
+            <nav className="course-topic-nav" aria-label={`${lang} 知识点`}>
+              {lesson.topics.map((topic, index) =>
+                <a
+                  className={selectedTopicIndex === index ? "active" : ""}
+                  href={`/?lang=${encodeURIComponent(lang)}&topic=${index}#learn`}
+                  key={topic}
+                >
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <b>{topic}</b>
+                  <i>{selectedTopicIndex === index ? "●" : "›"}</i>
                 </a>
               )}
+            </nav>
+            <div className="course-switcher">
+              <span>切换编程语言</span>
+              <div>{(Object.keys(lessons) as Lang[]).filter((key) => key !== lang).map((key) =>
+                <a href={`/courses/${languageSlugs[key]}`} aria-label={`进入 ${key} 课程`} key={key} style={{ "--switch-color": lessons[key].color } as React.CSSProperties}>{lessons[key].icon}</a>
+              )}</div>
             </div>
             <div className="sidebar-tip"><span>✦</span><div><b>AI 学习建议</b><p>完成当前实训后再进入下一节，知识留存率会更高。</p></div></div>
           </aside>
@@ -634,7 +650,7 @@ export default function Home() {
               <div className="pager"><button>← 上一节</button><button className="primary">下一节 →</button></div>
             </div>
 
-            <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>先理解问题，再写出循环</h2><p>{lesson.desc}</p><div className="note"><b>💡 为什么重要？</b><span>遍历是数据处理的基础模式。掌握后，你可以处理列表、文件内容和用户输入等几乎所有批量数据。</span></div></article>
+            <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
             <DeepLesson lang={lang} />
 
             <div className="code-example glass">

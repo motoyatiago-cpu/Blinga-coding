@@ -96,14 +96,25 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
 
     <div className="course-layout">
       <aside className="course-language-nav glass">
-        <div className="sidebar-brandline"><span>LANGUAGE LEVEL</span><i>STEP 01</i></div>
-        {languageOrder.map((item) => {
-          const target = courses[item];
-          return <a className={`language ${item === slug ? "selected" : ""}`} href={`/courses/${item}`} key={item}>
-            <i style={{ background: target.color }}>{target.icon}</i><span>{target.name}<small>{target.topics.length} 个知识点</small></span><b>→</b>
-          </a>;
-        })}
-        <div className="sidebar-tip"><span>01</span><div><b>先选择语言</b><p>再按级别逐步学习知识点，每一节都包含讲解、图谱和在线练习。</p></div></div>
+        <a className="course-nav-back" href="/">← 全部编程语言</a>
+        <div className="sidebar-brandline"><span>CURRENT COURSE</span><i>STEP 02</i></div>
+        <div className="language selected course-root-link">
+          <i style={{ background: course.color }}>{course.icon}</i><span>{course.name}<small>{course.topics.length} 个核心知识点</small></span><b>↓</b>
+        </div>
+        <nav className="course-topic-nav" aria-label={`${course.name} 知识点`}>
+          {course.topics.map((topic, index) =>
+            <a href={`/?lang=${encodeURIComponent(course.queryName)}&topic=${index}#learn`} key={topic.title}>
+              <span>{String(index + 1).padStart(2, "0")}</span><b>{topic.title}</b><i>›</i>
+            </a>
+          )}
+        </nav>
+        <div className="course-switcher">
+          <span>切换编程语言</span>
+          <div>{languageOrder.filter((item) => item !== slug).map((item) =>
+            <a href={`/courses/${item}`} aria-label={`进入 ${courses[item].name} 课程`} key={item} style={{ "--switch-color": courses[item].color } as React.CSSProperties}>{courses[item].icon}</a>
+          )}</div>
+        </div>
+        <div className="sidebar-tip"><span>02</span><div><b>从左侧选择知识点</b><p>知识点始终保留在左侧，学习内容只在右侧切换。</p></div></div>
       </aside>
 
       <section className="course-catalog">
@@ -114,24 +125,15 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
           <div className="course-stats"><div><b>3</b><span>学习级别</span></div><div><b>7</b><span>核心知识点</span></div><div><b>∞</b><span>在线练习</span></div></div>
         </header>
 
-        <div className="level-roadmap">
-          {levels.map((level, levelIndex) => {
-            const topics = course.topics.slice(level.range[0], level.range[1]);
-            if (!topics.length) return null;
-            return <section className="course-level" key={level.name}>
-              <div className="level-heading"><div><span>0{levelIndex + 1}</span><div><h2>{level.name}</h2><p>{level.note}</p></div></div><b>{topics.length} LESSONS</b></div>
-              <div className="topic-card-grid">
-                {topics.map((topic, localIndex) => {
-                  const topicIndex = level.range[0] + localIndex;
-                  return <a className="catalog-topic glass" href={`/?lang=${encodeURIComponent(course.queryName)}&topic=${topicIndex}#learn`} key={topic.title}>
-                    <div className="catalog-topic-top"><span>{String(topicIndex + 1).padStart(2, "0")}</span><i>知识讲解 · 代码 · 练习</i></div>
-                    <h3>{topic.title}</h3><p>{topic.description}</p>
-                    <footer><span>学习成果：{topic.outcome}</span><b>开始学习 →</b></footer>
-                  </a>;
-                })}
-              </div>
-            </section>;
-          })}
+        <div className="course-entry glass">
+          <div className="entry-marker">02</div>
+          <div><span>COURSE NAVIGATION</span><h2>从左侧选择一个知识点开始学习</h2><p>语言名称与全部知识点会始终固定在左侧。选择知识点后，右侧进入对应讲解页，左侧目录不会消失或移动到中间。</p></div>
+          <a href={`/?lang=${encodeURIComponent(course.queryName)}&topic=0#learn`}>开始第一节 →</a>
+        </div>
+        <div className="course-level-summary">
+          {levels.map((level, index) => <article className="glass" key={level.name}>
+            <span>0{index + 1}</span><div><h3>{level.name}</h3><p>{level.note}</p></div><b>{level.range[1] - level.range[0]} 节</b>
+          </article>)}
         </div>
       </section>
     </div>
