@@ -19,6 +19,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   createContext,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -86,6 +87,80 @@ const lessons: Record<Lang, Course> = {
     desc: "List 是 Java 中最常用的有序集合。增强 for 循环让遍历集合更加简洁，同时保持静态类型安全。",
     code: `import java.util.List;\n\nclass Main {\n  public static void main(String[] args) {\n    List<Integer> scores = List.of(86, 92, 74, 100, 65);\n    int total = 0;\n    for (int score : scores) total += score;\n    System.out.println("总分：" + total);\n  }\n}`,
     output: "总分：417",
+  },
+};
+
+const lessonGuides: Record<Lang, {
+  summary: string;
+  principles: Array<{ title: string; text: string; badge: string }>;
+  syntaxTitle: string;
+  syntaxCode: string;
+  syntaxNote: string;
+  pitfalls: Array<{ wrong: string; right: string; title: string }>;
+}> = {
+  Python: {
+    summary: "Python 的循环建立在“可迭代对象”之上。for 循环负责按顺序取值，while 循环负责在条件成立时重复执行。真正需要掌握的不是背语法，而是明确循环的数据来源、终止条件和每轮发生的状态变化。",
+    principles: [
+      { badge: "INPUT", title: "确定遍历对象", text: "列表、字符串、range 对象和字典都可以被遍历。每一轮，循环变量都会接收其中的下一个元素。" },
+      { badge: "STATE", title: "更新程序状态", text: "在循环体内进行累加、筛选、计数或构造新结果。状态更新应保持单一、清晰，便于检查。" },
+      { badge: "EXIT", title: "保证能够结束", text: "for 会在元素耗尽后自然结束；while 必须确保条件最终变为 False，否则会形成无限循环。" },
+    ],
+    syntaxTitle: "for 与 enumerate：同时获得位置和值",
+    syntaxCode: `scores = [86, 92, 74]\n\nfor index, score in enumerate(scores, start=1):\n    status = "优秀" if score >= 90 else "继续加油"\n    print(f"第 {index} 位：{score} 分，{status}")`,
+    syntaxNote: "enumerate 比手动维护索引变量更可靠；start=1 只改变展示序号，不会改变列表本身的下标。",
+    pitfalls: [
+      { title: "修改正在遍历的列表", wrong: "遍历时直接 remove，可能跳过元素", right: "遍历副本，或使用列表推导式生成新列表" },
+      { title: "while 忘记更新条件", wrong: "计数器始终不变，循环无法结束", right: "在循环体内更新计数器，并设置安全上限" },
+      { title: "混淆 break 与 continue", wrong: "把 continue 当成终止循环", right: "break 结束整个循环；continue 只跳过当前轮" },
+    ],
+  },
+  "C/C++": {
+    summary: "C/C++ 的循环与内存访问关系紧密。除了理解 for、while 和 do-while，还必须关注数组边界、变量类型和迭代器有效性。一次越界访问可能不会立即报错，却会导致难以定位的未定义行为。",
+    principles: [
+      { badge: "RANGE", title: "明确合法边界", text: "长度为 n 的数组，其合法下标是 0 到 n-1。循环条件通常使用 i < n，而不是 i <= n。" },
+      { badge: "TYPE", title: "选择合适类型", text: "索引可使用 std::size_t；累加大量整数时应考虑 long long，避免计算过程中溢出。" },
+      { badge: "LIFE", title: "维护对象生命周期", text: "遍历容器时不要随意使迭代器失效。需要删除元素时，优先使用 erase 返回的新迭代器。" },
+    ],
+    syntaxTitle: "范围 for：安全读取容器元素",
+    syntaxCode: `#include <iostream>\n#include <vector>\n\nint main() {\n  std::vector<int> scores{86, 92, 74};\n  long long total = 0;\n  for (const int score : scores) {\n    total += score;\n  }\n  std::cout << "平均分：" << total / scores.size();\n}`,
+    syntaxNote: "只读遍历时使用 const；若元素对象较大，可使用 const auto& 避免复制。",
+    pitfalls: [
+      { title: "数组下标越界", wrong: "使用 i <= size", right: "使用 i < size，或采用范围 for" },
+      { title: "无符号整数回绕", wrong: "size_t i >= 0 作为倒序条件", right: "使用反向迭代器或安全的倒序写法" },
+      { title: "迭代器失效", wrong: "erase 后继续使用旧迭代器", right: "接收 erase 返回值并继续遍历" },
+    ],
+  },
+  JavaScript: {
+    summary: "JavaScript 的循环不仅包括 for 和 while，也包括 map、filter、reduce 等声明式数组方法。选择循环方式时，要区分“产生新数据”“查找元素”和“执行副作用”三种目的。",
+    principles: [
+      { badge: "MAP", title: "数据映射", text: "当输入和输出一一对应时使用 map。它返回新数组，不应在回调中修改原数组。" },
+      { badge: "FILTER", title: "条件筛选", text: "filter 保留回调结果为真值的元素，适合构建符合条件的数据子集。" },
+      { badge: "ASYNC", title: "处理异步任务", text: "forEach 不会等待 async 回调。需要顺序等待时使用 for...of，并在循环体中 await。" },
+    ],
+    syntaxTitle: "组合筛选、映射和聚合",
+    syntaxCode: `const scores = [86, 92, 74, 100];\n\nconst report = scores\n  .filter(score => score >= 80)\n  .map(score => ({ score, level: score >= 90 ? "A" : "B" }));\n\nconst average = report.reduce((sum, item) => sum + item.score, 0)\n  / report.length;`,
+    syntaxNote: "链式调用适合表达数据流水线；当中间数组非常大时，可改用一次 reduce 以减少分配。",
+    pitfalls: [
+      { title: "误用 for...in", wrong: "用 for...in 遍历数组值", right: "数组值使用 for...of；对象键才使用 for...in" },
+      { title: "异步 forEach", wrong: "await array.forEach(async ...)", right: "顺序任务使用 for...of，并行任务使用 Promise.all" },
+      { title: "reduce 无初始值", wrong: "空数组调用 reduce 导致异常", right: "始终提供类型明确的初始值" },
+    ],
+  },
+  Java: {
+    summary: "Java 的循环建立在静态类型和集合框架之上。数组适合固定长度数据，List 适合动态集合；增强 for 简洁安全，而 Iterator 更适合遍历期间执行受控删除。",
+    principles: [
+      { badge: "COLLECTION", title: "面向集合编程", text: "优先通过 List、Set 等接口组织数据，让代码与具体实现解耦。" },
+      { badge: "ITERATOR", title: "安全修改集合", text: "遍历期间需要删除元素时使用 Iterator.remove，避免 ConcurrentModificationException。" },
+      { badge: "STREAM", title: "表达数据流水线", text: "Stream 适合筛选、转换和聚合；普通循环则更适合复杂控制流和逐步调试。" },
+    ],
+    syntaxTitle: "增强 for 与 Stream 聚合",
+    syntaxCode: `List<Integer> scores = List.of(86, 92, 74, 100);\n\nint total = 0;\nfor (int score : scores) {\n  total += score;\n}\n\ndouble average = scores.stream()\n  .mapToInt(Integer::intValue)\n  .average()\n  .orElse(0);`,
+    syntaxNote: "List.of 创建不可变集合；需要新增或删除元素时，应复制到 ArrayList。",
+    pitfalls: [
+      { title: "并发修改异常", wrong: "增强 for 中直接调用 list.remove", right: "使用 Iterator，或先筛选再创建新集合" },
+      { title: "整数除法", wrong: "int / int 导致小数部分丢失", right: "至少将一个操作数转换为 double" },
+      { title: "空值拆箱", wrong: "Integer null 自动拆箱为 int", right: "在计算前过滤或显式处理 null" },
+    ],
   },
 };
 
@@ -313,9 +388,74 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
   );
 }
 
+const StableKnowledgeGraph = memo(KnowledgeGraph);
+const StableSandbox = memo(Sandbox);
+
+function DeepLesson({ lang }: { lang: Lang }) {
+  const guide = lessonGuides[lang];
+  return (
+    <section className="deep-lesson" aria-labelledby="deep-lesson-title">
+      <div className="deep-intro">
+        <span className="eyebrow">IN-DEPTH GUIDE</span>
+        <h2 id="deep-lesson-title">从执行模型理解，而不是只记住语法</h2>
+        <p>{guide.summary}</p>
+      </div>
+      <div className="concept-flow" aria-label="知识点执行流程">
+        {guide.principles.map((item, index) => <article key={item.title}>
+          <div><span>{item.badge}</span><b>0{index + 1}</b></div>
+          <h3>{item.title}</h3><p>{item.text}</p>
+        </article>)}
+      </div>
+      <div className="deep-example glass">
+        <div className="example-explain">
+          <span className="eyebrow purple">CODE WALKTHROUGH</span>
+          <h3>{guide.syntaxTitle}</h3>
+          <p>{guide.syntaxNote}</p>
+          <ol><li>先确认输入数据及其类型</li><li>观察每轮循环变量的变化</li><li>验证终止条件和空数据边界</li></ol>
+        </div>
+        <pre><code>{guide.syntaxCode}</code></pre>
+      </div>
+      <div className="pitfall-section">
+        <div><span className="eyebrow">DEBUG CHECKLIST</span><h3>三个高频错误与修复方法</h3></div>
+        <div className="pitfall-grid">{guide.pitfalls.map((item) => <article key={item.title}>
+          <h4>{item.title}</h4><p className="wrong">× {item.wrong}</p><p className="right">✓ {item.right}</p>
+        </article>)}</div>
+      </div>
+    </section>
+  );
+}
+
+function GraphDocumentExport({ lesson }: { lesson: Course }) {
+  const [format, setFormat] = useState<"pdf" | "word">("pdf");
+
+  function exportDocument() {
+    if (format === "pdf") {
+      document.body.classList.add("print-mindmap");
+      const cleanup = () => document.body.classList.remove("print-mindmap");
+      window.addEventListener("afterprint", cleanup, { once: true });
+      window.setTimeout(() => window.print(), 40);
+      return;
+    }
+    const section = document.querySelector("#map");
+    if (!section) return;
+    const clone = section.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("button,select,.react-flow__controls,.react-flow__minimap").forEach((element) => element.remove());
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${lesson.title}知识图谱</title><style>body{font-family:Arial,'Microsoft YaHei';padding:32px;color:#162033}h1,h2{color:#102a43}.graph-shell{height:720px;border:1px solid #ccd5e0;position:relative;overflow:hidden}.react-flow{width:100%;height:100%}.knowledge-node{border:1px solid #789;padding:10px;border-radius:8px;background:#fff}.node-title,.node-description{border:0;width:100%}</style></head><body><h1>Blinga coding · ${lesson.title}</h1>${clone.outerHTML}</body></html>`;
+    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${lesson.title}-知识图谱.doc`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return <div className="document-export glass"><div><span>DOCUMENT EXPORT</span><b>导出当前知识图谱</b><small>图谱核心交互保持不变，导出由独立文档层完成。</small></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
+}
+
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
-  const [expanded, setExpanded] = useState<Lang>("Python");
+  const [expanded, setExpanded] = useState<Lang | null>("Python");
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -324,6 +464,7 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
   const [aiBusy, setAiBusy] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const lesson = lessons[lang];
 
   useEffect(() => {
@@ -338,8 +479,12 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (searchOpen) window.setTimeout(() => searchInputRef.current?.focus(), 80);
+  }, [searchOpen]);
+
   function selectLanguage(key: Lang) {
-    setExpanded((current) => current === key ? key : key);
+    setExpanded((current) => current === key ? null : key);
     setLang(key);
   }
 
@@ -380,18 +525,18 @@ export default function Home() {
       <main>
         <div className="ambient one" /><div className="ambient two" />
         <header className="topbar glass">
-          <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Code<span>Atlas</span></span></a>
+          <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
           <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
           <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><div className="avatar">林</div></div>
         </header>
 
-        {searchOpen && <div className="search-overlay" onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
+        <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
           <div className="search-dialog glass">
             <div className="search-dialog-head"><div><b>AI 全局知识搜索</b><small>搜索课程概念、语法或错误信息</small></div><button onClick={() => setSearchOpen(false)}>×</button></div>
-            <div className="search-box"><input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：for 与 while 应该怎么选择？" /><button onClick={search}>搜索</button></div>
+            <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：for 与 while 应该怎么选择？" /><button onClick={search}>搜索</button></div>
             {searchResult && <div className="search-answer"><span>✦ AI ANSWER</span><p>{searchResult}</p></div>}
           </div>
-        </div>}
+        </div>
 
         <div className="workspace">
           <aside className="sidebar glass" aria-label="课程导航">
@@ -400,7 +545,7 @@ export default function Home() {
               const open = expanded === key;
               const activeIndex = topicByLang[key];
               return <div className={`accordion ${open ? "open" : ""}`} key={key}>
-                <button className={`language ${lang === key ? "selected" : ""}`} onClick={() => { selectLanguage(key); setExpanded(open ? key : key); }} aria-expanded={open}>
+                <button className={`language ${lang === key ? "selected" : ""}`} onClick={() => selectLanguage(key)} aria-expanded={open}>
                   <i style={{ background: lessons[key].color }}>{lessons[key].icon}</i>
                   <span>{key}</span><b>{open ? "−" : "+"}</b>
                 </button>
@@ -422,6 +567,7 @@ export default function Home() {
             </div>
 
             <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>先理解问题，再写出循环</h2><p>{lesson.desc}</p><div className="note"><b>💡 为什么重要？</b><span>遍历是数据处理的基础模式。掌握后，你可以处理列表、文件内容和用户输入等几乎所有批量数据。</span></div></article>
+            <DeepLesson lang={lang} />
 
             <div className="code-example glass">
               <div className="pane-head"><span><i /> lesson-example</span><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
@@ -429,18 +575,19 @@ export default function Home() {
               <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">打开实训沙盒 →</a></div>
             </div>
 
-            <KnowledgeGraph lesson={lesson} code={lesson.code} />
-            <Sandbox lang={lang} setLang={setLang} lesson={lesson} />
+            <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
+            <GraphDocumentExport lesson={lesson} />
+            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} />
           </section>
         </div>
 
         <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen((current) => !current)}><span>✦</span>{chatOpen ? "收起" : "问 AI"}</button>
-        {chatOpen && <aside className="chat glass">
+        <aside className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
           <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在思考…" : `正在学习：${lesson.title}`}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div>
           <div className="messages">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai">正在组织答案…</div>}</div>
           <div className="chips"><button onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
           <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="输入你的编程问题…" /><button onClick={() => ask()}>↑</button></div>
-        </aside>}
+        </aside>
       </main>
     </ReactFlowProvider>
   );

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeAtlas · AI 编程学习平台",
+  title: "Blinga coding · AI 编程学习平台",
   description: "集知识学习、AI 问答、思维导图与在线实训于一体的编程学习平台。",
   icons: {
     icon: "/favicon.svg",
