@@ -691,6 +691,8 @@ export default function Home() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const selectedTopicIndex = topicByLang[lang];
   const baseLesson = lessons[lang];
+  const isFirstTopic = selectedTopicIndex === 0;
+  const isLastTopic = selectedTopicIndex === baseLesson.topics.length - 1;
   const lesson = lang === "Python"
     ? pythonLessons[selectedTopicIndex]
     : {
@@ -699,6 +701,18 @@ export default function Home() {
         kicker: `${lang} · 分级课程 · 第 ${String(selectedTopicIndex + 1).padStart(2, "0")} 节`,
         desc: `本节将系统讲解 ${lang} 的“${baseLesson.topics[selectedTopicIndex]}”，并通过执行过程、代码示例、易错点和在线练习帮助你完成从理解到应用。`,
       };
+
+  function navigateToTopic(nextTopicIndex: number) {
+    const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
+    if (safeTopicIndex === selectedTopicIndex) return;
+
+    setTopicByLang((current) => ({ ...current, [lang]: safeTopicIndex }));
+    const nextUrl = `/?lang=${encodeURIComponent(lang)}&topic=${safeTopicIndex}#learn`;
+    window.history.pushState({ lang, topic: safeTopicIndex }, "", nextUrl);
+    window.requestAnimationFrame(() => {
+      document.getElementById("learn")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -717,16 +731,22 @@ export default function Home() {
   }, [searchOpen]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const requestedLanguage = params.get("lang") as Lang | null;
-    const requestedTopic = Number(params.get("topic"));
-    if (requestedLanguage && requestedLanguage in lessons) {
+    const syncCourseFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedLanguage = params.get("lang") as Lang | null;
+      const requestedTopic = Number(params.get("topic"));
+      if (!requestedLanguage || !(requestedLanguage in lessons)) return;
+
       setLang(requestedLanguage);
       if (Number.isInteger(requestedTopic)) {
         const safeTopic = Math.max(0, Math.min(lessons[requestedLanguage].topics.length - 1, requestedTopic));
         setTopicByLang((current) => ({ ...current, [requestedLanguage]: safeTopic }));
       }
-    }
+    };
+
+    syncCourseFromUrl();
+    window.addEventListener("popstate", syncCourseFromUrl);
+    return () => window.removeEventListener("popstate", syncCourseFromUrl);
   }, []);
 
   async function callAi(mode: "chat" | "search", prompt: string) {
@@ -793,6 +813,10 @@ export default function Home() {
                   className={selectedTopicIndex === index ? "active" : ""}
                   href={`/?lang=${encodeURIComponent(lang)}&topic=${index}#learn`}
                   key={topic}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigateToTopic(index);
+                  }}
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <b>{topic}</b>
@@ -813,7 +837,23 @@ export default function Home() {
             <div className="breadcrumb">学习中心 <span>/</span> {lang} <span>/</span> 第 {String(topicByLang[lang] + 1).padStart(2, "0")} 节</div>
             <div className="lesson-head">
               <div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◉ 3 个练习</span><span className="level">基础</span><span>已同步至知识图谱</span></div></div>
-              <div className="pager"><button>← 上一节</button><button className="primary">下一节 →</button></div>
+              <div className="pager">
+                <button
+                  disabled={isFirstTopic}
+                  onClick={() => navigateToTopic(selectedTopicIndex - 1)}
+                  aria-label="进入上一节课程"
+                >
+                  ← 上一节
+                </button>
+                <button
+                  className="primary"
+                  disabled={isLastTopic}
+                  onClick={() => navigateToTopic(selectedTopicIndex + 1)}
+                  aria-label="进入下一节课程"
+                >
+                  下一节 →
+                </button>
+              </div>
             </div>
 
             <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
