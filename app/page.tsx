@@ -855,6 +855,16 @@ type RunResult = {
   time: string | null;
   memory: number | null;
   exitCode: number | null;
+  judge?: {
+    passed: number;
+    total: number;
+    tests: Array<{
+      name: string;
+      passed: boolean;
+      expected?: string;
+      actual?: string;
+    }>;
+  };
 };
 
 type SandboxContext = {
@@ -964,6 +974,16 @@ function formatRunResult(result: RunResult): string {
   }
   if (result.message.trim()) sections.push(`运行信息：\n${result.message.trim()}`);
   if (result.exitCode != null) sections.push(`退出码：${result.exitCode}`);
+  if (result.judge) {
+    const testLines = result.judge.tests.map((test) =>
+      `  ${test.passed ? "✓" : "✕"} ${test.name}`,
+    );
+    const mismatch = result.judge.tests.find((test) => !test.passed && test.expected !== undefined);
+    sections.push(`自动判题：${result.judge.passed} / ${result.judge.total} 通过\n${testLines.join("\n")}`);
+    if (mismatch) {
+      sections.push(`预期输出：\n${mismatch.expected || "（空）"}\n\n实际输出：\n${mismatch.actual || "（空）"}`);
+    }
+  }
 
   return sections.join("\n\n");
 }
@@ -972,16 +992,18 @@ function Sandbox({
   lang,
   setLang,
   lesson,
+  topicIndex,
   onContextChange,
 }: {
   lang: Lang;
   setLang: (lang: Lang) => void;
   lesson: Course;
+  topicIndex: number;
   onContextChange: (context: SandboxContext) => void;
 }) {
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
-  const [running, setRunning] = useState(false);
+  const [runningMode, setRunningMode] = useState<"run" | "judge" | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const analysisRevisionRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
@@ -1036,22 +1058,30 @@ function Sandbox({
     updateCode(event.target.value);
   }
 
-  async function runCode() {
+  async function runCode(mode: "run" | "judge" = "run") {
     // 主动运行时使尚未完成的自动检测失效，防止检测结果覆盖运行结果。
     analysisRevisionRef.current += 1;
     if (timerRef.current) clearTimeout(timerRef.current);
     runAbortRef.current?.abort();
     const controller = new AbortController();
     runAbortRef.current = controller;
-    setRunning(true);
-    updateOutput("› 正在提交最新代码…\n› 正在隔离环境中编译并运行…");
+    setRunningMode(mode);
+    updateOutput(mode === "judge"
+      ? "› 正在提交判题…\n› 正在运行隐藏测试并核对结果…"
+      : "› 正在提交最新代码…\n› 正在隔离环境中编译并运行…");
 
     try {
       const response = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ language: lang, code, stdin: "" }),
+        body: JSON.stringify({
+          language: lang,
+          code,
+          stdin: "",
+          judge: mode === "judge",
+          topicIndex,
+        }),
       });
       const result = await response.json() as RunResult & { error?: string };
       if (!response.ok) throw new Error(result.error || "代码执行失败");
@@ -1062,7 +1092,7 @@ function Sandbox({
     } finally {
       if (runAbortRef.current === controller) {
         runAbortRef.current = null;
-        setRunning(false);
+        setRunningMode(null);
       }
     }
   }
@@ -1077,12 +1107,22 @@ function Sandbox({
         <div className="editor-pane">
           <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => updateCode(lesson.code)}>↺ 重置</button></div>
           <textarea spellCheck={false} value={code} onChange={handleCodeInput} aria-label="代码编辑器" />
-          <div className="editor-foot"><span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span><button className="run" onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div>
+          <div className="editor-foot">
+            <span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span>
+            <div className="editor-actions">
+              <button className="judge-submit" onClick={() => runCode("judge")} disabled={runningMode !== null}>
+                {runningMode === "judge" ? "判题中…" : "✓ 提交判题"}
+              </button>
+              <button className="run" onClick={() => runCode("run")} disabled={runningMode !== null}>
+                {runningMode === "run" ? "运行中…" : "▶ 运行代码"}
+              </button>
+            </div>
+          </div>
         </div>
         <div className="terminal-pane">
           <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => updateOutput("")}>清空</button></div>
           <pre>{output}</pre>
-          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("✓ 运行成功") ? "passed" : ""}>{running ? "执行中" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
+          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3 通过") ? "passed" : ""}>{runningMode === "judge" ? "判题中" : runningMode === "run" ? "执行中" : output.includes("自动判题") ? "判题完成" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
       </div>
     </section>
@@ -1358,7 +1398,7 @@ export default function Home() {
 
             <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
             <GraphDocumentExport lesson={lesson} />
-            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} onContextChange={syncSandboxContext} />
+            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} />
           </section>
         </div>
 
