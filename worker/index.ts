@@ -60,6 +60,24 @@ async function ensureProgressSchema(database: D1Database): Promise<void> {
   ]);
 }
 
+async function ensureDraftSchema(database: D1Database): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS code_drafts (
+        user_email TEXT NOT NULL,
+        language TEXT NOT NULL,
+        topic_index INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_email, language, topic_index)
+      )
+    `),
+    database.prepare(
+      "CREATE INDEX IF NOT EXISTS code_drafts_updated_at_idx ON code_drafts (updated_at)",
+    ),
+  ]);
+}
+
 function authenticatedUserEmail(request: Request): string | null {
   const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
   return email && email.length <= 320 ? email : null;
@@ -150,6 +168,83 @@ async function handleProgressRequest(request: Request, env: Env): Promise<Respon
         updated_at = CURRENT_TIMESTAMP
     `)
     .bind(userEmail, progress.activeLanguage, JSON.stringify(progress.topics))
+    .run();
+
+  return jsonResponse({ saved: true });
+}
+
+function safeDraftIdentity(languageInput: unknown, topicInput: unknown): {
+  language: string;
+  topicIndex: number;
+} | null {
+  const language = String(languageInput || "").trim();
+  const topicIndex = Number(topicInput);
+  if (!language || language.length > 64 || !Number.isInteger(topicIndex)) return null;
+  if (topicIndex < 0 || topicIndex > 999) return null;
+  return { language, topicIndex };
+}
+
+async function handleDraftRequest(request: Request, env: Env): Promise<Response> {
+  const userEmail = authenticatedUserEmail(request);
+  if (!userEmail) {
+    return jsonResponse({ error: "请先登录后再同步代码草稿" }, 401);
+  }
+
+  await ensureDraftSchema(env.DB);
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const identity = safeDraftIdentity(
+      url.searchParams.get("language"),
+      url.searchParams.get("topicIndex"),
+    );
+    if (!identity) return jsonResponse({ error: "课程标识无效" }, 400);
+
+    const record = await env.DB
+      .prepare(`
+        SELECT code, updated_at
+        FROM code_drafts
+        WHERE user_email = ? AND language = ? AND topic_index = ?
+      `)
+      .bind(userEmail, identity.language, identity.topicIndex)
+      .first<{ code: string; updated_at: string }>();
+
+    return jsonResponse({
+      draft: record ? { code: record.code, updatedAt: record.updated_at } : null,
+    });
+  }
+
+  if (request.method !== "PUT") {
+    return jsonResponse({ error: "仅支持 GET 或 PUT 请求" }, 405);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return jsonResponse({ error: "请求来源无效" }, 403);
+  }
+
+  let body: { language?: unknown; topicIndex?: unknown; code?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "请求格式无效" }, 400);
+  }
+
+  const identity = safeDraftIdentity(body.language, body.topicIndex);
+  const code = typeof body.code === "string" ? body.code : "";
+  if (!identity || code.length > MAX_CODE_INPUT) {
+    return jsonResponse({ error: "代码草稿数据无效或内容过长" }, 400);
+  }
+
+  await env.DB
+    .prepare(`
+      INSERT INTO code_drafts (user_email, language, topic_index, code, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+        code = excluded.code,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(userEmail, identity.language, identity.topicIndex, code)
     .run();
 
   return jsonResponse({ saved: true });
@@ -491,6 +586,10 @@ const worker = {
 
     if (url.pathname === "/api/progress") {
       return handleProgressRequest(request, env);
+    }
+
+    if (url.pathname === "/api/draft") {
+      return handleDraftRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {

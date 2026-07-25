@@ -1008,12 +1008,20 @@ function Sandbox({
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
   const [runningMode, setRunningMode] = useState<"run" | "judge" | null>(null);
+  const [draftReadyKey, setDraftReadyKey] = useState("");
+  const [draftStatus, setDraftStatus] = useState("正在读取草稿…");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftEditRevisionRef = useRef(0);
+  const draftSaveRevisionRef = useRef(0);
+  const lastSavedCodeRef = useRef(lesson.code);
   const analysisRevisionRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
   const outputRef = useRef(output);
+  const draftKey = `${lang}:${topicIndex}`;
 
   const updateCode = useCallback((nextCode: string) => {
+    draftEditRevisionRef.current += 1;
     setCode(nextCode);
     onContextChange({ code: nextCode, output: outputRef.current });
   }, [onContextChange]);
@@ -1025,12 +1033,89 @@ function Sandbox({
   }, [code, onContextChange]);
 
   useEffect(() => {
+    let active = true;
+    const editRevisionAtLoad = 0;
+    draftSaveRevisionRef.current += 1;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftEditRevisionRef.current = editRevisionAtLoad;
+    setDraftReadyKey("");
+    setDraftStatus("正在读取草稿…");
     setCode(lesson.code);
     const initialOutput = "终端已连接 · 等待输入";
     outputRef.current = initialOutput;
     setOutput(initialOutput);
     onContextChange({ code: lesson.code, output: initialOutput });
-  }, [lesson, onContextChange]);
+
+    const loadDraft = async () => {
+      let restoredCode = lesson.code;
+      try {
+        const params = new URLSearchParams({
+          language: lang,
+          topicIndex: String(topicIndex),
+        });
+        const response = await fetch(`/api/draft?${params}`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        const data = await response.json() as {
+          draft?: { code?: string } | null;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(data.error || "代码草稿读取失败");
+        if (typeof data.draft?.code === "string") restoredCode = data.draft.code;
+        if (!active) return;
+
+        lastSavedCodeRef.current = restoredCode;
+        // 如果读取期间用户已经开始输入，则保留用户的新内容，不让旧草稿覆盖编辑器。
+        if (draftEditRevisionRef.current === editRevisionAtLoad) {
+          setCode(restoredCode);
+          onContextChange({ code: restoredCode, output: outputRef.current });
+        }
+        setDraftStatus(data.draft ? "代码草稿已恢复" : "代码草稿自动保存");
+      } catch (error) {
+        if (!active) return;
+        lastSavedCodeRef.current = lesson.code;
+        setDraftStatus(error instanceof Error ? error.message : "代码草稿暂未同步");
+      } finally {
+        if (active) setDraftReadyKey(draftKey);
+      }
+    };
+
+    void loadDraft();
+    return () => {
+      active = false;
+    };
+  }, [draftKey, lang, lesson, onContextChange, topicIndex]);
+
+  useEffect(() => {
+    // 草稿数据流：输入监听 → 500ms 防抖 → 服务端按“用户+语言+知识点”保存 → 状态渲染。
+    if (draftReadyKey !== draftKey || code === lastSavedCodeRef.current) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+
+    const revision = ++draftSaveRevisionRef.current;
+    setDraftStatus("正在保存代码草稿…");
+    draftTimerRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/draft", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language: lang, topicIndex, code }),
+        });
+        const data = await response.json() as { saved?: boolean; error?: string };
+        if (!response.ok) throw new Error(data.error || "代码草稿保存失败");
+        if (revision !== draftSaveRevisionRef.current) return;
+        lastSavedCodeRef.current = code;
+        setDraftStatus("代码草稿已保存");
+      } catch (error) {
+        if (revision !== draftSaveRevisionRef.current) return;
+        setDraftStatus(error instanceof Error ? error.message : "代码草稿暂未同步");
+      }
+    }, 500);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [code, draftKey, draftReadyKey, lang, topicIndex]);
 
   useEffect(() => {
     // 数据流第 2 步：每次 code 变化都取消上一轮计时，重新开始 500ms 防抖。
@@ -1112,7 +1197,7 @@ function Sandbox({
           <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => updateCode(lesson.code)}>↺ 重置</button></div>
           <textarea spellCheck={false} value={code} onChange={handleCodeInput} aria-label="代码编辑器" />
           <div className="editor-foot">
-            <span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span>
+            <span>UTF-8 · {code.split("\n").length} 行 · {draftStatus}</span>
             <div className="editor-actions">
               <button className="judge-submit" onClick={() => runCode("judge")} disabled={runningMode !== null}>
                 {runningMode === "judge" ? "判题中…" : "✓ 提交判题"}

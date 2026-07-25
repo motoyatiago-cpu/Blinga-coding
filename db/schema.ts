@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const learningProgress = sqliteTable("learning_progress", {
   userEmail: text("user_email").primaryKey(),
@@ -7,3 +7,13 @@ export const learningProgress = sqliteTable("learning_progress", {
   topicsJson: text("topics_json").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const codeDrafts = sqliteTable("code_drafts", {
+  userEmail: text("user_email").notNull(),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  code: text("code").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.userEmail, table.language, table.topicIndex] }),
+]);
