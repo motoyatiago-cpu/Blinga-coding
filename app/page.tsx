@@ -411,6 +411,11 @@ type RunResult = {
   exitCode: number | null;
 };
 
+type SandboxContext = {
+  code: string;
+  output: string;
+};
+
 /**
  * 代码检测器只负责分析文本，不直接修改 React 状态。
  * 将纯检测逻辑与界面分开，后续替换为 WebWorker 或后端 API 时不需要改动 UI。
@@ -517,28 +522,53 @@ function formatRunResult(result: RunResult): string {
   return sections.join("\n\n");
 }
 
-function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) => void; lesson: Course }) {
+function Sandbox({
+  lang,
+  setLang,
+  lesson,
+  onContextChange,
+}: {
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  lesson: Course;
+  onContextChange: (context: SandboxContext) => void;
+}) {
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
   const [running, setRunning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const analysisRevisionRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
+  const outputRef = useRef(output);
+
+  const updateCode = useCallback((nextCode: string) => {
+    setCode(nextCode);
+    onContextChange({ code: nextCode, output: outputRef.current });
+  }, [onContextChange]);
+
+  const updateOutput = useCallback((nextOutput: string, sourceCode = code) => {
+    outputRef.current = nextOutput;
+    setOutput(nextOutput);
+    onContextChange({ code: sourceCode, output: nextOutput });
+  }, [code, onContextChange]);
 
   useEffect(() => {
     setCode(lesson.code);
-    setOutput("终端已连接 · 等待输入");
-  }, [lesson]);
+    const initialOutput = "终端已连接 · 等待输入";
+    outputRef.current = initialOutput;
+    setOutput(initialOutput);
+    onContextChange({ code: lesson.code, output: initialOutput });
+  }, [lesson, onContextChange]);
 
   useEffect(() => {
     // 数据流第 2 步：每次 code 变化都取消上一轮计时，重新开始 500ms 防抖。
     // 用户连续输入期间不会真正执行检测，因此不会浪费 CPU 或后端 API 配额。
     if (timerRef.current) clearTimeout(timerRef.current);
     const revision = ++analysisRevisionRef.current;
-    setOutput("● 已监听到输入\n  等待 500ms，输入暂停后自动检测…");
+    updateOutput("● 已监听到输入\n  等待 500ms，输入暂停后自动检测…");
 
     timerRef.current = setTimeout(async () => {
-      setOutput("◌ 正在检测代码结构与常见问题…");
+      updateOutput("◌ 正在检测代码结构与常见问题…");
 
       // 数据流第 3 步：执行检测。这里保持异步接口形式，未来可直接替换成 fetch 或 WebWorker。
       const result = await Promise.resolve(inspectSourceCode(code, lang));
@@ -547,17 +577,17 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
       if (revision !== analysisRevisionRef.current) return;
 
       // 数据流第 4 步：写入 output 状态，React 只更新现有终端文本，不改变页面结构。
-      setOutput(formatInspection(result));
+      updateOutput(formatInspection(result));
     }, 500);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [code, lang]);
+  }, [code, lang, updateOutput]);
 
   function handleCodeInput(event: React.ChangeEvent<HTMLTextAreaElement>) {
     // 数据流第 1 步：React onChange 对应文本框原生 input 事件，每次键入都同步最新代码。
-    setCode(event.target.value);
+    updateCode(event.target.value);
   }
 
   async function runCode() {
@@ -568,7 +598,7 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
     const controller = new AbortController();
     runAbortRef.current = controller;
     setRunning(true);
-    setOutput("› 正在提交最新代码…\n› 正在隔离环境中编译并运行…");
+    updateOutput("› 正在提交最新代码…\n› 正在隔离环境中编译并运行…");
 
     try {
       const response = await fetch("/api/run", {
@@ -579,10 +609,10 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
       });
       const result = await response.json() as RunResult & { error?: string };
       if (!response.ok) throw new Error(result.error || "代码执行失败");
-      setOutput(formatRunResult(result));
+      updateOutput(formatRunResult(result));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
+      updateOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
     } finally {
       if (runAbortRef.current === controller) {
         runAbortRef.current = null;
@@ -599,12 +629,12 @@ function Sandbox({ lang, setLang, lesson }: { lang: Lang; setLang: (lang: Lang) 
       </div>
       <div className="sandbox glass">
         <div className="editor-pane">
-          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => setCode(lesson.code)}>↺ 重置</button></div>
+          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => updateCode(lesson.code)}>↺ 重置</button></div>
           <textarea spellCheck={false} value={code} onChange={handleCodeInput} aria-label="代码编辑器" />
           <div className="editor-foot"><span>UTF-8 · {code.split("\n").length} 行 · 自动同步</span><button className="run" onClick={runCode} disabled={running}>{running ? "运行中…" : "▶ 运行代码"}</button></div>
         </div>
         <div className="terminal-pane">
-          <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => setOutput("")}>清空</button></div>
+          <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => updateOutput("")}>清空</button></div>
           <pre>{output}</pre>
           <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("✓ 运行成功") ? "passed" : ""}>{running ? "执行中" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
@@ -688,19 +718,26 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
   const [aiBusy, setAiBusy] = useState(false);
+  const [sandboxContext, setSandboxContext] = useState<SandboxContext>({
+    code: lessons.Python.code,
+    output: "终端已连接 · 等待输入",
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const syncSandboxContext = useCallback((context: SandboxContext) => {
+    setSandboxContext(context);
+  }, []);
   const selectedTopicIndex = topicByLang[lang];
   const baseLesson = lessons[lang];
   const isFirstTopic = selectedTopicIndex === 0;
   const isLastTopic = selectedTopicIndex === baseLesson.topics.length - 1;
-  const lesson = lang === "Python"
+  const lesson = useMemo(() => lang === "Python"
     ? pythonLessons[selectedTopicIndex]
     : {
         ...baseLesson,
         title: `${lang} ${baseLesson.topics[selectedTopicIndex]}`,
         kicker: `${lang} · 分级课程 · 第 ${String(selectedTopicIndex + 1).padStart(2, "0")} 节`,
         desc: `本节将系统讲解 ${lang} 的“${baseLesson.topics[selectedTopicIndex]}”，并通过执行过程、代码示例、易错点和在线练习帮助你完成从理解到应用。`,
-      };
+      }, [baseLesson, lang, selectedTopicIndex]);
 
   function navigateToTopic(nextTopicIndex: number) {
     const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
@@ -750,10 +787,22 @@ export default function Home() {
   }, []);
 
   async function callAi(mode: "chat" | "search", prompt: string) {
+    const context = mode === "chat"
+      ? [
+          `当前课程：${lesson.kicker}`,
+          `知识点：${lesson.title}`,
+          `课程说明：${lesson.desc}`,
+          `当前语言：${lang}`,
+          "用户编辑器中的最新代码：",
+          sandboxContext.code.slice(-4_000),
+          "最近一次实时检测或运行结果：",
+          sandboxContext.output.slice(-1_500),
+        ].join("\n")
+      : `${lesson.kicker}\n${lesson.desc}`;
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, prompt, context: `${lesson.kicker}\n${lesson.desc}` }),
+      body: JSON.stringify({ mode, prompt, context }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "AI 服务暂时不可用");
@@ -867,13 +916,13 @@ export default function Home() {
 
             <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
             <GraphDocumentExport lesson={lesson} />
-            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} />
+            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} onContextChange={syncSandboxContext} />
           </section>
         </div>
 
         <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen((current) => !current)}><span>✦</span>{chatOpen ? "收起" : "问 AI"}</button>
         <aside className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
-          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在思考…" : `正在学习：${lesson.title}`}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div>
+          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div>
           <div className="messages">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai">正在组织答案…</div>}</div>
           <div className="chips"><button onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
           <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="输入你的编程问题…" /><button onClick={() => ask()}>↑</button></div>
