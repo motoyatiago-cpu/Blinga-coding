@@ -149,14 +149,68 @@ const pythonLessons: Course[] = [
   },
 ];
 
-const lessonGuides: Record<Lang, {
+const cppLessons: Course[] = [
+  {
+    ...lessons["C/C++"],
+    title: "C++ 环境配置与编译流程",
+    kicker: "C/C++ · 入门基础 · 第 01 节",
+    desc: "认识源文件、预处理、编译、汇编和链接五个阶段，掌握 main 函数、标准输出以及编译器错误信息的基本阅读方法。",
+    code: `#include <iostream>\n\nint main() {\n  std::cout << "Compiler ready: C++17" << '\\n';\n  return 0;\n}`,
+    output: "Compiler ready: C++17",
+  },
+  {
+    ...lessons["C/C++"],
+    title: "C++ 数据类型与安全转换",
+    kicker: "C/C++ · 入门基础 · 第 02 节",
+    desc: "系统理解整数、浮点数、字符、布尔值、常量和类型推导，学习使用 static_cast 明确表达转换意图并避免整数除法陷阱。",
+    code: `#include <iostream>\n\nint main() {\n  const int completed = 7;\n  const int total = 8;\n  const double progress = static_cast<double>(completed) / total;\n  std::cout << "完成率：" << progress * 100 << "%" << '\\n';\n  return 0;\n}`,
+    output: "完成率：87.5%",
+  },
+  {
+    ...lessons["C/C++"],
+    title: "C++ 流程控制",
+    kicker: "C/C++ · 入门基础 · 第 03 节",
+    desc: "通过 if、else if、switch、for 和 while 构建程序执行路径，重点掌握条件覆盖顺序、循环边界以及 break 与 continue 的区别。",
+    code: `#include <iostream>\n\nint main() {\n  const int score = 86;\n  if (score >= 90) {\n    std::cout << "优秀";\n  } else if (score >= 60) {\n    std::cout << "合格";\n  } else {\n    std::cout << "需要复习";\n  }\n  return 0;\n}`,
+    output: "合格",
+  },
+  lessons["C/C++"],
+  {
+    ...lessons["C/C++"],
+    title: "C++ 指针与对象生命周期",
+    kicker: "C/C++ · 核心能力 · 第 05 节",
+    desc: "从地址、取址和解引用开始理解指针，区分空指针、悬空指针和有效指针，并使用引用与智能指针表达更安全的所有权关系。",
+    code: `#include <iostream>\n\nvoid addBonus(int& score, int bonus) {\n  score += bonus;\n}\n\nint main() {\n  int score = 86;\n  int* address = &score;\n  addBonus(*address, 4);\n  std::cout << "更新后：" << score << '\\n';\n  return 0;\n}`,
+    output: "更新后：90",
+  },
+  {
+    ...lessons["C/C++"],
+    title: "C++ 函数与接口设计",
+    kicker: "C/C++ · 核心能力 · 第 06 节",
+    desc: "使用参数、返回值、const 引用、函数重载和头文件组织可复用逻辑，并通过清晰的函数契约降低模块之间的耦合。",
+    code: `#include <iostream>\n#include <vector>\n\n double average(const std::vector<int>& values) {\n  if (values.empty()) return 0.0;\n  long long total = 0;\n  for (const int value : values) total += value;\n  return static_cast<double>(total) / values.size();\n}\n\nint main() {\n  std::cout << "平均分：" << average({86, 92, 74}) << '\\n';\n  return 0;\n}`,
+    output: "平均分：84",
+  },
+  {
+    ...lessons["C/C++"],
+    title: "C++ 类与对象",
+    kicker: "C/C++ · 进阶应用 · 第 07 节",
+    desc: "通过类把数据和行为封装在一起，理解访问控制、构造函数、const 成员函数、对象生命周期以及组合优先于继承的设计思想。",
+    code: `#include <iostream>\n#include <string>\n\nclass Student {\n public:\n  Student(std::string name, int score) : name_(name), score_(score) {}\n  void print() const { std::cout << name_ << "：" << score_ << '\\n'; }\n\n private:\n  std::string name_;\n  int score_;\n};\n\nint main() {\n  const Student student("Lin", 92);\n  student.print();\n  return 0;\n}`,
+    output: "Lin：92",
+  },
+];
+
+type LessonGuide = {
   summary: string;
   principles: Array<{ title: string; text: string; badge: string }>;
   syntaxTitle: string;
   syntaxCode: string;
   syntaxNote: string;
   pitfalls: Array<{ wrong: string; right: string; title: string }>;
-}> = {
+};
+
+const lessonGuides: Record<Lang, LessonGuide> = {
   Python: {
     summary: "Python 的循环建立在“可迭代对象”之上。for 循环负责按顺序取值，while 循环负责在条件成立时重复执行。真正需要掌握的不是背语法，而是明确循环的数据来源、终止条件和每轮发生的状态变化。",
     principles: [
@@ -222,6 +276,121 @@ const lessonGuides: Record<Lang, {
     ],
   },
 };
+
+const cppLessonGuides: LessonGuide[] = [
+  {
+    summary: "C++ 程序不会直接从源代码开始运行。编译器先处理 #include 等预处理指令，再检查语法和类型并生成目标文件，最后由链接器把目标文件与标准库组合成可执行程序。理解这条链路，才能判断错误发生在编译期、链接期还是运行期。",
+    principles: [
+      { badge: "SOURCE", title: "组织源文件", text: ".cpp 文件保存实现，头文件声明可复用接口；main 是可执行程序的入口，返回 0 通常表示正常结束。" },
+      { badge: "BUILD", title: "区分编译与链接", text: "语法错误和类型错误通常由编译器报告；声明存在但实现缺失，通常会在链接阶段出现 undefined reference。" },
+      { badge: "DEBUG", title: "从首条错误开始", text: "后续错误经常由第一处错误连锁触发。先阅读文件名、行号和第一条诊断，再回到最小可复现代码。" },
+    ],
+    syntaxTitle: "最小可运行程序与标准错误输出",
+    syntaxCode: `#include <iostream>\n\nint main() {\n  std::cout << "正常信息" << '\\n';\n  std::cerr << "诊断信息" << '\\n';\n  return 0;\n}`,
+    syntaxNote: "std::cout 用于正常输出，std::cerr 用于错误或诊断信息。每个语句以分号结束，花括号明确代码块边界。",
+    pitfalls: [
+      { title: "遗漏 main 函数", wrong: "只有工具函数，没有程序入口", right: "为可执行程序提供签名正确的 int main()" },
+      { title: "声明后没有实现", wrong: "函数在头文件中声明却没有定义", right: "把对应实现文件加入编译和链接命令" },
+      { title: "忽略第一条错误", wrong: "从错误列表末尾开始随机修改", right: "优先修复最早出现的文件与行号" },
+    ],
+  },
+  {
+    summary: "C++ 是静态类型语言，变量的类型决定可表示范围、内存布局和可执行操作。算术表达式会发生整型提升与常见类型转换，因此结果类型不仅取决于接收变量，还取决于运算发生时的操作数类型。",
+    principles: [
+      { badge: "RANGE", title: "关注数值范围", text: "int 适合常规整数，long long 适合更大范围；无符号类型不能表示负数，回绕行为容易制造边界错误。" },
+      { badge: "CONST", title: "默认使用 const", text: "不会再次赋值的数据应声明为 const，让编译器帮助阻止意外修改，并向读者表达设计意图。" },
+      { badge: "CAST", title: "显式表达转换", text: "使用 static_cast 代替难以识别的 C 风格转换，并在转换前确认是否会截断、溢出或丢失精度。" },
+    ],
+    syntaxTitle: "避免整数除法丢失小数",
+    syntaxCode: `#include <iostream>\n\nint main() {\n  const int correct = 7;\n  const int questions = 8;\n  const double rate = static_cast<double>(correct) / questions;\n  std::cout << rate << '\\n';\n  return 0;\n}`,
+    syntaxNote: "如果两个操作数都是 int，除法会先得到整数结果。提前把一个操作数转换为 double，计算才会保留小数。",
+    pitfalls: [
+      { title: "整数除法", wrong: "double rate = 7 / 8，结果为 0", right: "使用 static_cast<double>(7) / 8" },
+      { title: "窄化转换", wrong: "把超大 long long 直接存入 int", right: "在转换前检查范围，优先保持更宽类型" },
+      { title: "未初始化变量", wrong: "读取未赋初值的局部变量", right: "声明时立即初始化，如 int count{0}" },
+    ],
+  },
+  {
+    summary: "流程控制负责选择和重复执行路径。可靠的控制流应让条件互斥且覆盖完整，让循环具有明确的初始状态、继续条件和状态更新，并尽量减少深层嵌套。",
+    principles: [
+      { badge: "BRANCH", title: "按严格条件排序", text: "多分支判断通常从最严格条件开始，避免宽泛条件提前命中，使后续分支永远无法执行。" },
+      { badge: "LOOP", title: "写清循环三要素", text: "初始化、继续条件和每轮更新缺一不可；循环边界应能用一句话解释并覆盖空数据情况。" },
+      { badge: "EXIT", title: "控制提前退出", text: "break 结束整个循环，continue 跳过当前轮；合理的提前返回可以减少多层 if 嵌套。" },
+    ],
+    syntaxTitle: "筛选并统计满足条件的数据",
+    syntaxCode: `#include <iostream>\n#include <vector>\n\nint main() {\n  const std::vector<int> scores{86, 42, 92, 74};\n  int passed = 0;\n  for (const int score : scores) {\n    if (score < 60) continue;\n    ++passed;\n  }\n  std::cout << passed << '\\n';\n  return 0;\n}`,
+    syntaxNote: "continue 让不满足条件的数据尽早退出当前轮，后续代码只处理有效数据，通常比增加一层嵌套更清晰。",
+    pitfalls: [
+      { title: "边界多执行一次", wrong: "循环条件写成 i <= size", right: "访问下标时使用 i < size" },
+      { title: "条件顺序错误", wrong: "先判断 score >= 60，再判断 >= 90", right: "从更严格的 >= 90 开始判断" },
+      { title: "循环状态不更新", wrong: "while 条件中的变量始终不变", right: "在循环体内确保状态朝终止条件推进" },
+    ],
+  },
+  {
+    summary: "原生数组在连续内存中保存固定数量、相同类型的元素。现代 C++ 更推荐 std::array 表达固定长度集合、std::vector 表达动态长度集合，因为它们能提供 size、迭代器和更清晰的值语义。",
+    principles: [
+      { badge: "MEMORY", title: "理解连续存储", text: "第一个元素下标为 0，最后一个元素下标为 size-1；越界访问属于未定义行为，结果不可预测。" },
+      { badge: "ARRAY", title: "固定长度用 array", text: "std::array 的长度是类型的一部分，适合编译期已知大小的数据，并可直接使用范围 for。" },
+      { badge: "VECTOR", title: "动态长度用 vector", text: "std::vector 自动管理动态内存，支持 push_back 和 size；扩容可能导致原指针、引用和迭代器失效。" },
+    ],
+    syntaxTitle: "使用 std::array 计算最高分",
+    syntaxCode: `#include <array>\n#include <iostream>\n\nint main() {\n  const std::array<int, 4> scores{86, 92, 74, 100};\n  int highest = scores.front();\n  for (const int score : scores) {\n    if (score > highest) highest = score;\n  }\n  std::cout << highest << '\\n';\n  return 0;\n}`,
+    syntaxNote: "std::array 同时保留连续内存和固定长度特性，并提供 front、size 和范围遍历等标准容器接口。",
+    pitfalls: [
+      { title: "数组越界", wrong: "访问 scores[scores.size()]", right: "最后一个元素是 scores[scores.size()-1]" },
+      { title: "空容器取首项", wrong: "空 vector 直接调用 front", right: "先检查 empty，再读取元素" },
+      { title: "扩容后保留旧地址", wrong: "push_back 后继续使用旧指针", right: "扩容后重新获取地址，或提前 reserve" },
+    ],
+  },
+  {
+    summary: "指针保存对象地址，解引用用于访问该地址上的对象。真正的难点不是星号语法，而是确认指针是否为空、指向对象是否仍然存活、以及谁负责释放资源。现代 C++ 应优先使用值、引用和智能指针表达这些关系。",
+    principles: [
+      { badge: "ADDRESS", title: "区分对象与地址", text: "&value 获取对象地址，*pointer 访问所指对象；任何解引用之前都必须确认指针有效。" },
+      { badge: "LIFETIME", title: "服从对象生命周期", text: "局部对象离开作用域后地址立即失效；返回局部变量地址会产生悬空指针。" },
+      { badge: "OWNER", title: "明确所有权", text: "独占动态资源使用 std::unique_ptr，共享所有权仅在确有需要时使用 std::shared_ptr，非拥有关系可使用引用或观察指针。" },
+    ],
+    syntaxTitle: "使用 unique_ptr 自动管理资源",
+    syntaxCode: `#include <iostream>\n#include <memory>\n\nint main() {\n  auto score = std::make_unique<int>(86);\n  *score += 4;\n  std::cout << *score << '\\n';\n  return 0;\n}`,
+    syntaxNote: "unique_ptr 离开作用域时自动释放对象，不需要手动 delete，能避免异常或提前返回导致的资源泄漏。",
+    pitfalls: [
+      { title: "解引用空指针", wrong: "int* p = nullptr; std::cout << *p", right: "解引用前检查 p，或改用保证存在的引用" },
+      { title: "返回局部地址", wrong: "函数返回局部变量的指针", right: "返回值对象，或由调用方管理存储" },
+      { title: "重复释放", wrong: "两个裸指针分别 delete 同一地址", right: "使用 unique_ptr 明确唯一所有权" },
+    ],
+  },
+  {
+    summary: "函数是可测试、可复用逻辑的边界。优秀的函数拥有清晰名称、单一职责、明确的输入输出和尽可能小的副作用。参数传递方式还表达了复制成本、可修改性与生命周期约束。",
+    principles: [
+      { badge: "VALUE", title: "小对象按值传递", text: "int、double 等小型标量按值传递最清晰，函数内部修改不会影响调用方。" },
+      { badge: "REF", title: "大对象使用 const 引用", text: "只读 vector、string 等对象使用 const T&，避免复制同时阻止函数修改输入。" },
+      { badge: "RETURN", title: "优先通过返回值交付结果", text: "返回值使数据流更明确；需要表达可能失败时，可使用 std::optional 或明确的结果类型。" },
+    ],
+    syntaxTitle: "用 const 引用设计只读接口",
+    syntaxCode: `#include <iostream>\n#include <string>\n\nstd::string greeting(const std::string& name) {\n  return "你好，" + name;\n}\n\nint main() {\n  const std::string name = "Lin";\n  std::cout << greeting(name) << '\\n';\n  return 0;\n}`,
+    syntaxNote: "const std::string& 避免复制并保证输入不被修改，返回 std::string 则依靠返回值优化高效地交付结果。",
+    pitfalls: [
+      { title: "返回局部引用", wrong: "返回函数内部局部对象的引用", right: "按值返回局部结果，让编译器执行返回值优化" },
+      { title: "参数职责不清", wrong: "同一参数既作为输入又隐式承载输出", right: "优先返回结果，必要时明确命名输出参数" },
+      { title: "函数承担过多任务", wrong: "读取、计算、打印、保存全部放在一个函数", right: "按单一职责拆分并分别测试" },
+    ],
+  },
+  {
+    summary: "类用于维护必须始终保持一致的一组状态和行为。构造函数负责建立有效对象，不变量由成员函数持续维护；访问控制不是隐藏语法，而是限制外部代码绕过规则直接破坏对象状态。",
+    principles: [
+      { badge: "STATE", title: "维护类不变量", text: "构造完成后对象就应处于有效状态，后续公开方法必须保证成员之间的约束始终成立。" },
+      { badge: "ACCESS", title: "最小化公开接口", text: "数据成员通常保持 private，只公开业务需要的操作，避免外部代码依赖内部表示。" },
+      { badge: "RAII", title: "资源绑定对象生命周期", text: "构造时获取资源、析构时释放资源；优先使用标准容器和智能指针获得自动资源管理。" },
+    ],
+    syntaxTitle: "带校验规则的封装类",
+    syntaxCode: `#include <iostream>\n#include <string>\n\nclass Account {\n public:\n  explicit Account(std::string owner) : owner_(owner) {}\n  bool deposit(int amount) {\n    if (amount <= 0) return false;\n    balance_ += amount;\n    return true;\n  }\n  int balance() const { return balance_; }\n\n private:\n  std::string owner_;\n  int balance_{0};\n};\n\nint main() {\n  Account account("Lin");\n  account.deposit(100);\n  std::cout << account.balance() << '\\n';\n}`,
+    syntaxNote: "余额不能从外部直接修改，只能通过带校验的 deposit 更新；balance 声明为 const 成员函数，表示读取不会改变对象。",
+    pitfalls: [
+      { title: "公开所有数据", wrong: "成员全部 public，任意代码都能破坏状态", right: "保持 private，并提供表达业务规则的方法" },
+      { title: "构造后仍无效", wrong: "依赖调用方稍后补齐必要字段", right: "通过构造函数一次建立有效对象" },
+      { title: "继承层级过深", wrong: "仅为复用几行代码建立复杂继承", right: "优先组合小对象，仅在真正的 is-a 关系下继承" },
+    ],
+  },
+];
 
 const starterNodes: KnowledgeNode[] = [
   { id: "root", type: "knowledge", position: { x: 420, y: 180 }, data: { title: "循环结构", description: "控制重复执行的核心语法", color: "#58e6ba", depth: 0 } },
@@ -646,8 +815,8 @@ function Sandbox({
 const StableKnowledgeGraph = memo(KnowledgeGraph);
 const StableSandbox = memo(Sandbox);
 
-function DeepLesson({ lang }: { lang: Lang }) {
-  const guide = lessonGuides[lang];
+function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
+  const guide = lang === "C/C++" ? cppLessonGuides[topicIndex] : lessonGuides[lang];
   return (
     <section className="deep-lesson" aria-labelledby="deep-lesson-title">
       <div className="deep-intro">
@@ -730,14 +899,16 @@ export default function Home() {
   const baseLesson = lessons[lang];
   const isFirstTopic = selectedTopicIndex === 0;
   const isLastTopic = selectedTopicIndex === baseLesson.topics.length - 1;
-  const lesson = useMemo(() => lang === "Python"
-    ? pythonLessons[selectedTopicIndex]
-    : {
+  const lesson = useMemo(() => {
+    if (lang === "Python") return pythonLessons[selectedTopicIndex];
+    if (lang === "C/C++") return cppLessons[selectedTopicIndex];
+    return {
         ...baseLesson,
         title: `${lang} ${baseLesson.topics[selectedTopicIndex]}`,
         kicker: `${lang} · 分级课程 · 第 ${String(selectedTopicIndex + 1).padStart(2, "0")} 节`,
         desc: `本节将系统讲解 ${lang} 的“${baseLesson.topics[selectedTopicIndex]}”，并通过执行过程、代码示例、易错点和在线练习帮助你完成从理解到应用。`,
-      }, [baseLesson, lang, selectedTopicIndex]);
+      };
+  }, [baseLesson, lang, selectedTopicIndex]);
 
   function navigateToTopic(nextTopicIndex: number) {
     const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
@@ -906,7 +1077,7 @@ export default function Home() {
             </div>
 
             <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
-            <DeepLesson lang={lang} />
+            <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
 
             <div className="code-example glass">
               <div className="pane-head"><span><i /> lesson-example</span><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
