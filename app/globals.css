@@ -30,3 +30,4 @@
 .pager button:disabled{opacity:.35;cursor:not-allowed}
 
 .editor-actions{display:flex;align-items:center;gap:7px}.editor-actions button:disabled{opacity:.5;cursor:not-allowed}.judge-submit{border:1px solid #58e6ba55;border-radius:8px;background:#58e6ba12;color:var(--accent);padding:8px 12px;font-size:9px;font-weight:720;cursor:pointer}
+.progress-sync{display:flex;align-items:center;gap:7px;margin:10px 8px 0;color:#657288;font-size:9px}.progress-sync>span{width:6px;height:6px;border-radius:50%;background:#667287;box-shadow:0 0 8px #66728766;transition:background .2s ease,box-shadow .2s ease}.progress-sync>span.synced{background:var(--accent);box-shadow:0 0 9px #58e6ba88}

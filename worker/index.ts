@@ -32,6 +32,10 @@ const MAX_STDIN_INPUT = 2_000;
 const MAX_RUNNER_OUTPUT = 16_000;
 
 type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
+type LearningProgress = {
+  activeLanguage: string;
+  topics: Record<string, number>;
+};
 
 const JUDGE0_LANGUAGE_IDS: Record<SupportedLanguage, number> = {
   Python: 100,
@@ -39,6 +43,117 @@ const JUDGE0_LANGUAGE_IDS: Record<SupportedLanguage, number> = {
   JavaScript: 102,
   Java: 91,
 };
+
+async function ensureProgressSchema(database: D1Database): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS learning_progress (
+        user_email TEXT PRIMARY KEY NOT NULL,
+        active_language TEXT NOT NULL,
+        topics_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    database.prepare(
+      "CREATE INDEX IF NOT EXISTS learning_progress_updated_at_idx ON learning_progress (updated_at)",
+    ),
+  ]);
+}
+
+function authenticatedUserEmail(request: Request): string | null {
+  const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
+  return email && email.length <= 320 ? email : null;
+}
+
+function safeProgress(input: unknown): LearningProgress | null {
+  if (!input || typeof input !== "object") return null;
+  const candidate = input as {
+    activeLanguage?: unknown;
+    topics?: Record<string, unknown>;
+  };
+  const activeLanguage = String(candidate.activeLanguage || "").trim();
+  if (!activeLanguage || activeLanguage.length > 64 || !candidate.topics) return null;
+
+  const topics: Record<string, number> = {};
+  for (const [language, value] of Object.entries(candidate.topics).slice(0, 100)) {
+    const normalizedLanguage = language.trim();
+    const topic = Number(value);
+    if (!normalizedLanguage || normalizedLanguage.length > 64 || !Number.isInteger(topic)) continue;
+    topics[normalizedLanguage] = Math.max(0, Math.min(999, topic));
+  }
+  if (!(activeLanguage in topics)) topics[activeLanguage] = 0;
+
+  return {
+    activeLanguage,
+    topics,
+  };
+}
+
+async function handleProgressRequest(request: Request, env: Env): Promise<Response> {
+  const userEmail = authenticatedUserEmail(request);
+  if (!userEmail) {
+    return jsonResponse({ error: "请先登录后再同步学习进度" }, 401);
+  }
+
+  await ensureProgressSchema(env.DB);
+
+  if (request.method === "GET") {
+    const record = await env.DB
+      .prepare(
+        "SELECT active_language, topics_json, updated_at FROM learning_progress WHERE user_email = ?",
+      )
+      .bind(userEmail)
+      .first<{ active_language: string; topics_json: string; updated_at: string }>();
+
+    if (!record) return jsonResponse({ progress: null });
+
+    let topics: unknown;
+    try {
+      topics = JSON.parse(record.topics_json);
+    } catch {
+      return jsonResponse({ progress: null });
+    }
+    const progress = safeProgress({
+      activeLanguage: record.active_language,
+      topics,
+    });
+    return jsonResponse({ progress, updatedAt: record.updated_at });
+  }
+
+  if (request.method !== "PUT") {
+    return jsonResponse({ error: "仅支持 GET 或 PUT 请求" }, 405);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return jsonResponse({ error: "请求来源无效" }, 403);
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "请求格式无效" }, 400);
+  }
+  const progress = safeProgress(body);
+  if (!progress) {
+    return jsonResponse({ error: "学习进度数据无效" }, 400);
+  }
+
+  await env.DB
+    .prepare(`
+      INSERT INTO learning_progress (user_email, active_language, topics_json, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_email) DO UPDATE SET
+        active_language = excluded.active_language,
+        topics_json = excluded.topics_json,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(userEmail, progress.activeLanguage, JSON.stringify(progress.topics))
+    .run();
+
+  return jsonResponse({ saved: true });
+}
 
 const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = {
   Python: [
@@ -372,6 +487,10 @@ const worker = {
 
     if (url.pathname === "/api/run") {
       return handleRunRequest(request, env);
+    }
+
+    if (url.pathname === "/api/progress") {
+      return handleProgressRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {

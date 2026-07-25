@@ -1,4 +1,9 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import { sql } from "drizzle-orm";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const learningProgress = sqliteTable("learning_progress", {
+  userEmail: text("user_email").primaryKey(),
+  activeLanguage: text("active_language").notNull(),
+  topicsJson: text("topics_json").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

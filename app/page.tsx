@@ -29,6 +29,10 @@ import {
 } from "react";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
+type LearningProgress = {
+  activeLanguage: Lang;
+  topics: Record<Lang, number>;
+};
 type Course = {
   icon: string;
   color: string;
@@ -1197,6 +1201,8 @@ function GraphDocumentExport({ lesson }: { lesson: Course }) {
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
+  const [progressReady, setProgressReady] = useState(false);
+  const [progressStatus, setProgressStatus] = useState("正在恢复学习进度…");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState("");
@@ -1250,23 +1256,77 @@ export default function Home() {
   }, [searchOpen]);
 
   useEffect(() => {
-    const syncCourseFromUrl = () => {
+    let active = true;
+
+    const readCourseFromUrl = (progress?: LearningProgress | null) => {
       const params = new URLSearchParams(window.location.search);
       const requestedLanguage = params.get("lang") as Lang | null;
       const requestedTopic = Number(params.get("topic"));
-      if (!requestedLanguage || !(requestedLanguage in lessons)) return;
+      const hasRequestedLanguage = Boolean(requestedLanguage && requestedLanguage in lessons);
+      const nextLanguage = hasRequestedLanguage
+        ? requestedLanguage as Lang
+        : progress?.activeLanguage;
 
-      setLang(requestedLanguage);
-      if (Number.isInteger(requestedTopic)) {
-        const safeTopic = Math.max(0, Math.min(lessons[requestedLanguage].topics.length - 1, requestedTopic));
-        setTopicByLang((current) => ({ ...current, [requestedLanguage]: safeTopic }));
+      if (progress) setTopicByLang(progress.topics);
+      if (nextLanguage) {
+        setLang(nextLanguage);
+        if (hasRequestedLanguage && Number.isInteger(requestedTopic)) {
+          const safeTopic = Math.max(0, Math.min(lessons[nextLanguage].topics.length - 1, requestedTopic));
+          setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopic }));
+        }
       }
     };
 
-    syncCourseFromUrl();
-    window.addEventListener("popstate", syncCourseFromUrl);
-    return () => window.removeEventListener("popstate", syncCourseFromUrl);
+    const loadProgress = async () => {
+      try {
+        const response = await fetch("/api/progress", {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "学习进度恢复失败");
+        if (!active) return;
+        readCourseFromUrl(data.progress as LearningProgress | null);
+        setProgressStatus(data.progress ? "学习进度已恢复" : "学习进度自动同步");
+      } catch (error) {
+        if (!active) return;
+        readCourseFromUrl();
+        setProgressStatus(error instanceof Error ? error.message : "学习进度暂未同步");
+      } finally {
+        if (active) setProgressReady(true);
+      }
+    };
+
+    const onPopState = () => readCourseFromUrl();
+    void loadProgress();
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      active = false;
+      window.removeEventListener("popstate", onPopState);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!progressReady) return;
+
+    setProgressStatus("正在同步学习进度…");
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/progress", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activeLanguage: lang, topics: topicByLang }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "学习进度同步失败");
+        setProgressStatus("学习进度已同步");
+      } catch (error) {
+        setProgressStatus(error instanceof Error ? error.message : "学习进度暂未同步");
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [lang, progressReady, topicByLang]);
 
   async function callAi(mode: "chat" | "search", prompt: string) {
     const context = mode === "chat"
@@ -1360,6 +1420,10 @@ export default function Home() {
               <div>{(Object.keys(lessons) as Lang[]).filter((key) => key !== lang).map((key) =>
                 <a href={`/courses/${languageSlugs[key]}`} aria-label={`进入 ${key} 课程`} key={key} style={{ "--switch-color": lessons[key].color } as React.CSSProperties}>{lessons[key].icon}</a>
               )}</div>
+            </div>
+            <div className="progress-sync" role="status">
+              <span className={progressStatus.includes("已") || progressStatus.includes("自动") ? "synced" : ""} />
+              {progressStatus}
             </div>
             <div className="sidebar-tip"><span>✦</span><div><b>AI 学习建议</b><p>完成当前实训后再进入下一节，知识留存率会更高。</p></div></div>
           </aside>
