@@ -253,6 +253,58 @@ const javascriptLessons: Course[] = [
   },
 ];
 
+const javaLessons: Course[] = [
+  {
+    ...lessons.Java,
+    title: "Java 快速入门",
+    kicker: "Java · 入门基础 · 第 01 节",
+    desc: "认识 JDK、JVM、字节码、类结构和 main 入口，掌握编译运行流程、标准输出与基础命名规则。",
+    code: `class Main {\n  public static void main(String[] args) {\n    String learner = "Lin";\n    System.out.println("你好，" + learner + "！");\n    System.out.println("JVM 已就绪");\n  }\n}`,
+    output: "你好，Lin！\nJVM 已就绪",
+  },
+  {
+    ...lessons.Java,
+    title: "Java 变量与类型",
+    kicker: "Java · 入门基础 · 第 02 节",
+    desc: "区分基本类型与引用类型，理解自动类型提升、显式转换、final 常量、包装类型以及整数除法。",
+    code: `class Main {\n  public static void main(String[] args) {\n    final int completed = 7;\n    final int total = 8;\n    double progress = (double) completed / total;\n    System.out.println("完成率：" + progress * 100 + "%");\n  }\n}`,
+    output: "完成率：87.5%",
+  },
+  {
+    ...lessons.Java,
+    title: "Java 控制流",
+    kicker: "Java · 入门基础 · 第 03 节",
+    desc: "使用 if、switch、for、while 控制执行路径，掌握分支覆盖顺序、循环边界、break 与 continue。",
+    code: `class Main {\n  public static void main(String[] args) {\n    int score = 86;\n    String level;\n    if (score >= 90) level = "优秀";\n    else if (score >= 60) level = "合格";\n    else level = "需要复习";\n    System.out.println(level);\n  }\n}`,
+    output: "合格",
+  },
+  lessons.Java,
+  {
+    ...lessons.Java,
+    title: "Java 方法设计",
+    kicker: "Java · 核心能力 · 第 05 节",
+    desc: "通过参数、返回值、重载和访问控制封装可复用逻辑，建立单一职责、明确契约和可测试的方法边界。",
+    code: `class Main {\n  static double average(int... values) {\n    if (values.length == 0) return 0.0;\n    long total = 0;\n    for (int value : values) total += value;\n    return (double) total / values.length;\n  }\n\n  public static void main(String[] args) {\n    System.out.println("平均分：" + average(86, 92, 74));\n  }\n}`,
+    output: "平均分：84.0",
+  },
+  {
+    ...lessons.Java,
+    title: "Java 类与对象",
+    kicker: "Java · 进阶应用 · 第 06 节",
+    desc: "通过类封装状态和行为，理解构造器、private、final、实例方法、继承与组合的基本设计原则。",
+    code: `class Student {\n  private final String name;\n  private final int score;\n\n  Student(String name, int score) {\n    this.name = name;\n    this.score = score;\n  }\n\n  String report() { return name + "：" + score; }\n}\n\nclass Main {\n  public static void main(String[] args) {\n    System.out.println(new Student("Lin", 92).report());\n  }\n}`,
+    output: "Lin：92",
+  },
+  {
+    ...lessons.Java,
+    title: "Java 异常处理",
+    kicker: "Java · 可靠性 · 第 07 节",
+    desc: "区分受检异常与运行时异常，使用 try/catch/finally 和自定义异常表达失败，并避免吞掉错误。",
+    code: `class Main {\n  static int parsePositive(String text) {\n    int value = Integer.parseInt(text);\n    if (value <= 0) throw new IllegalArgumentException("必须为正数");\n    return value;\n  }\n\n  public static void main(String[] args) {\n    try {\n      System.out.println(parsePositive("18"));\n    } catch (IllegalArgumentException error) {\n      System.out.println("输入错误：" + error.getMessage());\n    }\n  }\n}`,
+    output: "18",
+  },
+];
+
 type LessonGuide = {
   summary: string;
   principles: Array<{ title: string; text: string; badge: string }>;
@@ -558,6 +610,64 @@ const javascriptLessonGuides: LessonGuide[] = [
     ],
   },
 ];
+
+function createLessonGuide(
+  lesson: Course,
+  concepts: Array<[string, string, string]>,
+  pitfalls: Array<[string, string, string]>,
+  syntaxNote: string,
+): LessonGuide {
+  return {
+    summary: lesson.desc,
+    principles: concepts.map(([badge, title, text]) => ({ badge, title, text })),
+    syntaxTitle: `${lesson.title}：可运行示例`,
+    syntaxCode: lesson.code,
+    syntaxNote,
+    pitfalls: pitfalls.map(([title, wrong, right]) => ({ title, wrong, right })),
+  };
+}
+
+const pythonLessonGuides: LessonGuide[] = [
+  createLessonGuide(pythonLessons[0], [["RUN", "解释执行", "Python 由解释器加载并执行源码，报错通常包含文件、行号和异常类型。"], ["INDENT", "缩进即结构", "同一代码块必须保持一致缩进，推荐每层四个空格。"], ["IO", "处理输入输出", "input 返回字符串，需要数值时显式转换；print 负责可观察结果。"]], [["输入类型错误", "直接对 input 结果做数值运算", "先使用 int 或 float 转换并处理失败"], ["缩进不一致", "混用 Tab 与空格", "统一使用四个空格"], ["覆盖内置名称", "变量命名为 list 或 str", "使用能表达业务含义的名称"]], "先运行最小程序，再逐行修改输入、变量和输出，观察解释器反馈。"),
+  createLessonGuide(pythonLessons[1], [["BIND", "变量绑定对象", "变量名指向运行时对象，重新赋值可以绑定到不同类型。"], ["TYPE", "理解核心类型", "int、float、str、bool 各自支持不同操作，可用 type 检查。"], ["CAST", "显式转换", "外部输入通常是字符串，转换前应确认格式和允许范围。"]], [["字符串与数字相加", `"18" + 1 会报错`, "先明确希望拼接还是数值计算"], ["浮点精度", "直接用 float 表示精确金额", "金额使用 Decimal 或整数最小单位"], ["真假值误判", `bool("False") 为 True`, "按允许文本显式解析布尔值"]], "动态类型不等于没有类型；每个运行时对象都有明确类型。"),
+  createLessonGuide(pythonLessons[2], [["ORDER", "严格条件优先", "多分支从更严格条件开始，避免宽泛条件遮蔽后续分支。"], ["LOGIC", "组合逻辑条件", "and 要求同时成立，or 要求至少一个成立，not 负责取反。"], ["COVER", "覆盖边界情况", "明确等于边界、空值和异常输入应进入哪个分支。"]], [["条件顺序错误", "先判断 >=60 再判断 >=90", "从 >=90 开始判断"], ["误用多个if", "互斥条件全部使用独立if", "互斥路径使用 if/elif/else"], ["比较与赋值混淆", "把 = 当作相等比较", "比较使用 ==，赋值使用 ="]], "用边界值分别运行各条分支，确认每条路径都可到达。"),
+  lessonGuides.Python,
+  createLessonGuide(pythonLessons[4], [["INPUT", "定义参数契约", "参数名和类型标注应表达函数需要什么数据。"], ["RETURN", "返回结果", "优先返回值而不是修改全局状态，让数据流更易测试。"], ["SCOPE", "控制作用域", "局部变量只服务当前调用，避免函数隐式依赖可变全局变量。"]], [["可变默认参数", "参数默认值写成 []", "使用 None 并在函数内创建列表"], ["忘记return", "期待函数自动返回最后表达式", "显式 return 需要交付的结果"], ["职责过多", "一个函数同时读取计算打印保存", "按单一职责拆分"]], "函数接口越明确，越容易复用、测试和交给 AI 分析。"),
+  createLessonGuide(pythonLessons[5], [["LIST", "列表维护顺序", "列表适合按位置保存可变长度元素。"], ["DICT", "字典建立映射", "字典通过唯一键快速定位值，键应稳定且可哈希。"], ["COPY", "理解可变对象", "赋值通常共享同一对象，需要独立数据时显式浅拷贝或深拷贝。"]], [["遍历时修改", "循环列表时直接删除", "生成新列表或遍历副本"], ["键不存在", "直接读取不确定的字典键", "使用 get 或先判断成员关系"], ["共享嵌套对象", "只复制外层后修改深层数据", "按需要使用 deepcopy"]], "根据访问方式选择容器，而不是把所有数据都塞进列表。"),
+  createLessonGuide(pythonLessons[6], [["STATE", "封装有效状态", "构造方法建立对象初始状态，公开方法维护业务约束。"], ["METHOD", "行为靠近数据", "操作实例状态的逻辑应成为实例方法。"], ["COMPOSE", "优先组合", "把小对象组合成大对象，通常比深层继承更易维护。"]], [["公开修改所有属性", "外部任意破坏对象状态", "提供带校验的方法或属性"], ["类承担过多职责", "数据访问、网络和业务全部在一个类", "按职责拆分并组合"], ["滥用继承", "只为复用代码建立is-a关系", "优先提取函数或组合对象"]], "类不是字典的复杂写法；只有需要维护状态约束和行为时才创建类。"),
+];
+
+const javaLessonGuides: LessonGuide[] = [
+  createLessonGuide(javaLessons[0], [["JDK", "JDK负责编译", "javac 把 .java 源码编译为 JVM 可执行的字节码。"], ["JVM", "JVM负责运行", "JVM加载类、验证字节码并执行 main 方法。"], ["CLASS", "类是组织单元", "源文件、类名和 main 入口需遵循明确结构。"]], [["类名不匹配", "public类名与文件名不同", "保持 public 类名和文件名一致"], ["入口签名错误", "main 参数或修饰符缺失", "使用 public static void main(String[] args)"], ["忽略首条编译错误", "从错误列表末尾修改", "先修复最早的文件和行号"]], "理解编译与运行阶段，才能快速区分语法错误和运行时异常。"),
+  createLessonGuide(javaLessons[1], [["PRIMITIVE", "基本类型存值", "int、long、double、boolean 等有固定语义和范围。"], ["REFERENCE", "引用类型指向对象", "String、数组和自定义类变量保存对象引用，也可能为 null。"], ["CAST", "控制数值转换", "宽化通常自动完成，窄化转换必须显式并承担数据丢失风险。"]], [["整数除法", "两个int相除后再赋给double", "先把一个操作数转换为double"], ["空值拆箱", "Integer null 自动转 int", "拆箱前检查null"], ["溢出", "int累加超出范围", "根据数据规模使用long"]], "静态类型让很多错误在编译期暴露，应充分利用 final 和类型检查。"),
+  createLessonGuide(javaLessons[2], [["BRANCH", "组织互斥分支", "if/else if/else 表达互斥路径，严格条件应放在前面。"], ["LOOP", "明确循环边界", "初始化、继续条件和更新共同保证循环正确结束。"], ["SWITCH", "按离散值选择", "switch 适合枚举、字符串和有限状态，现代写法可直接返回结果。"]], [["条件顺序错误", "宽泛条件提前命中", "从严格条件开始"], ["下标越界", "使用 i <= length", "使用 i < length"], ["忘记break", "传统switch意外贯穿", "使用箭头switch或明确break"]], "使用边界值验证分支和循环，不要只测试典型输入。"),
+  lessonGuides.Java,
+  createLessonGuide(javaLessons[4], [["PARAM", "参数表达输入", "按值传递引用意味着可修改对象内容，但不能替换调用方变量。"], ["RETURN", "返回值表达输出", "让方法的输入输出明确，避免依赖可变静态字段。"], ["OVERLOAD", "谨慎使用重载", "重载应保持同一语义，只改变参数形态。"]], [["返回类型不一致", "分支返回不同类型", "统一返回契约"], ["静态状态污染", "方法依赖可变static字段", "通过参数传入依赖"], ["方法过长", "一个方法完成全部流程", "按单一职责拆分"]], "方法设计应先写清输入、输出、失败方式，再实现内部步骤。"),
+  createLessonGuide(javaLessons[5], [["PRIVATE", "隐藏内部状态", "字段保持 private，通过方法维护不变量。"], ["CTOR", "构造有效对象", "构造器完成必要校验，避免对象创建后仍不可用。"], ["COMPOSE", "组合优先继承", "仅在稳定的 is-a 关系下使用继承。"]], [["所有字段public", "外部可绕过规则修改", "使用private和业务方法"], ["构造器职责过重", "构造时执行网络或复杂流程", "只建立对象有效状态"], ["equals未配hashCode", "集合行为不一致", "成对实现equals与hashCode"]], "对象应该从构造完成起就处于有效状态，并在整个生命周期维持约束。"),
+  createLessonGuide(javaLessons[6], [["THROW", "异常表达失败", "无法在当前层正确处理时抛出带上下文的异常。"], ["CATCH", "在有恢复策略处捕获", "只有能降级、重试或转换错误时才捕获。"], ["RESOURCE", "自动关闭资源", "文件和连接使用 try-with-resources 保证释放。"]], [["吞掉异常", "空catch导致问题消失", "记录上下文并恢复或重新抛出"], ["捕获范围过大", "所有异常统一catch Exception", "捕获可处理的具体类型"], ["异常代替正常分支", "用异常控制常规流程", "可预期条件使用显式判断"]], "异常信息应说明操作、关键输入和原始原因，但不能泄露密钥等敏感信息。"),
+];
+
+type CurriculumEntry = {
+  lessons: Course[];
+  guides: LessonGuide[];
+};
+
+function defineCurriculum(entries: Record<Lang, CurriculumEntry>): Record<Lang, CurriculumEntry> {
+  for (const language of Object.keys(entries) as Lang[]) {
+    const entry = entries[language];
+    if (entry.lessons.length !== lessons[language].topics.length || entry.guides.length !== entry.lessons.length) {
+      throw new Error(`${language} 课程必须为每个知识点提供独立内容和独立讲解`);
+    }
+  }
+  return entries;
+}
+
+const curriculum = defineCurriculum({
+  Python: { lessons: pythonLessons, guides: pythonLessonGuides },
+  "C/C++": { lessons: cppLessons, guides: cppLessonGuides },
+  JavaScript: { lessons: javascriptLessons, guides: javascriptLessonGuides },
+  Java: { lessons: javaLessons, guides: javaLessonGuides },
+});
 
 const starterNodes: KnowledgeNode[] = [
   { id: "root", type: "knowledge", position: { x: 420, y: 180 }, data: { title: "循环结构", description: "控制重复执行的核心语法", color: "#58e6ba", depth: 0 } },
@@ -983,11 +1093,7 @@ const StableKnowledgeGraph = memo(KnowledgeGraph);
 const StableSandbox = memo(Sandbox);
 
 function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
-  const guide = lang === "C/C++"
-    ? cppLessonGuides[topicIndex]
-    : lang === "JavaScript"
-      ? javascriptLessonGuides[topicIndex]
-      : lessonGuides[lang];
+  const guide = curriculum[lang].guides[topicIndex];
   return (
     <section className="deep-lesson" aria-labelledby="deep-lesson-title">
       <div className="deep-intro">
@@ -1070,17 +1176,10 @@ export default function Home() {
   const baseLesson = lessons[lang];
   const isFirstTopic = selectedTopicIndex === 0;
   const isLastTopic = selectedTopicIndex === baseLesson.topics.length - 1;
-  const lesson = useMemo(() => {
-    if (lang === "Python") return pythonLessons[selectedTopicIndex];
-    if (lang === "C/C++") return cppLessons[selectedTopicIndex];
-    if (lang === "JavaScript") return javascriptLessons[selectedTopicIndex];
-    return {
-        ...baseLesson,
-        title: `${lang} ${baseLesson.topics[selectedTopicIndex]}`,
-        kicker: `${lang} · 分级课程 · 第 ${String(selectedTopicIndex + 1).padStart(2, "0")} 节`,
-        desc: `本节将系统讲解 ${lang} 的“${baseLesson.topics[selectedTopicIndex]}”，并通过执行过程、代码示例、易错点和在线练习帮助你完成从理解到应用。`,
-      };
-  }, [baseLesson, lang, selectedTopicIndex]);
+  const lesson = useMemo(
+    () => curriculum[lang].lessons[selectedTopicIndex],
+    [lang, selectedTopicIndex],
+  );
 
   function navigateToTopic(nextTopicIndex: number) {
     const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
