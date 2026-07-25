@@ -201,6 +201,58 @@ const cppLessons: Course[] = [
   },
 ];
 
+const javascriptLessons: Course[] = [
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript 语言基础",
+    kicker: "JavaScript · 入门基础 · 第 01 节",
+    desc: "认识 JavaScript 在浏览器和 Node.js 中的运行方式，掌握表达式、函数、对象、控制台输出以及严格相等运算符。",
+    code: `function createGreeting(name) {\n  return \`你好，\${name}！\`;\n}\n\nconst learner = { name: "Lin", level: 1 };\nconsole.log(createGreeting(learner.name));\nconsole.log(\`当前等级：\${learner.level}\`);`,
+    output: "你好，Lin！\n当前等级：1",
+  },
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript 变量与作用域",
+    kicker: "JavaScript · 入门基础 · 第 02 节",
+    desc: "区分 const、let 和 var，理解块级作用域、词法作用域、暂时性死区与闭包，建立默认使用 const 的变量声明习惯。",
+    code: `function createCounter() {\n  let count = 0;\n  return () => {\n    count += 1;\n    return count;\n  };\n}\n\nconst next = createCounter();\nconsole.log(next());\nconsole.log(next());`,
+    output: "1\n2",
+  },
+  lessons.JavaScript,
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript DOM 操作",
+    kicker: "JavaScript · 浏览器交互 · 第 04 节",
+    desc: "学习查询元素、修改文本和样式、监听事件以及创建节点；同时明确 DOM 只存在于浏览器，在线沙盒的 Node.js 环境会给出兼容提示。",
+    code: `const hasDom = typeof document !== "undefined";\n\nif (hasDom) {\n  const title = document.querySelector("#title");\n  if (title) title.textContent = "Blinga coding 已就绪";\n  console.log(title?.textContent ?? "没有找到 #title");\n} else {\n  console.log("当前为 Node.js 沙盒；浏览器中会修改 #title");\n}`,
+    output: "当前为 Node.js 沙盒；浏览器中会修改 #title",
+  },
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript 异步编程",
+    kicker: "JavaScript · 核心能力 · 第 05 节",
+    desc: "理解事件循环、Promise、async/await 和异常传播，学习顺序任务与并行任务的选择，并用 try/catch 处理异步失败。",
+    code: `const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));\n\nasync function loadLesson() {\n  await wait(20);\n  return { id: 5, title: "异步编程" };\n}\n\nloadLesson()\n  .then(lesson => console.log(\`\${lesson.id}：\${lesson.title}\`))\n  .catch(error => console.error(error.message));`,
+    output: "5：异步编程",
+  },
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript ES6+",
+    kicker: "JavaScript · 现代语法 · 第 06 节",
+    desc: "使用解构、展开语法、模板字符串、可选链、空值合并和模块化组织现代 JavaScript，同时避免把简洁语法写成难以调试的表达式。",
+    code: `const student = {\n  name: "Lin",\n  profile: { city: "Shanghai" },\n  scores: [86, 92],\n};\n\nconst { name, scores } = student;\nconst updatedScores = [...scores, 100];\nconst city = student.profile?.city ?? "未知";\nconsole.log(\`\${name} · \${city} · \${updatedScores.join(",")}\`);`,
+    output: "Lin · Shanghai · 86,92,100",
+  },
+  {
+    ...lessons.JavaScript,
+    title: "JavaScript 工程化",
+    kicker: "JavaScript · 工程实践 · 第 07 节",
+    desc: "从模块边界、纯函数和自动测试入手理解工程化，认识格式化、静态检查、构建与部署流水线如何保障多人协作质量。",
+    code: `function calculateAverage(values) {\n  if (!Array.isArray(values) || values.length === 0) return 0;\n  return values.reduce((sum, value) => sum + value, 0) / values.length;\n}\n\nfunction assertEqual(actual, expected, label) {\n  if (actual !== expected) throw new Error(\`\${label}: \${actual} !== \${expected}\`);\n  console.log(\`✓ \${label}\`);\n}\n\nassertEqual(calculateAverage([80, 90, 100]), 90, "平均分");\nassertEqual(calculateAverage([]), 0, "空数组");`,
+    output: "✓ 平均分\n✓ 空数组",
+  },
+];
+
 type LessonGuide = {
   summary: string;
   principles: Array<{ title: string; text: string; badge: string }>;
@@ -388,6 +440,121 @@ const cppLessonGuides: LessonGuide[] = [
       { title: "公开所有数据", wrong: "成员全部 public，任意代码都能破坏状态", right: "保持 private，并提供表达业务规则的方法" },
       { title: "构造后仍无效", wrong: "依赖调用方稍后补齐必要字段", right: "通过构造函数一次建立有效对象" },
       { title: "继承层级过深", wrong: "仅为复用几行代码建立复杂继承", right: "优先组合小对象，仅在真正的 is-a 关系下继承" },
+    ],
+  },
+];
+
+const javascriptLessonGuides: LessonGuide[] = [
+  {
+    summary: "JavaScript 是动态类型语言，代码可以在浏览器、Node.js 和其他宿主环境中运行。语言核心负责值、函数与对象，DOM、定时器和网络请求等能力则由宿主提供。",
+    principles: [
+      { badge: "VALUE", title: "理解值与类型", text: "原始值包括 string、number、boolean、null、undefined、bigint 和 symbol；对象通过引用参与赋值和比较。" },
+      { badge: "FUNC", title: "函数是一等值", text: "函数可以赋给变量、作为参数传递并从其他函数返回，是回调、闭包和函数式组合的基础。" },
+      { badge: "EQUAL", title: "默认使用严格相等", text: "=== 不执行隐式类型转换，通常比 == 更容易预测；确需转换时应显式调用 Number、String 或 Boolean。" },
+    ],
+    syntaxTitle: "对象、函数与严格比较",
+    syntaxCode: `const learner = { name: "Lin", active: true };\nconst describe = ({ name, active }) =>\n  \`\${name}：\${active === true ? "学习中" : "已暂停"}\`;\n\nconsole.log(describe(learner));`,
+    syntaxNote: "参数解构直接表达函数所需字段，严格相等避免字符串、数字与布尔值之间发生隐式转换。",
+    pitfalls: [
+      { title: "误用宽松相等", wrong: `0 == "" 得到 true`, right: "使用 ===，需要转换时显式转换类型" },
+      { title: "读取不存在属性", wrong: "直接连续访问不确定的深层属性", right: "使用可选链并提供合理默认值" },
+      { title: "混淆 null 与 undefined", wrong: "把两者当成完全相同的状态", right: "为缺失、清空和未初始化定义统一约定" },
+    ],
+  },
+  {
+    summary: "JavaScript 采用词法作用域：变量能否访问由代码书写位置决定。const 和 let 具有块级作用域，而闭包让函数在外层函数结束后仍能访问创建时的变量环境。",
+    principles: [
+      { badge: "CONST", title: "默认使用 const", text: "变量绑定不需要重新赋值时使用 const；对象内部仍可修改，需要真正不可变时应创建新对象或冻结结构。" },
+      { badge: "BLOCK", title: "缩小作用域", text: "let 和 const 只在所在花括号内有效，靠近使用位置声明可以降低状态被意外修改的风险。" },
+      { badge: "CLOSURE", title: "用闭包封装状态", text: "返回的函数会保留创建时的词法环境，适合计数器、配置函数和私有状态，但也要避免无意保留大对象。" },
+    ],
+    syntaxTitle: "闭包创建相互独立的状态",
+    syntaxCode: `const createCounter = (start = 0) => {\n  let value = start;\n  return () => ++value;\n};\n\nconst first = createCounter();\nconst second = createCounter(10);\nconsole.log(first(), first(), second());`,
+    syntaxNote: "每次调用 createCounter 都会创建新的词法环境，因此两个计数器互不影响。",
+    pitfalls: [
+      { title: "继续使用 var", wrong: "期待 var 具有块级作用域", right: "新代码优先使用 const，需要重新赋值时使用 let" },
+      { title: "误解 const", wrong: "认为 const 对象内部完全不可修改", right: "const 只锁定绑定；不可变更新应创建新对象" },
+      { title: "循环闭包共享变量", wrong: "var 循环变量被所有回调共享", right: "使用 let 创建每轮独立绑定" },
+    ],
+  },
+  {
+    summary: "数组方法把集合处理拆成明确步骤：filter 选择元素，map 转换元素，find 查找单项，some 与 every 判断条件，reduce 聚合结果。选择方法应由输出形态决定。",
+    principles: [
+      { badge: "FILTER", title: "筛选子集", text: "filter 返回满足条件的新数组，不修改原数组；当只需要第一项时使用 find，避免继续遍历全部数据。" },
+      { badge: "MAP", title: "保持一一映射", text: "map 应为每个输入返回一个输出，不要只执行副作用；仅执行副作用时使用 for...of 或 forEach。" },
+      { badge: "REDUCE", title: "明确聚合初值", text: "reduce 适合求和、分组和构建对象；始终提供初始值，避免空数组异常和类型推断混乱。" },
+    ],
+    syntaxTitle: "构建可读的数据处理管道",
+    syntaxCode: `const scores = [86, 92, 74, 100];\nconst report = scores\n  .filter(score => score >= 80)\n  .map(score => ({ score, grade: score >= 90 ? "A" : "B" }));\nconsole.log(report);`,
+    syntaxNote: "每一步只完成一种转换，调试时可单独检查中间结果；大数据场景再考虑减少中间数组。",
+    pitfalls: [
+      { title: "map 没有返回值", wrong: "回调使用花括号却忘记 return", right: "显式 return，或使用圆括号隐式返回对象" },
+      { title: "原地修改输入", wrong: "在 map 中修改原对象", right: "使用展开语法返回新对象" },
+      { title: "空数组 reduce", wrong: "省略初始值导致异常", right: "根据结果类型提供 0、[] 或 {}" },
+    ],
+  },
+  {
+    summary: "DOM 是浏览器根据 HTML 建立的对象树。JavaScript 可以查询节点、修改属性、监听事件并创建新节点；Node.js 默认没有 document，因此代码必须明确自己的运行环境。",
+    principles: [
+      { badge: "QUERY", title: "稳定查询元素", text: "使用语义明确的 id、data 属性或类名，并处理元素不存在的情况，避免对 null 继续访问属性。" },
+      { badge: "EVENT", title: "通过事件驱动交互", text: "使用 addEventListener 注册事件，组件销毁时移除长期监听器；事件委托适合动态列表。" },
+      { badge: "SAFE", title: "安全写入内容", text: "普通文本使用 textContent；不要把不可信输入写入 innerHTML，防止脚本注入。" },
+    ],
+    syntaxTitle: "浏览器中创建并追加列表项",
+    syntaxCode: `const list = document.querySelector("#lesson-list");\nif (list) {\n  const item = document.createElement("li");\n  item.textContent = "异步编程";\n  list.append(item);\n}`,
+    syntaxNote: "先判断查询结果，再操作节点；textContent 会把输入当作文本处理，比拼接 innerHTML 更安全。",
+    pitfalls: [
+      { title: "Node中直接使用DOM", wrong: "在线Node沙盒直接访问 document", right: "在浏览器运行，或先检查 typeof document" },
+      { title: "重复绑定事件", wrong: "每次渲染都新增相同监听器", right: "集中注册并在销毁阶段移除" },
+      { title: "不可信innerHTML", wrong: "把用户输入直接插入HTML", right: "使用 textContent 或经过审计的净化工具" },
+    ],
+  },
+  {
+    summary: "异步任务不会阻塞主线程等待结果，而是通过事件循环在条件满足后继续执行。Promise 表达未来结果，async/await 则以接近同步代码的结构组织 Promise 链。",
+    principles: [
+      { badge: "PROMISE", title: "保证处理成功与失败", text: "Promise 最终进入 fulfilled 或 rejected；await 应放在 try/catch 中，链式调用则需要 catch。" },
+      { badge: "ORDER", title: "区分顺序与并行", text: "彼此依赖的任务顺序 await；互不依赖的任务先同时启动，再用 Promise.all 等待全部结果。" },
+      { badge: "LOOP", title: "理解事件循环", text: "当前调用栈清空后，微任务队列中的 Promise 回调通常先于定时器任务执行。" },
+    ],
+    syntaxTitle: "并行等待多个独立任务",
+    syntaxCode: `const delayValue = (value, ms) =>\n  new Promise(resolve => setTimeout(() => resolve(value), ms));\n\nasync function main() {\n  const [course, progress] = await Promise.all([\n    delayValue("JavaScript", 20),\n    delayValue(80, 10),\n  ]);\n  console.log(course, progress);\n}\nmain();`,
+    syntaxNote: "两个任务同时启动，总耗时接近较慢的那个任务；若改为连续 await，总耗时会相加。",
+    pitfalls: [
+      { title: "忘记等待Promise", wrong: "直接把 Promise 当最终数据使用", right: "在 async 函数中 await，或返回 Promise 链" },
+      { title: "异步forEach", wrong: "期待 forEach 等待 async 回调", right: "顺序使用 for...of，并行使用 Promise.all" },
+      { title: "吞掉错误", wrong: "catch 后不记录也不恢复", right: "给出上下文并重新抛出或返回明确降级结果" },
+    ],
+  },
+  {
+    summary: "ES6+ 提供了解构、展开、模板字符串、可选链和模块等表达能力。它们的目标是让数据流更清晰，而不是追求最短代码；复杂表达式仍应拆分为可命名、可调试的步骤。",
+    principles: [
+      { badge: "DESTRUCT", title: "按需解构数据", text: "解构能直接表达需要哪些字段，并可提供默认值；过深嵌套会降低可读性，应先检查数据结构。" },
+      { badge: "COPY", title: "使用展开创建浅拷贝", text: "展开语法只复制第一层；嵌套对象仍共享引用，更新深层结构时需要逐层复制。" },
+      { badge: "MODULE", title: "建立模块边界", text: "export 暴露稳定接口，import 声明依赖；模块应围绕职责组织，而不是按文件大小随意拆分。" },
+    ],
+    syntaxTitle: "不可变地更新嵌套对象",
+    syntaxCode: `const student = { name: "Lin", profile: { city: "Shanghai" } };\nconst updated = {\n  ...student,\n  profile: { ...student.profile, city: "Hangzhou" },\n};\nconsole.log(student.profile.city, updated.profile.city);`,
+    syntaxNote: "外层对象和 profile 都需要复制，否则修改新对象的城市仍可能影响旧对象。",
+    pitfalls: [
+      { title: "误以为是深拷贝", wrong: "只展开外层后修改嵌套对象", right: "逐层复制发生变化的路径" },
+      { title: "滥用可选链", wrong: "用 ?. 掩盖本应必填的数据缺失", right: "对必须存在的数据进行显式校验" },
+      { title: "单行表达式过长", wrong: "把多步转换压成一行", right: "拆分并命名中间结果" },
+    ],
+  },
+  {
+    summary: "工程化把个人可运行代码变成团队可维护产品。稳定流程通常包括模块设计、依赖管理、格式化、静态检查、单元测试、构建和持续集成，并通过一致脚本让本地与生产环境使用相同规则。",
+    principles: [
+      { badge: "MODULE", title: "建立清晰模块边界", text: "业务逻辑与输入输出分离，纯函数便于测试，外部依赖集中在适配层。" },
+      { badge: "TEST", title: "测试行为而非实现", text: "测试公开输入输出、边界和错误路径，避免依赖内部变量名等脆弱细节。" },
+      { badge: "CI", title: "自动执行质量门禁", text: "提交代码后自动运行格式化检查、静态分析、测试和构建，失败时阻止不可靠版本发布。" },
+    ],
+    syntaxTitle: "可测试的纯函数与边界用例",
+    syntaxCode: `const clamp = (value, min, max) => Math.min(max, Math.max(min, value));\n\nconst cases = [\n  { input: -1, expected: 0 },\n  { input: 50, expected: 50 },\n  { input: 101, expected: 100 },\n];\n\nfor (const test of cases) {\n  const actual = clamp(test.input, 0, 100);\n  if (actual !== test.expected) throw new Error("测试失败");\n}\nconsole.log("全部通过");`,
+    syntaxNote: "纯函数不依赖外部状态，同一输入始终得到同一输出，因此适合快速、稳定的自动测试。",
+    pitfalls: [
+      { title: "脚本只在个人电脑可用", wrong: "依赖未记录的全局工具", right: "固定依赖版本并通过项目脚本执行" },
+      { title: "只测试正常路径", wrong: "忽略空值、边界和异常", right: "按正常、边界、失败三类组织用例" },
+      { title: "构建后才发现错误", wrong: "上线前手工运行检查", right: "在持续集成中自动执行完整质量门禁" },
     ],
   },
 ];
@@ -816,7 +983,11 @@ const StableKnowledgeGraph = memo(KnowledgeGraph);
 const StableSandbox = memo(Sandbox);
 
 function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
-  const guide = lang === "C/C++" ? cppLessonGuides[topicIndex] : lessonGuides[lang];
+  const guide = lang === "C/C++"
+    ? cppLessonGuides[topicIndex]
+    : lang === "JavaScript"
+      ? javascriptLessonGuides[topicIndex]
+      : lessonGuides[lang];
   return (
     <section className="deep-lesson" aria-labelledby="deep-lesson-title">
       <div className="deep-intro">
@@ -902,6 +1073,7 @@ export default function Home() {
   const lesson = useMemo(() => {
     if (lang === "Python") return pythonLessons[selectedTopicIndex];
     if (lang === "C/C++") return cppLessons[selectedTopicIndex];
+    if (lang === "JavaScript") return javascriptLessons[selectedTopicIndex];
     return {
         ...baseLesson,
         title: `${lang} ${baseLesson.topics[selectedTopicIndex]}`,
