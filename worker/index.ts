@@ -116,7 +116,8 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: env.LLM_MODEL || "deepseek-chat",
+        model: env.LLM_MODEL || "deepseek-v4-flash",
+        thinking: { type: "disabled" },
         temperature: mode === "mindmap" ? 0.2 : 0.5,
         max_tokens: mode === "mindmap" ? 1800 : 1200,
         messages: [
@@ -130,7 +131,16 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
     });
 
     if (!upstream.ok) {
-      return jsonResponse({ error: "AI 服务暂时不可用，请稍后重试" }, 502);
+      const providerErrors: Record<number, string> = {
+        400: "AI 模型配置无效，请联系管理员更新模型",
+        401: "AI 服务密钥无效或已过期",
+        402: "AI 服务额度不足，请联系管理员",
+        403: "AI 服务拒绝了当前请求",
+        429: "AI 请求过于频繁，请稍后重试",
+      };
+      return jsonResponse({
+        error: providerErrors[upstream.status] || "AI 服务暂时不可用，请稍后重试",
+      }, 502);
     }
 
     const result = (await upstream.json()) as {
