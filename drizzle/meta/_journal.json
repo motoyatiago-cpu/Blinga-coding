@@ -15,6 +15,13 @@
       "when": 1784969612588,
       "tag": "0001_flashy_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785047635834,
+      "tag": "0002_absurd_vanisher",
+      "breakpoints": true
     }
   ]
 }

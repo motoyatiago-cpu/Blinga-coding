@@ -33,6 +33,13 @@ type LearningProgress = {
   activeLanguage: Lang;
   topics: Record<Lang, number>;
 };
+type LessonCompletion = {
+  language: string;
+  topicIndex: number;
+  passedTests: number;
+  totalTests: number;
+  completedAt: string;
+};
 type Course = {
   icon: string;
   color: string;
@@ -859,6 +866,7 @@ type RunResult = {
   time: string | null;
   memory: number | null;
   exitCode: number | null;
+  completionSaved?: boolean;
   judge?: {
     passed: number;
     total: number;
@@ -987,6 +995,11 @@ function formatRunResult(result: RunResult): string {
     if (mismatch) {
       sections.push(`预期输出：\n${mismatch.expected || "（空）"}\n\n实际输出：\n${mismatch.actual || "（空）"}`);
     }
+    if (result.judge.passed === result.judge.total) {
+      sections.push(result.completionSaved
+        ? "课程进度：✓ 当前知识点已标记完成"
+        : "课程进度：判题已通过，完成状态暂未同步");
+    }
   }
 
   return sections.join("\n\n");
@@ -998,12 +1011,14 @@ function Sandbox({
   lesson,
   topicIndex,
   onContextChange,
+  onLessonCompleted,
 }: {
   lang: Lang;
   setLang: (lang: Lang) => void;
   lesson: Course;
   topicIndex: number;
   onContextChange: (context: SandboxContext) => void;
+  onLessonCompleted: (language: Lang, topicIndex: number) => void;
 }) {
   const [code, setCode] = useState(lesson.code);
   const [output, setOutput] = useState("终端已连接 · 等待输入");
@@ -1175,6 +1190,13 @@ function Sandbox({
       const result = await response.json() as RunResult & { error?: string };
       if (!response.ok) throw new Error(result.error || "代码执行失败");
       updateOutput(formatRunResult(result));
+      if (
+        result.completionSaved
+        && result.judge
+        && result.judge.passed === result.judge.total
+      ) {
+        onLessonCompleted(lang, topicIndex);
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       updateOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
@@ -1288,6 +1310,7 @@ export default function Home() {
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
   const [progressReady, setProgressReady] = useState(false);
   const [progressStatus, setProgressStatus] = useState("正在恢复学习进度…");
+  const [completedTopics, setCompletedTopics] = useState<Record<string, number[]>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState("");
@@ -1303,6 +1326,16 @@ export default function Home() {
   const syncSandboxContext = useCallback((context: SandboxContext) => {
     setSandboxContext(context);
   }, []);
+  const markLessonCompleted = useCallback((language: Lang, topicIndex: number) => {
+    setCompletedTopics((current) => {
+      const existing = current[language] || [];
+      if (existing.includes(topicIndex)) return current;
+      return {
+        ...current,
+        [language]: [...existing, topicIndex].sort((left, right) => left - right),
+      };
+    });
+  }, []);
   const selectedTopicIndex = topicByLang[lang];
   const baseLesson = lessons[lang];
   const isFirstTopic = selectedTopicIndex === 0;
@@ -1311,6 +1344,12 @@ export default function Home() {
     () => curriculum[lang].lessons[selectedTopicIndex],
     [lang, selectedTopicIndex],
   );
+  const completedForCurrentLanguage = completedTopics[lang] || [];
+  const completedCount = completedForCurrentLanguage.filter(
+    (topicIndex) => topicIndex >= 0 && topicIndex < lesson.topics.length,
+  ).length;
+  const completionPercent = Math.round((completedCount / lesson.topics.length) * 100);
+  const currentTopicCompleted = completedForCurrentLanguage.includes(selectedTopicIndex);
 
   function navigateToTopic(nextTopicIndex: number) {
     const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
@@ -1413,6 +1452,41 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [lang, progressReady, topicByLang]);
 
+  useEffect(() => {
+    let active = true;
+    const loadCompletions = async () => {
+      try {
+        const response = await fetch("/api/completions", {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        const data = await response.json() as {
+          completions?: LessonCompletion[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(data.error || "课程完成状态读取失败");
+        if (!active) return;
+
+        const grouped: Record<string, number[]> = {};
+        for (const completion of data.completions || []) {
+          if (!grouped[completion.language]) grouped[completion.language] = [];
+          if (!grouped[completion.language].includes(completion.topicIndex)) {
+            grouped[completion.language].push(completion.topicIndex);
+          }
+        }
+        Object.values(grouped).forEach((topics) => topics.sort((left, right) => left - right));
+        setCompletedTopics(grouped);
+      } catch {
+        if (active) setCompletedTopics({});
+      }
+    };
+
+    void loadCompletions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function callAi(mode: "chat" | "search", prompt: string) {
     const context = mode === "chat"
       ? [
@@ -1481,12 +1555,18 @@ export default function Home() {
             <div className="sidebar-brandline"><span>CURRENT COURSE</span><i>LEVEL 02</i></div>
             <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
               <i style={{ background: lessons[lang].color }}>{lessons[lang].icon}</i>
-              <span>{lang}<small>分级课程 · {lesson.topics.length} 个知识点</small></span><b>⌂</b>
+              <span>{lang}<small>已完成 {completedCount}/{lesson.topics.length} · {completionPercent}%</small></span><b>⌂</b>
             </a>
+            <div className="course-progress" aria-label={`${lang} 课程完成度 ${completionPercent}%`}>
+              <span style={{ width: `${completionPercent}%` }} />
+            </div>
             <nav className="course-topic-nav" aria-label={`${lang} 知识点`}>
               {lesson.topics.map((topic, index) =>
                 <a
-                  className={selectedTopicIndex === index ? "active" : ""}
+                  className={[
+                    selectedTopicIndex === index ? "active" : "",
+                    completedForCurrentLanguage.includes(index) ? "completed" : "",
+                  ].filter(Boolean).join(" ")}
                   href={`/?lang=${encodeURIComponent(lang)}&topic=${index}#learn`}
                   key={topic}
                   onClick={(event) => {
@@ -1496,7 +1576,7 @@ export default function Home() {
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <b>{topic}</b>
-                  <i>{selectedTopicIndex === index ? "●" : "›"}</i>
+                  <i>{completedForCurrentLanguage.includes(index) ? "✓" : selectedTopicIndex === index ? "●" : "›"}</i>
                 </a>
               )}
             </nav>
@@ -1516,7 +1596,7 @@ export default function Home() {
           <section className="content" id="learn">
             <div className="breadcrumb">学习中心 <span>/</span> {lang} <span>/</span> 第 {String(topicByLang[lang] + 1).padStart(2, "0")} 节</div>
             <div className="lesson-head">
-              <div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◉ 3 个练习</span><span className="level">基础</span><span>已同步至知识图谱</span></div></div>
+              <div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◉ 3 个练习</span><span className="level">基础</span><span>{currentTopicCompleted ? "✓ 当前知识点已完成" : "通过自动判题后记录完成"}</span></div></div>
               <div className="pager">
                 <button
                   disabled={isFirstTopic}
@@ -1547,7 +1627,7 @@ export default function Home() {
 
             <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
             <GraphDocumentExport lesson={lesson} />
-            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} />
+            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />
           </section>
         </div>
 

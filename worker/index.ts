@@ -78,6 +78,25 @@ async function ensureDraftSchema(database: D1Database): Promise<void> {
   ]);
 }
 
+async function ensureCompletionSchema(database: D1Database): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS lesson_completions (
+        user_email TEXT NOT NULL,
+        language TEXT NOT NULL,
+        topic_index INTEGER NOT NULL,
+        passed_tests INTEGER NOT NULL,
+        total_tests INTEGER NOT NULL,
+        completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_email, language, topic_index)
+      )
+    `),
+    database.prepare(
+      "CREATE INDEX IF NOT EXISTS lesson_completions_completed_at_idx ON lesson_completions (completed_at)",
+    ),
+  ]);
+}
+
 function authenticatedUserEmail(request: Request): string | null {
   const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
   return email && email.length <= 320 ? email : null;
@@ -248,6 +267,43 @@ async function handleDraftRequest(request: Request, env: Env): Promise<Response>
     .run();
 
   return jsonResponse({ saved: true });
+}
+
+async function handleCompletionsRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "仅支持 GET 请求" }, 405);
+  }
+  const userEmail = authenticatedUserEmail(request);
+  if (!userEmail) {
+    return jsonResponse({ error: "请先登录后再读取课程完成状态" }, 401);
+  }
+
+  await ensureCompletionSchema(env.DB);
+  const result = await env.DB
+    .prepare(`
+      SELECT language, topic_index, passed_tests, total_tests, completed_at
+      FROM lesson_completions
+      WHERE user_email = ?
+      ORDER BY completed_at ASC
+    `)
+    .bind(userEmail)
+    .all<{
+      language: string;
+      topic_index: number;
+      passed_tests: number;
+      total_tests: number;
+      completed_at: string;
+    }>();
+
+  return jsonResponse({
+    completions: result.results.map((record) => ({
+      language: record.language,
+      topicIndex: record.topic_index,
+      passedTests: record.passed_tests,
+      totalTests: record.total_tests,
+      completedAt: record.completed_at,
+    })),
+  });
 }
 
 const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = {
@@ -547,6 +603,32 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     } : undefined;
     if (judge) judge.passed = judge.tests.filter((test) => test.passed).length;
 
+    let completionSaved = false;
+    if (body.judge && judge && judge.passed === judge.total) {
+      const userEmail = authenticatedUserEmail(request);
+      if (userEmail) {
+        try {
+          await ensureCompletionSchema(env.DB);
+          await env.DB
+            .prepare(`
+              INSERT INTO lesson_completions (
+                user_email, language, topic_index, passed_tests, total_tests, completed_at
+              )
+              VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+                passed_tests = excluded.passed_tests,
+                total_tests = excluded.total_tests,
+                completed_at = CURRENT_TIMESTAMP
+            `)
+            .bind(userEmail, language, topicIndex, judge.passed, judge.total)
+            .run();
+          completionSaved = true;
+        } catch {
+          completionSaved = false;
+        }
+      }
+    }
+
     return jsonResponse({
       status: {
         id: Number(result.status?.id || 0),
@@ -560,6 +642,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
       memory: result.memory == null ? null : Number(result.memory),
       exitCode,
       judge,
+      completionSaved,
     });
   } catch {
     return jsonResponse({ error: "代码执行超时或服务连接失败，请稍后重试" }, 504);
@@ -590,6 +673,10 @@ const worker = {
 
     if (url.pathname === "/api/draft") {
       return handleDraftRequest(request, env);
+    }
+
+    if (url.pathname === "/api/completions") {
+      return handleCompletionsRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {

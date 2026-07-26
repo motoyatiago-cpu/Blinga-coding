@@ -17,3 +17,14 @@ export const codeDrafts = sqliteTable("code_drafts", {
 }, (table) => [
   primaryKey({ columns: [table.userEmail, table.language, table.topicIndex] }),
 ]);
+
+export const lessonCompletions = sqliteTable("lesson_completions", {
+  userEmail: text("user_email").notNull(),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  passedTests: integer("passed_tests").notNull(),
+  totalTests: integer("total_tests").notNull(),
+  completedAt: text("completed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.userEmail, table.language, table.topicIndex] }),
+]);
