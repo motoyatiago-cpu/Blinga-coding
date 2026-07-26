@@ -58,6 +58,7 @@ type KnowledgeData = {
 };
 type KnowledgeNode = Node<KnowledgeData, "knowledge">;
 
+const MAX_SOURCE_FILE_CHARS = 12_000;
 const INITIAL_CHAT_MESSAGE = {
   role: "ai",
   text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。",
@@ -112,6 +113,20 @@ const languageSlugs: Record<Lang, string> = {
   JavaScript: "javascript",
   Java: "java",
 };
+
+const sourceFileExtensions: Record<Lang, string[]> = {
+  Python: [".py", ".txt"],
+  "C/C++": [".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".txt"],
+  JavaScript: [".js", ".mjs", ".cjs", ".txt"],
+  Java: [".java", ".txt"],
+};
+
+function defaultSourceFileName(language: Lang): string {
+  if (language === "Python") return "main.py";
+  if (language === "C/C++") return "main.cpp";
+  if (language === "JavaScript") return "main.js";
+  return "Main.java";
+}
 
 const pythonLessons: Course[] = [
   {
@@ -1118,6 +1133,7 @@ function Sandbox({
   const [historyLoading, setHistoryLoading] = useState(true);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [focusMode, setFocusMode] = useState(false);
+  const [sourceFileName, setSourceFileName] = useState(defaultSourceFileName(lang));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftEditRevisionRef = useRef(0);
@@ -1130,6 +1146,7 @@ function Sandbox({
   const outputRef = useRef(output);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLPreElement>(null);
+  const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const draftKey = `${lang}:${topicIndex}`;
   const lineNumbers = useMemo(
     () => Array.from({ length: Math.max(1, code.split("\n").length) }, (_, index) => index + 1).join("\n"),
@@ -1191,6 +1208,7 @@ function Sandbox({
     setDraftStatus("正在读取草稿…");
     setCode(lesson.code);
     setCursorPosition({ line: 1, column: 1 });
+    setSourceFileName(defaultSourceFileName(lang));
     stdinRef.current = "";
     setStdin("");
     const initialOutput = "终端已连接 · 等待输入";
@@ -1323,6 +1341,7 @@ function Sandbox({
 
   function resetCode() {
     updateCode(lesson.code);
+    setSourceFileName(defaultSourceFileName(lang));
     window.requestAnimationFrame(() => {
       const editor = editorRef.current;
       if (!editor) return;
@@ -1332,6 +1351,63 @@ function Sandbox({
       updateCursorPosition(editor);
       editor.focus();
     });
+  }
+
+  async function importSourceFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const lowerName = file.name.toLocaleLowerCase();
+      const validExtension = sourceFileExtensions[lang].some((extension) => lowerName.endsWith(extension));
+      if (!validExtension) {
+        throw new Error(`${lang} 支持 ${sourceFileExtensions[lang].join("、")} 文件`);
+      }
+      if (file.size > 64_000) {
+        throw new Error("源码文件过大，请选择 64KB 以内的文本文件");
+      }
+
+      const importedCode = (await file.text()).replace(/\r\n/g, "\n");
+      if (importedCode.includes("\u0000")) {
+        throw new Error("无法导入二进制文件，请选择纯文本源码");
+      }
+      if (importedCode.length > MAX_SOURCE_FILE_CHARS) {
+        throw new Error(`源码最多支持 ${MAX_SOURCE_FILE_CHARS} 个字符`);
+      }
+
+      updateCode(importedCode);
+      setSourceFileName(file.name.slice(0, 80));
+      setDraftStatus(`已导入 ${file.name}，等待自动保存…`);
+      window.requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.scrollTop = 0;
+        editor.setSelectionRange(0, 0);
+        if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0;
+        updateCursorPosition(editor);
+        editor.focus();
+      });
+    } catch (error) {
+      setDraftStatus(error instanceof Error ? error.message : "源码文件导入失败");
+    } finally {
+      input.value = "";
+    }
+  }
+
+  function downloadSourceFile() {
+    const normalizedName = sourceFileName
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      .replace(/^\.+/, "")
+      .slice(0, 80) || defaultSourceFileName(lang);
+    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = normalizedName;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    setDraftStatus(`已下载 ${normalizedName}`);
   }
 
   function updateCursorPosition(target = editorRef.current) {
@@ -1470,7 +1546,22 @@ function Sandbox({
       </div>
       <div className="sandbox glass">
         <div className="editor-pane">
-          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={resetCode}>↺ 重置</button></div>
+          <div className="pane-head">
+            <span><i /> {sourceFileName}</span>
+            <div className="editor-file-actions">
+              <input
+                ref={sourceFileInputRef}
+                type="file"
+                accept={sourceFileExtensions[lang].join(",")}
+                onChange={importSourceFile}
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+              <button onClick={() => sourceFileInputRef.current?.click()}>⇧ 导入</button>
+              <button onClick={downloadSourceFile}>⇩ 下载</button>
+              <button onClick={resetCode}>↺ 重置</button>
+            </div>
+          </div>
           <div className="code-editor-body">
             <pre ref={lineNumbersRef} className="code-line-numbers" aria-hidden="true">{lineNumbers}</pre>
             <textarea

@@ -43,6 +43,8 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /code-line-numbers/);
   assert.match(html, /Tab 缩进/);
   assert.match(html, /专注模式/);
+  assert.match(html, /⇧ 导入/);
+  assert.match(html, /⇩ 下载/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -111,4 +113,16 @@ test("provides a reversible sandbox focus mode", async () => {
   assert.match(page, /aria-pressed=\{focusMode\}/);
   assert.match(css, /\.sandbox-focus-mode\{position:fixed!important/);
   assert.match(css, /\.sandbox-focus-mode \.run-history\{display:none\}/);
+});
+
+test("imports and downloads source files without an upload endpoint", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /const sourceFileExtensions: Record<Lang, string\[\]>/);
+  assert.match(page, /async function importSourceFile/);
+  assert.match(page, /await file\.text\(\)/);
+  assert.match(page, /importedCode\.includes\("\\u0000"\)/);
+  assert.match(page, /function downloadSourceFile\(\)/);
+  assert.match(page, /new Blob\(\[code\], \{ type: "text\/plain;charset=utf-8" \}\)/);
+  assert.doesNotMatch(page, /fetch\([^)]*importSourceFile/);
 });
