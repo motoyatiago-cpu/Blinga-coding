@@ -42,3 +42,112 @@
 .sandbox-heading-actions{display:flex;align-items:center;gap:8px}.focus-mode-toggle{height:36px;padding:0 12px;border:1px solid #58e6ba44;border-radius:9px;background:#58e6ba0d;color:var(--accent);font-size:9px;font-weight:720;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}.focus-mode-toggle:hover{background:#58e6ba18;border-color:#58e6ba77}.focus-mode-toggle:active{transform:scale(.97)}.sandbox-focus-mode{position:fixed!important;inset:12px!important;z-index:110;margin:0!important;padding:20px!important;overflow:hidden;border:1px solid var(--line-hi);border-radius:20px;background:radial-gradient(circle at 45% -20%,#1a2a3d 0,transparent 38%),rgba(7,10,16,.985);box-shadow:0 30px 100px #000d;backdrop-filter:blur(28px)}.sandbox-focus-mode .section-heading{height:60px;margin:0 0 14px}.sandbox-focus-mode .section-heading h2{font-size:20px;margin-top:7px}.sandbox-focus-mode .section-heading p{display:none}.sandbox-focus-mode .sandbox{height:calc(100vh - 126px);grid-template-columns:1.15fr .85fr}.sandbox-focus-mode .code-editor-body,.sandbox-focus-mode .code-line-numbers,.sandbox-focus-mode .editor-pane .code-editor-body textarea{height:calc(100vh - 224px)}.sandbox-focus-mode .terminal-pane>pre{height:auto;min-height:0;flex:1}.sandbox-focus-mode .run-history{display:none}@media(max-width:800px){.sandbox-focus-mode{inset:0!important;padding:14px!important;border:0;border-radius:0;overflow-y:auto}.sandbox-focus-mode .section-heading{height:auto;min-height:60px}.sandbox-focus-mode .sandbox{height:auto;grid-template-columns:1fr}.sandbox-focus-mode .code-editor-body,.sandbox-focus-mode .code-line-numbers,.sandbox-focus-mode .editor-pane .code-editor-body textarea{height:42vh;min-height:280px}.sandbox-focus-mode .terminal-pane>pre{height:34vh;min-height:220px}.sandbox-heading-actions{flex-wrap:wrap;justify-content:flex-end}}@media(max-width:520px){.sandbox-focus-mode .section-heading>div:first-child p,.sandbox-focus-mode .section-heading>div:first-child span{display:none}.sandbox-focus-mode .section-heading h2{font-size:16px}.focus-mode-toggle{padding:0 9px}}
 .editor-file-actions{display:flex;align-items:center;gap:5px}.editor-file-actions input{display:none}.editor-file-actions button{padding:6px 8px}.pane-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media(max-width:560px){.editor-file-actions{gap:3px}.editor-file-actions button{padding:6px;font-size:0}.editor-file-actions button:after{font-size:10px}.editor-file-actions button:nth-of-type(1):after{content:"⇧"}.editor-file-actions button:nth-of-type(2):after{content:"⇩"}.editor-file-actions button:nth-of-type(3):after{content:"↺"}}
 .editor-file-actions button.reset-confirm{border-color:#ff8b7655;background:#3a211f;color:#ff9b89}.editor-file-actions button.reset-undo{border-color:#58e6ba55;background:#17352c;color:var(--accent)}@media(max-width:560px){.editor-file-actions button.reset-confirm:after{content:"!"}.editor-file-actions button.reset-undo:after{content:"↶"}}
+
+/* GSAP motion layer and premium visual polish */
+body{
+  background:
+    radial-gradient(circle at 14% 12%,rgba(88,230,186,.105),transparent 27%),
+    radial-gradient(circle at 84% 38%,rgba(126,139,255,.11),transparent 29%),
+    linear-gradient(135deg,#070a10 0%,#090d15 48%,#060910 100%);
+  background-attachment:fixed;
+}
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:54px 54px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 76%);
+}
+body:after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:150;
+  pointer-events:none;
+  opacity:.035;
+  background-image:
+    repeating-radial-gradient(circle at 22% 31%,#fff 0 .45px,transparent .6px 3px),
+    repeating-radial-gradient(circle at 76% 63%,#fff 0 .35px,transparent .5px 4px);
+  background-size:7px 9px,11px 13px;
+  mix-blend-mode:soft-light;
+}
+::selection{background:#58e6ba33;color:#effff9}
+.topbar{
+  background:linear-gradient(180deg,rgba(14,19,29,.88),rgba(9,13,20,.72));
+  box-shadow:0 14px 45px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.045);
+  backdrop-filter:blur(26px) saturate(150%);
+}
+.glass{
+  border-color:rgba(255,255,255,.105);
+  background:
+    linear-gradient(145deg,rgba(31,39,54,.72),rgba(10,15,23,.66)),
+    radial-gradient(circle at 12% 0,rgba(255,255,255,.055),transparent 38%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.07),
+    inset 0 0 0 1px rgba(255,255,255,.018),
+    0 25px 75px rgba(0,0,0,.3);
+  backdrop-filter:blur(24px) saturate(145%);
+}
+.lesson-card,.code-example,.graph-shell,.sandbox,.lesson-notes,.document-export{
+  outline:1px solid rgba(255,255,255,.018);
+  outline-offset:-2px;
+}
+button,.hover-bounce{
+  -webkit-tap-highlight-color:transparent;
+}
+.hover-bounce{
+  transform-origin:center;
+  backface-visibility:hidden;
+  will-change:transform;
+}
+button.hover-bounce{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+button.hover-bounce:before{
+  content:"";
+  position:absolute;
+  inset:-80% -35%;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.15) 49%,transparent 60%);
+  transform:translateX(-38%) rotate(8deg);
+  transition:opacity .22s ease,transform .48s cubic-bezier(.2,.8,.2,1);
+}
+button.hover-bounce:hover:before{
+  opacity:1;
+  transform:translateX(38%) rotate(8deg);
+}
+button.hover-bounce:focus-visible{
+  outline:2px solid rgba(88,230,186,.72);
+  outline-offset:3px;
+}
+.brandmark,.course-icon,.entry-marker,.chat-head>div>span{
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.35),
+    0 12px 32px color-mix(in srgb,var(--accent) 18%,transparent);
+}
+.status-dot{
+  transform-origin:center;
+}
+.pane-head,.editor-foot,.judge-row,.run-history-head{
+  background:linear-gradient(180deg,rgba(17,23,34,.9),rgba(9,14,22,.78));
+}
+.lesson-head h1,.course-hero h1,.section-heading h2{
+  text-wrap:balance;
+}
+@media(max-width:700px){
+  body:before{background-size:38px 38px;opacity:.6}
+  body:after{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .hover-bounce{will-change:auto!important;transform:none!important}
+  button.hover-bounce:before{display:none}
+}

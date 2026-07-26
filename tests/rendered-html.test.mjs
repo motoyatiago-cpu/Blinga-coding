@@ -142,3 +142,25 @@ test("protects source reset with confirmation and a timed undo", async () => {
   assert.match(css, /\.editor-file-actions button\.reset-confirm/);
   assert.match(css, /\.editor-file-actions button\.reset-undo/);
 });
+
+test("adds a reusable and reduced-motion-safe GSAP hover layer", async () => {
+  const [motion, layout, css, packageJson] = await Promise.all([
+    readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(motion, /export function bindHoverBounce/);
+  assert.match(motion, /gsap\.utils\.toArray<HTMLElement>\("\.hover-bounce"/);
+  assert.match(motion, /duration: 0\.8/);
+  assert.match(motion, /scale: 1\.1/);
+  assert.match(motion, /ease: "elastic\.out\(1, 0\.3\)"/);
+  assert.match(motion, /duration: 0\.5/);
+  assert.match(motion, /ease: "elastic\.out\(1, 0\.5\)"/);
+  assert.match(motion, /prefers-reduced-motion: reduce/);
+  assert.match(motion, /new MutationObserver/);
+  assert.match(layout, /<HoverBounceMotion \/>/);
+  assert.match(css, /\.hover-bounce\{/);
+  assert.match(packageJson, /"gsap":/);
+});
