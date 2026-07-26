@@ -895,7 +895,7 @@ function KnowledgeGraph({ lesson, code }: { lesson: Course; code: string }) {
   return (
     <section className="feature-section" id="map">
       <div className="section-heading">
-        <div><span className="eyebrow">AI KNOWLEDGE GRAPH</span><h2>动态知识图谱</h2><p>拖拽节点，直接编辑内容，并用颜色标记核心考点。</p></div>
+        <div><span className="eyebrow">AI KNOWLEDGE GRAPH</span><h2>动态知识图谱</h2></div>
         <div className="toolbar">
           <button onClick={addKnowledgeNode}>＋ 新增节点</button>
           <button onClick={() => generateGraph(true)} disabled={busy}>✦ 扩写选中</button>
@@ -1600,7 +1600,7 @@ function Sandbox({
   return (
     <section className={`feature-section ${focusMode ? "sandbox-focus-mode" : ""}`} id="lab">
       <div className="section-heading">
-        <div><span className="eyebrow purple">LIVE SANDBOX</span><h2>在线实训沙盒</h2><p>输入变化即时诊断，运行状态与终端结果动态同步。</p></div>
+        <div><span className="eyebrow purple">LIVE SANDBOX</span><h2>在线实训沙盒</h2></div>
         <div className="sandbox-heading-actions">
           <select value={lang} onChange={(event) => setLang(event.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map((key) => <option key={key}>{key}</option>)}</select>
           <button
@@ -1651,7 +1651,7 @@ function Sandbox({
             />
           </div>
           <div className="editor-foot">
-            <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行 · {draftStatus}<kbd>Tab 缩进 · Ctrl↵ 运行</kbd></span>
+            <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行 · {draftStatus}</span>
             <div className="editor-actions">
               <button className="stop-run" onClick={stopRun} disabled={runningMode === null}>
                 ■ 停止
@@ -1686,7 +1686,6 @@ function Sandbox({
       <section className="run-history glass" aria-label="当前知识点运行历史">
         <div className="run-history-head">
           <div><span>RUN HISTORY</span><b>最近运行记录</b></div>
-          <small>仅保存状态与性能数据，不保存代码、输入和输出</small>
         </div>
         {historyLoading ? (
           <div className="run-history-empty">正在读取运行记录…</div>
@@ -1890,7 +1889,7 @@ function GraphDocumentExport({ lesson }: { lesson: Course }) {
     URL.revokeObjectURL(url);
   }
 
-  return <div className="document-export glass"><div><span>DOCUMENT EXPORT</span><b>导出当前知识图谱</b><small>图谱核心交互保持不变，导出由独立文档层完成。</small></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
+  return <div className="document-export glass"><div><span>DOCUMENT EXPORT</span><b>导出当前知识图谱</b></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
 }
 
 export default function Home() {
@@ -2251,12 +2250,12 @@ export default function Home() {
         <header className="topbar glass">
           <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
           <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
-          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span><kbd>⌘ K</kbd></button><div className="avatar">林</div></div>
+          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span></button><div className="avatar">林</div></div>
         </header>
 
         <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
           <div className="search-dialog glass" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
-            <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b><small>即时匹配全部课程，需要时再使用 AI 深度解释</small></div><button onClick={() => setSearchOpen(false)} aria-label="关闭搜索">×</button></div>
+            <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b></div><button onClick={() => setSearchOpen(false)} aria-label="关闭搜索">×</button></div>
             <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：循环、指针、异步编程…" /><button onClick={search} disabled={!searchQuery.trim() || searchBusy}>{searchBusy ? "分析中" : "AI 深度搜索"}</button></div>
             {searchQuery.trim() && <section className="course-search-results" aria-label="即时课程匹配">
               <header><span>即时课程匹配</span><b>{courseMatches.length ? `${courseMatches.length} 个结果` : "暂无匹配"}</b></header>
@@ -2322,7 +2321,6 @@ export default function Home() {
               <span className={progressStatus.includes("已") || progressStatus.includes("自动") ? "synced" : ""} />
               {progressStatus}
             </div>
-            <div className="sidebar-tip"><span>✦</span><div><b>AI 学习建议</b><p>完成当前实训后再进入下一节，知识留存率会更高。</p></div></div>
           </aside>
 
           <section className="content" id="learn">

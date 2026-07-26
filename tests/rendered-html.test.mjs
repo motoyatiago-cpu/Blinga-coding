@@ -41,7 +41,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /清空/);
   assert.match(html, /发送问题/);
   assert.match(html, /code-line-numbers/);
-  assert.match(html, /Tab 缩进/);
+  assert.match(html, /UTF-8 · Ln/);
   assert.match(html, /专注模式/);
   assert.match(html, /⇧ 导入/);
   assert.match(html, /⇩ 下载/);
@@ -202,8 +202,23 @@ test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () 
   assert.match(layout, /lenis\/dist\/lenis\.css/);
   assert.match(packageJson, /"lenis":/);
   assert.match(css, /--mac-graphite:#0d1118/);
-  assert.match(css, /\.pane-head:before,\s*\.run-history-head:before/);
-  assert.match(css, /background:#ff5f57/);
-  assert.match(css, /box-shadow:16px 0 #febc2e,32px 0 #28c840/);
+  assert.doesNotMatch(css, /\.pane-head:before,\s*\.run-history-head:before/);
+  assert.doesNotMatch(css, /box-shadow:16px 0 #febc2e,32px 0 #28c840/);
   assert.match(css, /"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas/);
+});
+
+test("removes decorative and redundant UI prompts while preserving status feedback", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(page, /拖拽节点，直接编辑内容，并用颜色标记核心考点/);
+  assert.doesNotMatch(page, /输入变化即时诊断，运行状态与终端结果动态同步/);
+  assert.doesNotMatch(page, /仅保存状态与性能数据，不保存代码、输入和输出/);
+  assert.doesNotMatch(page, /即时匹配全部课程，需要时再使用 AI 深度解释/);
+  assert.doesNotMatch(page, /AI 学习建议/);
+  assert.doesNotMatch(page, /图谱核心交互保持不变，导出由独立文档层完成/);
+  assert.doesNotMatch(page, /Tab 缩进 · Ctrl↵ 运行/);
+  assert.doesNotMatch(page, /⌘ K/);
+  assert.match(page, /\{draftStatus\}/);
+  assert.match(page, /statusDescription/);
+  assert.match(page, /aria-live="polite"/);
 });
