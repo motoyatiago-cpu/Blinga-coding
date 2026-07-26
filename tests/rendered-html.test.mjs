@@ -40,6 +40,8 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /AI 深度搜索/);
   assert.match(html, /清空/);
   assert.match(html, /发送问题/);
+  assert.match(html, /code-line-numbers/);
+  assert.match(html, /Tab 缩进/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -83,4 +85,15 @@ test("makes AI requests cancellable and time-bounded", async () => {
   assert.match(worker, /const AI_UPSTREAM_TIMEOUT_MS = 45_000/);
   assert.match(worker, /signal: controller\.signal/);
   assert.match(worker, /AI 服务响应超时，请稍后重试/);
+});
+
+test("keeps editor line numbers, cursor position, and indentation synchronized", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /const lineNumbers = useMemo/);
+  assert.match(page, /function syncEditorScroll/);
+  assert.match(page, /lineNumbersRef\.current\.scrollTop = event\.currentTarget\.scrollTop/);
+  assert.match(page, /function handleEditorKeyDown/);
+  assert.match(page, /event\.key !== "Tab"/);
+  assert.match(page, /Ln \{cursorPosition\.line\}, Col \{cursorPosition\.column\}/);
 });

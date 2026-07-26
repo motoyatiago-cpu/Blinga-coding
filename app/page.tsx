@@ -1116,6 +1116,7 @@ function Sandbox({
   const [draftStatus, setDraftStatus] = useState("正在读取草稿…");
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftEditRevisionRef = useRef(0);
@@ -1126,7 +1127,13 @@ function Sandbox({
   const runAbortRef = useRef<AbortController | null>(null);
   const stdinRef = useRef(stdin);
   const outputRef = useRef(output);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const lineNumbersRef = useRef<HTMLPreElement>(null);
   const draftKey = `${lang}:${topicIndex}`;
+  const lineNumbers = useMemo(
+    () => Array.from({ length: Math.max(1, code.split("\n").length) }, (_, index) => index + 1).join("\n"),
+    [code],
+  );
 
   const loadRunHistory = useCallback(async () => {
     const revision = ++historyRevisionRef.current;
@@ -1182,6 +1189,7 @@ function Sandbox({
     setDraftReadyKey("");
     setDraftStatus("正在读取草稿…");
     setCode(lesson.code);
+    setCursorPosition({ line: 1, column: 1 });
     stdinRef.current = "";
     setStdin("");
     const initialOutput = "终端已连接 · 等待输入";
@@ -1292,6 +1300,36 @@ function Sandbox({
   function handleCodeInput(event: React.ChangeEvent<HTMLTextAreaElement>) {
     // 数据流第 1 步：React onChange 对应文本框原生 input 事件，每次键入都同步最新代码。
     updateCode(event.target.value);
+    updateCursorPosition(event.target);
+  }
+
+  function resetCode() {
+    updateCode(lesson.code);
+    window.requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.scrollTop = 0;
+      editor.setSelectionRange(0, 0);
+      if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0;
+      updateCursorPosition(editor);
+      editor.focus();
+    });
+  }
+
+  function updateCursorPosition(target = editorRef.current) {
+    if (!target) return;
+    const beforeCursor = target.value.slice(0, target.selectionStart);
+    const linesBeforeCursor = beforeCursor.split("\n");
+    setCursorPosition({
+      line: linesBeforeCursor.length,
+      column: (linesBeforeCursor.at(-1)?.length || 0) + 1,
+    });
+  }
+
+  function syncEditorScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = event.currentTarget.scrollTop;
+    }
   }
 
   function stopRun() {
@@ -1311,6 +1349,42 @@ function Sandbox({
       return;
     }
     void runCode(event.shiftKey ? "judge" : "run");
+  }
+
+  function handleEditorKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Tab") {
+      handleRunShortcut(event);
+      return;
+    }
+
+    event.preventDefault();
+    const target = event.currentTarget;
+    const selectionStart = target.selectionStart;
+    const selectionEnd = target.selectionEnd;
+
+    if (!event.shiftKey) {
+      const indentation = "  ";
+      const nextCode = `${code.slice(0, selectionStart)}${indentation}${code.slice(selectionEnd)}`;
+      updateCode(nextCode);
+      window.requestAnimationFrame(() => {
+        const nextCursor = selectionStart + indentation.length;
+        target.setSelectionRange(nextCursor, nextCursor);
+        updateCursorPosition(target);
+      });
+      return;
+    }
+
+    const lineStart = code.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+    const leadingWhitespace = code.slice(lineStart).match(/^(?: {1,2}|\t)/)?.[0] || "";
+    if (!leadingWhitespace) return;
+
+    const nextCode = `${code.slice(0, lineStart)}${code.slice(lineStart + leadingWhitespace.length)}`;
+    updateCode(nextCode);
+    window.requestAnimationFrame(() => {
+      const nextCursor = Math.max(lineStart, selectionStart - leadingWhitespace.length);
+      target.setSelectionRange(nextCursor, nextCursor);
+      updateCursorPosition(target);
+    });
   }
 
   async function runCode(mode: "run" | "judge" = "run") {
@@ -1368,10 +1442,23 @@ function Sandbox({
       </div>
       <div className="sandbox glass">
         <div className="editor-pane">
-          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => updateCode(lesson.code)}>↺ 重置</button></div>
-          <textarea spellCheck={false} value={code} onChange={handleCodeInput} onKeyDown={handleRunShortcut} aria-label="代码编辑器" aria-keyshortcuts="Control+Enter Meta+Enter Control+Shift+Enter Meta+Shift+Enter" />
+          <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={resetCode}>↺ 重置</button></div>
+          <div className="code-editor-body">
+            <pre ref={lineNumbersRef} className="code-line-numbers" aria-hidden="true">{lineNumbers}</pre>
+            <textarea
+              ref={editorRef}
+              spellCheck={false}
+              value={code}
+              onChange={handleCodeInput}
+              onKeyDown={handleEditorKeyDown}
+              onScroll={syncEditorScroll}
+              onSelect={(event) => updateCursorPosition(event.currentTarget)}
+              aria-label="代码编辑器"
+              aria-keyshortcuts="Tab Shift+Tab Control+Enter Meta+Enter Control+Shift+Enter Meta+Shift+Enter"
+            />
+          </div>
           <div className="editor-foot">
-            <span>UTF-8 · {code.split("\n").length} 行 · {draftStatus}<kbd>Ctrl↵ 运行 / ⇧Ctrl↵ 判题</kbd></span>
+            <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行 · {draftStatus}<kbd>Tab 缩进 · Ctrl↵ 运行</kbd></span>
             <div className="editor-actions">
               <button className="stop-run" onClick={stopRun} disabled={runningMode === null}>
                 ■ 停止
