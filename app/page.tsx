@@ -2369,8 +2369,17 @@ export default function Home() {
           </section>
         </div>
 
-        <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen((current) => !current)}><span>✦</span>{chatOpen ? "收起" : "问 AI"}</button>
-        <aside className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
+        <div className={`chat-dock ${chatOpen ? "open" : ""}`}>
+          <button
+            className="chat-fab"
+            onClick={() => setChatOpen((current) => !current)}
+            aria-expanded={chatOpen}
+            aria-controls="ai-programming-assistant"
+          >
+            <span>✦</span>{chatOpen ? "收起" : "问 AI"}
+          </button>
+        </div>
+        <aside id="ai-programming-assistant" className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
           <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
           <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
           <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>

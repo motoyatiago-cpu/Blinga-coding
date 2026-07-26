@@ -164,3 +164,20 @@ test("adds a reusable and reduced-motion-safe GSAP hover layer", async () => {
   assert.match(css, /\.hover-bounce\{/);
   assert.match(packageJson, /"gsap":/);
 });
+
+test("keeps the AI assistant in an accessible right-edge dock", async () => {
+  const [page, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /className=\{`chat-dock \$\{chatOpen \? "open" : ""\}`\}/);
+  assert.match(page, /aria-expanded=\{chatOpen\}/);
+  assert.match(page, /aria-controls="ai-programming-assistant"/);
+  assert.match(page, /id="ai-programming-assistant"/);
+  assert.match(css, /\.chat-dock\{\s*position:fixed;\s*right:0!important;\s*left:auto!important/);
+  assert.match(css, /transform:translate3d\(calc\(100% - 42px\),0,0\)/);
+  assert.match(css, /\.chat-dock:hover,\s*\.chat-dock:focus-within,\s*\.chat-dock\.open/);
+  assert.match(css, /@media\(hover:none\),\(pointer:coarse\)/);
+  assert.doesNotMatch(css, /button\.hover-bounce\{\s*position:relative/);
+});

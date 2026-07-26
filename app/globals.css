@@ -106,24 +106,12 @@ button,.hover-bounce{
   will-change:transform;
 }
 button.hover-bounce{
-  position:relative;
   isolation:isolate;
   overflow:hidden;
+  transition:filter .2s ease,box-shadow .24s ease;
 }
-button.hover-bounce:before{
-  content:"";
-  position:absolute;
-  inset:-80% -35%;
-  z-index:-1;
-  pointer-events:none;
-  opacity:0;
-  background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.15) 49%,transparent 60%);
-  transform:translateX(-38%) rotate(8deg);
-  transition:opacity .22s ease,transform .48s cubic-bezier(.2,.8,.2,1);
-}
-button.hover-bounce:hover:before{
-  opacity:1;
-  transform:translateX(38%) rotate(8deg);
+button.hover-bounce:hover{
+  filter:saturate(1.08) brightness(1.04);
 }
 button.hover-bounce:focus-visible{
   outline:2px solid rgba(88,230,186,.72);
@@ -149,5 +137,51 @@ button.hover-bounce:focus-visible{
 }
 @media(prefers-reduced-motion:reduce){
   .hover-bounce{will-change:auto!important;transform:none!important}
-  button.hover-bounce:before{display:none}
+}
+
+/* AI assistant edge dock: wrapper owns position, GSAP button owns scale */
+.chat-dock{
+  position:fixed;
+  right:0!important;
+  left:auto!important;
+  bottom:max(23px,env(safe-area-inset-bottom));
+  z-index:70;
+  transform:translate3d(calc(100% - 42px),0,0);
+  transition:
+    transform .32s cubic-bezier(.2,.82,.2,1),
+    bottom .26s cubic-bezier(.2,.8,.2,1);
+  will-change:transform,bottom;
+}
+.chat-dock:hover,
+.chat-dock:focus-within,
+.chat-dock.open{
+  transform:translate3d(-14px,0,0);
+}
+.chat-dock.open{
+  bottom:min(548px,calc(100dvh - 64px));
+}
+.chat-dock .chat-fab{
+  position:relative;
+  right:auto;
+  bottom:auto;
+  display:block;
+}
+.chat{
+  height:min(515px,calc(100dvh - 20px));
+}
+@media(hover:none),(pointer:coarse){
+  .chat-dock{
+    transform:translate3d(-12px,0,0);
+    bottom:max(12px,env(safe-area-inset-bottom));
+  }
+  .chat-dock.open{
+    bottom:min(548px,calc(100dvh - 64px));
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .chat-dock{
+    transform:translate3d(-12px,0,0);
+    transition:none;
+    will-change:auto;
+  }
 }
