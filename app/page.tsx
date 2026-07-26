@@ -1173,6 +1173,25 @@ function Sandbox({
     updateCode(event.target.value);
   }
 
+  function stopRun() {
+    const activeController = runAbortRef.current;
+    if (!activeController) return;
+    activeController.abort();
+    runAbortRef.current = null;
+    setRunningMode(null);
+    updateOutput("■ 已手动停止本次运行\n\n代码与标准输入均已保留，可以修改后重新运行。");
+  }
+
+  function handleRunShortcut(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") return;
+    event.preventDefault();
+    if (runningMode) {
+      stopRun();
+      return;
+    }
+    void runCode(event.shiftKey ? "judge" : "run");
+  }
+
   async function runCode(mode: "run" | "judge" = "run") {
     // 主动运行时使尚未完成的自动检测失效，防止检测结果覆盖运行结果。
     analysisRevisionRef.current += 1;
@@ -1228,14 +1247,17 @@ function Sandbox({
       <div className="sandbox glass">
         <div className="editor-pane">
           <div className="pane-head"><span><i /> main.{lang === "Python" ? "py" : lang === "JavaScript" ? "js" : lang === "Java" ? "java" : "cpp"}</span><button onClick={() => updateCode(lesson.code)}>↺ 重置</button></div>
-          <textarea spellCheck={false} value={code} onChange={handleCodeInput} aria-label="代码编辑器" />
+          <textarea spellCheck={false} value={code} onChange={handleCodeInput} onKeyDown={handleRunShortcut} aria-label="代码编辑器" aria-keyshortcuts="Control+Enter Meta+Enter Control+Shift+Enter Meta+Shift+Enter" />
           <div className="editor-foot">
-            <span>UTF-8 · {code.split("\n").length} 行 · {draftStatus}</span>
+            <span>UTF-8 · {code.split("\n").length} 行 · {draftStatus}<kbd>Ctrl↵ 运行 / ⇧Ctrl↵ 判题</kbd></span>
             <div className="editor-actions">
-              <button className="judge-submit" onClick={() => runCode("judge")} disabled={runningMode !== null}>
+              <button className="stop-run" onClick={stopRun} disabled={runningMode === null}>
+                ■ 停止
+              </button>
+              <button className="judge-submit" onClick={() => runCode("judge")} disabled={runningMode !== null} title="Ctrl/Cmd + Shift + Enter">
                 {runningMode === "judge" ? "判题中…" : "✓ 提交判题"}
               </button>
-              <button className="run" onClick={() => runCode("run")} disabled={runningMode !== null}>
+              <button className="run" onClick={() => runCode("run")} disabled={runningMode !== null} title="Ctrl/Cmd + Enter">
                 {runningMode === "run" ? "运行中…" : "▶ 运行代码"}
               </button>
             </div>
@@ -1248,6 +1270,7 @@ function Sandbox({
             <textarea
               value={stdin}
               onChange={(event) => updateStdin(event.target.value)}
+              onKeyDown={handleRunShortcut}
               placeholder={"每行输入一个值，例如：\nLin\n92"}
               aria-label="程序标准输入"
               spellCheck={false}
