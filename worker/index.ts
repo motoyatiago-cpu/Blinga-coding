@@ -97,6 +97,31 @@ async function ensureCompletionSchema(database: D1Database): Promise<void> {
   ]);
 }
 
+async function ensureRunHistorySchema(database: D1Database): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS code_run_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        language TEXT NOT NULL,
+        topic_index INTEGER NOT NULL,
+        mode TEXT NOT NULL,
+        status_id INTEGER NOT NULL,
+        status_description TEXT NOT NULL,
+        duration_ms INTEGER,
+        memory_kb INTEGER,
+        passed_tests INTEGER,
+        total_tests INTEGER,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS code_run_history_lookup_idx
+      ON code_run_history (user_email, language, topic_index, id DESC)
+    `),
+  ]);
+}
+
 function authenticatedUserEmail(request: Request): string | null {
   const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
   return email && email.length <= 320 ? email : null;
@@ -302,6 +327,61 @@ async function handleCompletionsRequest(request: Request, env: Env): Promise<Res
       passedTests: record.passed_tests,
       totalTests: record.total_tests,
       completedAt: record.completed_at,
+    })),
+  });
+}
+
+async function handleRunHistoryRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "仅支持 GET 请求" }, 405);
+  }
+  const userEmail = authenticatedUserEmail(request);
+  if (!userEmail) {
+    return jsonResponse({ error: "请先登录后再读取运行历史" }, 401);
+  }
+
+  const url = new URL(request.url);
+  const identity = safeDraftIdentity(
+    url.searchParams.get("language"),
+    url.searchParams.get("topicIndex"),
+  );
+  if (!identity) return jsonResponse({ error: "课程标识无效" }, 400);
+
+  await ensureRunHistorySchema(env.DB);
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        id, mode, status_id, status_description, duration_ms,
+        memory_kb, passed_tests, total_tests, created_at
+      FROM code_run_history
+      WHERE user_email = ? AND language = ? AND topic_index = ?
+      ORDER BY id DESC
+      LIMIT 8
+    `)
+    .bind(userEmail, identity.language, identity.topicIndex)
+    .all<{
+      id: number;
+      mode: string;
+      status_id: number;
+      status_description: string;
+      duration_ms: number | null;
+      memory_kb: number | null;
+      passed_tests: number | null;
+      total_tests: number | null;
+      created_at: string;
+    }>();
+
+  return jsonResponse({
+    history: result.results.map((record) => ({
+      id: record.id,
+      mode: record.mode,
+      statusId: record.status_id,
+      statusDescription: record.status_description,
+      durationMs: record.duration_ms,
+      memoryKb: record.memory_kb,
+      passedTests: record.passed_tests,
+      totalTests: record.total_tests,
+      createdAt: record.created_at,
     })),
   });
 }
@@ -603,9 +683,9 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     } : undefined;
     if (judge) judge.passed = judge.tests.filter((test) => test.passed).length;
 
+    const userEmail = authenticatedUserEmail(request);
     let completionSaved = false;
     if (body.judge && judge && judge.passed === judge.total) {
-      const userEmail = authenticatedUserEmail(request);
       if (userEmail) {
         try {
           await ensureCompletionSchema(env.DB);
@@ -629,6 +709,61 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
       }
     }
 
+    let runRecorded = false;
+    if (userEmail) {
+      try {
+        await ensureRunHistorySchema(env.DB);
+        const durationMs = result.time == null
+          ? null
+          : Math.max(0, Math.round(Number(result.time) * 1000));
+        await env.DB
+          .prepare(`
+            INSERT INTO code_run_history (
+              user_email, language, topic_index, mode, status_id,
+              status_description, duration_ms, memory_kb,
+              passed_tests, total_tests, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `)
+          .bind(
+            userEmail,
+            language,
+            topicIndex,
+            body.judge ? "judge" : "run",
+            Number(result.status?.id || 0),
+            String(result.status?.description || "Unknown").slice(0, 100),
+            durationMs !== null && Number.isFinite(durationMs) ? durationMs : null,
+            result.memory == null ? null : Math.max(0, Math.round(Number(result.memory))),
+            judge?.passed ?? null,
+            judge?.total ?? null,
+          )
+          .run();
+        await env.DB
+          .prepare(`
+            DELETE FROM code_run_history
+            WHERE user_email = ? AND language = ? AND topic_index = ?
+              AND id NOT IN (
+                SELECT id FROM code_run_history
+                WHERE user_email = ? AND language = ? AND topic_index = ?
+                ORDER BY id DESC
+                LIMIT 50
+              )
+          `)
+          .bind(
+            userEmail,
+            language,
+            topicIndex,
+            userEmail,
+            language,
+            topicIndex,
+          )
+          .run();
+        runRecorded = true;
+      } catch {
+        runRecorded = false;
+      }
+    }
+
     return jsonResponse({
       status: {
         id: Number(result.status?.id || 0),
@@ -643,6 +778,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
       exitCode,
       judge,
       completionSaved,
+      runRecorded,
     });
   } catch {
     return jsonResponse({ error: "代码执行超时或服务连接失败，请稍后重试" }, 504);
@@ -677,6 +813,10 @@ const worker = {
 
     if (url.pathname === "/api/completions") {
       return handleCompletionsRequest(request, env);
+    }
+
+    if (url.pathname === "/api/run-history") {
+      return handleRunHistoryRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {

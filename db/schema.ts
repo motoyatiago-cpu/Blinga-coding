@@ -28,3 +28,18 @@ export const lessonCompletions = sqliteTable("lesson_completions", {
 }, (table) => [
   primaryKey({ columns: [table.userEmail, table.language, table.topicIndex] }),
 ]);
+
+export const codeRunHistory = sqliteTable("code_run_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userEmail: text("user_email").notNull(),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  mode: text("mode").notNull(),
+  statusId: integer("status_id").notNull(),
+  statusDescription: text("status_description").notNull(),
+  durationMs: integer("duration_ms"),
+  memoryKb: integer("memory_kb"),
+  passedTests: integer("passed_tests"),
+  totalTests: integer("total_tests"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

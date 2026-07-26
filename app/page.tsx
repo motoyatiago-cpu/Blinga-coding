@@ -867,6 +867,7 @@ type RunResult = {
   memory: number | null;
   exitCode: number | null;
   completionSaved?: boolean;
+  runRecorded?: boolean;
   judge?: {
     passed: number;
     total: number;
@@ -877,6 +878,18 @@ type RunResult = {
       actual?: string;
     }>;
   };
+};
+
+type RunHistoryItem = {
+  id: number;
+  mode: "run" | "judge";
+  statusId: number;
+  statusDescription: string;
+  durationMs: number | null;
+  memoryKb: number | null;
+  passedTests: number | null;
+  totalTests: number | null;
+  createdAt: string;
 };
 
 type SandboxContext = {
@@ -1006,6 +1019,17 @@ function formatRunResult(result: RunResult): string {
   return sections.join("\n\n");
 }
 
+function formatRunHistoryTime(value: string): string {
+  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 function Sandbox({
   lang,
   setLang,
@@ -1027,16 +1051,46 @@ function Sandbox({
   const [runningMode, setRunningMode] = useState<"run" | "judge" | null>(null);
   const [draftReadyKey, setDraftReadyKey] = useState("");
   const [draftStatus, setDraftStatus] = useState("正在读取草稿…");
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftEditRevisionRef = useRef(0);
   const draftSaveRevisionRef = useRef(0);
   const lastSavedCodeRef = useRef(lesson.code);
+  const historyRevisionRef = useRef(0);
   const analysisRevisionRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
   const stdinRef = useRef(stdin);
   const outputRef = useRef(output);
   const draftKey = `${lang}:${topicIndex}`;
+
+  const loadRunHistory = useCallback(async () => {
+    const revision = ++historyRevisionRef.current;
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        language: lang,
+        topicIndex: String(topicIndex),
+      });
+      const response = await fetch(`/api/run-history?${params}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      const data = await response.json() as {
+        history?: RunHistoryItem[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(data.error || "运行历史读取失败");
+      if (revision !== historyRevisionRef.current) return;
+      setRunHistory(data.history || []);
+    } catch {
+      if (revision !== historyRevisionRef.current) return;
+      setRunHistory([]);
+    } finally {
+      if (revision === historyRevisionRef.current) setHistoryLoading(false);
+    }
+  }, [lang, topicIndex]);
 
   const updateCode = useCallback((nextCode: string) => {
     draftEditRevisionRef.current += 1;
@@ -1144,6 +1198,10 @@ function Sandbox({
   }, [code, draftKey, draftReadyKey, lang, topicIndex]);
 
   useEffect(() => {
+    void loadRunHistory();
+  }, [loadRunHistory]);
+
+  useEffect(() => {
     // 数据流第 2 步：每次 code 变化都取消上一轮计时，重新开始 500ms 防抖。
     // 用户连续输入期间不会真正执行检测，因此不会浪费 CPU 或后端 API 配额。
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -1227,6 +1285,7 @@ function Sandbox({
       ) {
         onLessonCompleted(lang, topicIndex);
       }
+      if (result.runRecorded) void loadRunHistory();
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       updateOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
@@ -1281,6 +1340,38 @@ function Sandbox({
           <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3 通过") ? "passed" : ""}>{runningMode === "judge" ? "判题中" : runningMode === "run" ? "执行中" : output.includes("自动判题") ? "判题完成" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
       </div>
+      <section className="run-history glass" aria-label="当前知识点运行历史">
+        <div className="run-history-head">
+          <div><span>RUN HISTORY</span><b>最近运行记录</b></div>
+          <small>仅保存状态与性能数据，不保存代码、输入和输出</small>
+        </div>
+        {historyLoading ? (
+          <div className="run-history-empty">正在读取运行记录…</div>
+        ) : runHistory.length ? (
+          <div className="run-history-list">
+            {runHistory.map((item) => {
+              const accepted = item.statusId === 3;
+              return (
+                <article className={accepted ? "accepted" : "failed"} key={item.id}>
+                  <i>{accepted ? "✓" : "!"}</i>
+                  <div>
+                    <b>{item.mode === "judge" ? "自动判题" : "普通运行"}</b>
+                    <span>{item.statusDescription}</span>
+                  </div>
+                  <div className="run-history-metrics">
+                    {item.mode === "judge" && item.totalTests != null && <span>{item.passedTests}/{item.totalTests} 通过</span>}
+                    {item.durationMs != null && <span>{item.durationMs} ms</span>}
+                    {item.memoryKb != null && <span>{Math.max(1, Math.round(item.memoryKb / 1024))} MB</span>}
+                  </div>
+                  <time>{formatRunHistoryTime(item.createdAt)}</time>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="run-history-empty">还没有运行记录，完成一次运行后会显示在这里。</div>
+        )}
+      </section>
     </section>
   );
 }
