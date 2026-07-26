@@ -881,6 +881,7 @@ type RunResult = {
 
 type SandboxContext = {
   code: string;
+  stdin: string;
   output: string;
 };
 
@@ -1021,6 +1022,7 @@ function Sandbox({
   onLessonCompleted: (language: Lang, topicIndex: number) => void;
 }) {
   const [code, setCode] = useState(lesson.code);
+  const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("终端已连接 · 等待输入");
   const [runningMode, setRunningMode] = useState<"run" | "judge" | null>(null);
   const [draftReadyKey, setDraftReadyKey] = useState("");
@@ -1032,19 +1034,26 @@ function Sandbox({
   const lastSavedCodeRef = useRef(lesson.code);
   const analysisRevisionRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
+  const stdinRef = useRef(stdin);
   const outputRef = useRef(output);
   const draftKey = `${lang}:${topicIndex}`;
 
   const updateCode = useCallback((nextCode: string) => {
     draftEditRevisionRef.current += 1;
     setCode(nextCode);
-    onContextChange({ code: nextCode, output: outputRef.current });
+    onContextChange({ code: nextCode, stdin: stdinRef.current, output: outputRef.current });
   }, [onContextChange]);
 
   const updateOutput = useCallback((nextOutput: string, sourceCode = code) => {
     outputRef.current = nextOutput;
     setOutput(nextOutput);
-    onContextChange({ code: sourceCode, output: nextOutput });
+    onContextChange({ code: sourceCode, stdin: stdinRef.current, output: nextOutput });
+  }, [code, onContextChange]);
+
+  const updateStdin = useCallback((nextStdin: string) => {
+    stdinRef.current = nextStdin;
+    setStdin(nextStdin);
+    onContextChange({ code, stdin: nextStdin, output: outputRef.current });
   }, [code, onContextChange]);
 
   useEffect(() => {
@@ -1056,10 +1065,12 @@ function Sandbox({
     setDraftReadyKey("");
     setDraftStatus("正在读取草稿…");
     setCode(lesson.code);
+    stdinRef.current = "";
+    setStdin("");
     const initialOutput = "终端已连接 · 等待输入";
     outputRef.current = initialOutput;
     setOutput(initialOutput);
-    onContextChange({ code: lesson.code, output: initialOutput });
+    onContextChange({ code: lesson.code, stdin: "", output: initialOutput });
 
     const loadDraft = async () => {
       let restoredCode = lesson.code;
@@ -1084,7 +1095,7 @@ function Sandbox({
         // 如果读取期间用户已经开始输入，则保留用户的新内容，不让旧草稿覆盖编辑器。
         if (draftEditRevisionRef.current === editRevisionAtLoad) {
           setCode(restoredCode);
-          onContextChange({ code: restoredCode, output: outputRef.current });
+          onContextChange({ code: restoredCode, stdin: stdinRef.current, output: outputRef.current });
         }
         setDraftStatus(data.draft ? "代码草稿已恢复" : "代码草稿自动保存");
       } catch (error) {
@@ -1182,7 +1193,7 @@ function Sandbox({
         body: JSON.stringify({
           language: lang,
           code,
-          stdin: "",
+          stdin,
           judge: mode === "judge",
           topicIndex,
         }),
@@ -1232,6 +1243,17 @@ function Sandbox({
         </div>
         <div className="terminal-pane">
           <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => updateOutput("")}>清空</button></div>
+          <div className="stdin-panel">
+            <div><span>STDIN · 程序标准输入</span><small>{runningMode === "judge" ? "判题时使用隐藏测试输入" : `${stdin.length} 个字符`}</small><button onClick={() => updateStdin("")} disabled={!stdin}>清空</button></div>
+            <textarea
+              value={stdin}
+              onChange={(event) => updateStdin(event.target.value)}
+              placeholder={"每行输入一个值，例如：\nLin\n92"}
+              aria-label="程序标准输入"
+              spellCheck={false}
+              maxLength={2000}
+            />
+          </div>
           <pre>{output}</pre>
           <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3 通过") ? "passed" : ""}>{runningMode === "judge" ? "判题中" : runningMode === "run" ? "执行中" : output.includes("自动判题") ? "判题完成" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
@@ -1320,6 +1342,7 @@ export default function Home() {
   const [aiBusy, setAiBusy] = useState(false);
   const [sandboxContext, setSandboxContext] = useState<SandboxContext>({
     code: lessons.Python.code,
+    stdin: "",
     output: "终端已连接 · 等待输入",
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1496,6 +1519,8 @@ export default function Home() {
           `当前语言：${lang}`,
           "用户编辑器中的最新代码：",
           sandboxContext.code.slice(-4_000),
+          "程序标准输入：",
+          sandboxContext.stdin.slice(0, 2_000) || "（空）",
           "最近一次实时检测或运行结果：",
           sandboxContext.output.slice(-1_500),
         ].join("\n")
