@@ -680,6 +680,64 @@ const curriculum = defineCurriculum({
   Java: { lessons: javaLessons, guides: javaLessonGuides },
 });
 
+type CourseSearchItem = {
+  language: Lang;
+  topicIndex: number;
+  topicLabel: string;
+  title: string;
+  kicker: string;
+  description: string;
+  searchText: string;
+};
+
+const courseSearchIndex: CourseSearchItem[] = (Object.keys(curriculum) as Lang[]).flatMap(
+  (language) => curriculum[language].lessons.map((course, topicIndex) => {
+    const topicLabel = lessons[language].topics[topicIndex];
+    const guide = curriculum[language].guides[topicIndex];
+    return {
+      language,
+      topicIndex,
+      topicLabel,
+      title: course.title,
+      kicker: course.kicker,
+      description: course.desc,
+      searchText: [
+        language,
+        topicLabel,
+        course.title,
+        course.kicker,
+        course.desc,
+        guide.summary,
+        ...guide.principles.flatMap((principle) => [principle.title, principle.text]),
+        ...guide.pitfalls.flatMap((pitfall) => [pitfall.title, pitfall.wrong, pitfall.right]),
+      ].join(" ").toLocaleLowerCase(),
+    };
+  }),
+);
+
+function findCourseMatches(query: string): CourseSearchItem[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return [];
+
+  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+  return courseSearchIndex
+    .filter((item) => terms.every((term) => item.searchText.includes(term)))
+    .map((item) => {
+      const title = item.title.toLocaleLowerCase();
+      const topic = item.topicLabel.toLocaleLowerCase();
+      const language = item.language.toLocaleLowerCase();
+      const score =
+        (title.includes(normalizedQuery) ? 8 : 0) +
+        (topic.includes(normalizedQuery) ? 6 : 0) +
+        (language.includes(normalizedQuery) ? 4 : 0) +
+        (item.description.toLocaleLowerCase().includes(normalizedQuery) ? 2 : 0);
+      return { item, score };
+    })
+    .sort((left, right) => right.score - left.score || left.item.topicIndex - right.item.topicIndex)
+    .slice(0, 6)
+    .map(({ item }) => item);
+}
+
 const starterNodes: KnowledgeNode[] = [
   { id: "root", type: "knowledge", position: { x: 420, y: 180 }, data: { title: "循环结构", description: "控制重复执行的核心语法", color: "#58e6ba", depth: 0 } },
   { id: "for", type: "knowledge", position: { x: 80, y: 40 }, data: { title: "for 遍历", description: "依次访问可迭代对象", color: "#8ba8ff", depth: 1 } },
@@ -1559,6 +1617,7 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
@@ -1569,6 +1628,7 @@ export default function Home() {
     output: "终端已连接 · 等待输入",
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchRequestRef = useRef(0);
   const syncSandboxContext = useCallback((context: SandboxContext) => {
     setSandboxContext(context);
   }, []);
@@ -1596,17 +1656,43 @@ export default function Home() {
   ).length;
   const completionPercent = Math.round((completedCount / lesson.topics.length) * 100);
   const currentTopicCompleted = completedForCurrentLanguage.includes(selectedTopicIndex);
+  const courseMatches = useMemo(() => findCourseMatches(searchQuery), [searchQuery]);
 
-  function navigateToTopic(nextTopicIndex: number) {
-    const safeTopicIndex = Math.max(0, Math.min(baseLesson.topics.length - 1, nextTopicIndex));
-    if (safeTopicIndex === selectedTopicIndex) return;
+  function navigateToCourse(nextLanguage: Lang, nextTopicIndex: number, fromSearch = false) {
+    const safeTopicIndex = Math.max(
+      0,
+      Math.min(lessons[nextLanguage].topics.length - 1, nextTopicIndex),
+    );
+    const isSameCourse = nextLanguage === lang && safeTopicIndex === selectedTopicIndex;
 
-    setTopicByLang((current) => ({ ...current, [lang]: safeTopicIndex }));
-    const nextUrl = `/?lang=${encodeURIComponent(lang)}&topic=${safeTopicIndex}#learn`;
-    window.history.pushState({ lang, topic: safeTopicIndex }, "", nextUrl);
+    setLang(nextLanguage);
+    setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopicIndex }));
+    if (fromSearch) {
+      setSearchOpen(false);
+      setSearchResult("");
+    }
+    if (!isSameCourse) {
+      const nextUrl = `/?lang=${encodeURIComponent(nextLanguage)}&topic=${safeTopicIndex}#learn`;
+      window.history.pushState(
+        { lang: nextLanguage, topic: safeTopicIndex },
+        "",
+        nextUrl,
+      );
+    }
     window.requestAnimationFrame(() => {
       document.getElementById("learn")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  function navigateToTopic(nextTopicIndex: number) {
+    navigateToCourse(lang, nextTopicIndex);
+  }
+
+  function updateSearchQuery(value: string) {
+    searchRequestRef.current += 1;
+    setSearchQuery(value);
+    setSearchResult("");
+    setSearchBusy(false);
   }
 
   useEffect(() => {
@@ -1747,7 +1833,14 @@ export default function Home() {
           "最近一次实时检测或运行结果：",
           sandboxContext.output.slice(-1_500),
         ].join("\n")
-      : `${lesson.kicker}\n${lesson.desc}`;
+      : [
+          `当前课程：${lesson.kicker}`,
+          `当前知识点：${lesson.title}`,
+          "Blinga coding 全部课程目录：",
+          ...courseSearchIndex.map(
+            (item) => `${item.language} 第${item.topicIndex + 1}节 ${item.title}：${item.description}`,
+          ),
+        ].join("\n").slice(0, 5_500);
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1760,9 +1853,19 @@ export default function Home() {
 
   async function search() {
     if (!searchQuery.trim()) return;
+    const requestId = ++searchRequestRef.current;
+    setSearchBusy(true);
     setSearchResult("正在检索课程知识与扩展资料…");
-    try { setSearchResult(await callAi("search", searchQuery)); }
-    catch (error) { setSearchResult(error instanceof Error ? error.message : "搜索失败"); }
+    try {
+      const answer = await callAi("search", searchQuery);
+      if (requestId === searchRequestRef.current) setSearchResult(answer);
+    } catch (error) {
+      if (requestId === searchRequestRef.current) {
+        setSearchResult(error instanceof Error ? error.message : "搜索失败");
+      }
+    } finally {
+      if (requestId === searchRequestRef.current) setSearchBusy(false);
+    }
   }
 
   async function ask(text = question) {
@@ -1790,9 +1893,28 @@ export default function Home() {
         </header>
 
         <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
-          <div className="search-dialog glass">
-            <div className="search-dialog-head"><div><b>AI 全局知识搜索</b><small>搜索课程概念、语法或错误信息</small></div><button onClick={() => setSearchOpen(false)}>×</button></div>
-            <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：for 与 while 应该怎么选择？" /><button onClick={search}>搜索</button></div>
+          <div className="search-dialog glass" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
+            <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b><small>即时匹配全部课程，需要时再使用 AI 深度解释</small></div><button onClick={() => setSearchOpen(false)} aria-label="关闭搜索">×</button></div>
+            <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：循环、指针、异步编程…" /><button onClick={search} disabled={!searchQuery.trim() || searchBusy}>{searchBusy ? "分析中" : "AI 深度搜索"}</button></div>
+            {searchQuery.trim() && <section className="course-search-results" aria-label="即时课程匹配">
+              <header><span>即时课程匹配</span><b>{courseMatches.length ? `${courseMatches.length} 个结果` : "暂无匹配"}</b></header>
+              {courseMatches.length > 0
+                ? <div>{courseMatches.map((item) =>
+                    <button
+                      key={`${item.language}:${item.topicIndex}`}
+                      onClick={() => navigateToCourse(item.language, item.topicIndex, true)}
+                    >
+                      <i style={{ background: lessons[item.language].color }}>{lessons[item.language].icon}</i>
+                      <span>
+                        <small>{item.language} · 第 {String(item.topicIndex + 1).padStart(2, "0")} 节</small>
+                        <b>{item.title}</b>
+                        <em>{item.description}</em>
+                      </span>
+                      <strong>打开 →</strong>
+                    </button>
+                  )}</div>
+                : <p>没有找到完全匹配的课程，可调整关键词或使用 AI 深度搜索。</p>}
+            </section>}
             {searchResult && <div className="search-answer"><span>✦ AI ANSWER</span><p>{searchResult}</p></div>}
           </div>
         </div>

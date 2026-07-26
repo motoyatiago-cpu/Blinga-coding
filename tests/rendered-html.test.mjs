@@ -36,6 +36,8 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /在线实训沙盒/);
   assert.match(html, /我的学习笔记/);
   assert.match(html, /停止输入 500ms 后自动保存/);
+  assert.match(html, /全站课程与 AI 搜索/);
+  assert.match(html, /AI 深度搜索/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -54,4 +56,14 @@ test("keeps the notes endpoint and persistent schema wired together", async () =
   assert.match(worker, /ON CONFLICT\(user_email, language, topic_index\) DO UPDATE/);
   assert.match(schema, /sqliteTable\("learning_notes"/);
   assert.match(hosting, /"d1": "DB"/);
+});
+
+test("indexes every independent lesson for instant course search", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /const courseSearchIndex: CourseSearchItem\[\]/);
+  assert.match(page, /function findCourseMatches\(query: string\)/);
+  assert.match(page, /terms\.every\(\(term\) => item\.searchText\.includes\(term\)\)/);
+  assert.match(page, /navigateToCourse\(item\.language, item\.topicIndex, true\)/);
+  assert.match(page, /即时课程匹配/);
 });
