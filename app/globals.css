@@ -185,3 +185,231 @@ button.hover-bounce:focus-visible{
     will-change:auto;
   }
 }
+
+/* macOS graphite code workspace */
+:root{
+  --mac-graphite:#0d1118;
+  --mac-graphite-deep:#080b10;
+  --mac-titlebar:rgba(31,35,43,.92);
+  --mac-line:rgba(255,255,255,.1);
+  --mac-code:#d8dee9;
+  --mac-muted:#6e7888;
+}
+html{
+  scroll-padding-top:86px;
+  scrollbar-gutter:stable;
+}
+.blinga-smooth-scroll body{
+  overscroll-behavior-y:none;
+}
+.code-example,
+.deep-example,
+.sandbox,
+.run-history{
+  border:1px solid rgba(255,255,255,.115);
+  background:linear-gradient(145deg,rgba(29,33,41,.92),rgba(9,12,18,.96));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.075),
+    0 28px 70px rgba(0,0,0,.34);
+}
+.code-example,
+.deep-example,
+.sandbox{
+  border-radius:18px;
+}
+.pane-head{
+  min-height:48px;
+  padding:0 15px;
+  border-bottom:1px solid var(--mac-line);
+  background:
+    linear-gradient(180deg,rgba(41,45,54,.96),rgba(25,29,37,.94));
+  color:#9aa3b2;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  box-shadow:inset 0 1px rgba(255,255,255,.075);
+}
+.pane-head:before,
+.run-history-head:before{
+  content:"";
+  flex:0 0 43px;
+  width:11px;
+  height:11px;
+  margin-right:2px;
+  border-radius:50%;
+  background:#ff5f57;
+  box-shadow:16px 0 #febc2e,32px 0 #28c840;
+}
+.pane-head>span{
+  min-width:0;
+  overflow:hidden;
+  color:#aab2bf;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pane-head>span>i{
+  display:none;
+}
+.pane-head button{
+  border-color:rgba(255,255,255,.095);
+  background:rgba(255,255,255,.045);
+  color:#aeb6c4;
+}
+.pane-head button:hover{
+  border-color:rgba(255,255,255,.16);
+  background:rgba(255,255,255,.075);
+  color:#f3f5f8;
+}
+.code-example pre,
+.deep-example pre,
+.code-editor-body,
+.terminal-pane>pre,
+.stdin-panel textarea{
+  color:var(--mac-code);
+  background:
+    linear-gradient(115deg,rgba(255,255,255,.018),transparent 36%),
+    var(--mac-graphite-deep);
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  font-variant-ligatures:none;
+  text-rendering:optimizeLegibility;
+}
+.code-example pre,
+.deep-example pre{
+  line-height:1.78;
+  tab-size:2;
+}
+.deep-example{
+  position:relative;
+  padding-top:46px;
+}
+.deep-example:before{
+  content:"";
+  position:absolute;
+  top:18px;
+  left:17px;
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:#ff5f57;
+  box-shadow:16px 0 #febc2e,32px 0 #28c840;
+}
+.deep-example:after{
+  content:"CODE WALKTHROUGH";
+  position:absolute;
+  top:16px;
+  left:76px;
+  color:#7e8796;
+  font:9px "SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  letter-spacing:.7px;
+}
+.example-explain{
+  background:linear-gradient(145deg,rgba(31,35,43,.82),rgba(18,21,28,.86));
+}
+.code-editor-body{
+  border-bottom:0;
+}
+.code-line-numbers{
+  border-right-color:rgba(255,255,255,.065);
+  background:#090c12;
+  color:#4f5968;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+}
+.editor-pane .code-editor-body textarea{
+  caret-color:#7ee7c3;
+  color:#d8dee9;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  transition:background .18s ease,box-shadow .18s ease;
+}
+.editor-pane .code-editor-body textarea:focus{
+  background:rgba(255,255,255,.012);
+  box-shadow:inset 2px 0 #58e6ba88;
+}
+.editor-pane .code-editor-body textarea::selection,
+.stdin-panel textarea::selection,
+.terminal-pane pre::selection,
+.code-example pre::selection,
+.deep-example pre::selection{
+  color:#f5fffb;
+  background:#286f5c;
+}
+.editor-foot,
+.judge-row{
+  border-top-color:var(--mac-line);
+  background:linear-gradient(180deg,rgba(29,33,41,.97),rgba(20,23,30,.97));
+}
+.editor-foot{
+  color:#657080;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+}
+.terminal-pane{
+  background:var(--mac-graphite-deep);
+}
+.terminal-pane>pre{
+  color:#79e2b8;
+  text-shadow:0 0 18px rgba(88,230,186,.08);
+}
+.stdin-panel{
+  border-bottom-color:var(--mac-line);
+  background:linear-gradient(180deg,rgba(24,28,35,.96),rgba(14,17,23,.96));
+}
+.stdin-panel textarea{
+  border-color:rgba(255,255,255,.095);
+  border-radius:9px;
+  caret-color:#7ee7c3;
+  box-shadow:inset 0 1px 8px rgba(0,0,0,.22);
+}
+.stdin-panel textarea:focus{
+  border-color:rgba(88,230,186,.48);
+  box-shadow:0 0 0 3px rgba(88,230,186,.065),inset 0 1px 8px rgba(0,0,0,.2);
+}
+.run-history{
+  border-radius:16px;
+}
+.run-history-head{
+  min-height:52px;
+  background:linear-gradient(180deg,rgba(41,45,54,.96),rgba(25,29,37,.94));
+  box-shadow:inset 0 1px rgba(255,255,255,.075);
+}
+.run-history-list article{
+  background:rgba(9,12,18,.9);
+}
+.run-history-list article:hover{
+  background:rgba(255,255,255,.026);
+}
+.code-example pre,
+.deep-example pre,
+.code-editor-body textarea,
+.terminal-pane>pre,
+.stdin-panel textarea{
+  scrollbar-width:thin;
+  scrollbar-color:#4b5360 transparent;
+}
+.code-example pre::-webkit-scrollbar,
+.deep-example pre::-webkit-scrollbar,
+.code-editor-body textarea::-webkit-scrollbar,
+.terminal-pane>pre::-webkit-scrollbar,
+.stdin-panel textarea::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+.code-example pre::-webkit-scrollbar-thumb,
+.deep-example pre::-webkit-scrollbar-thumb,
+.code-editor-body textarea::-webkit-scrollbar-thumb,
+.terminal-pane>pre::-webkit-scrollbar-thumb,
+.stdin-panel textarea::-webkit-scrollbar-thumb{
+  border:2px solid transparent;
+  border-radius:999px;
+  background:rgba(126,135,150,.48);
+  background-clip:padding-box;
+}
+.code-example pre::-webkit-scrollbar-corner,
+.deep-example pre::-webkit-scrollbar-corner,
+.code-editor-body textarea::-webkit-scrollbar-corner,
+.terminal-pane>pre::-webkit-scrollbar-corner{
+  background:transparent;
+}
+@media(max-width:650px){
+  .pane-head:before{flex-basis:39px;transform:scale(.88);transform-origin:left center}
+  .deep-example{padding-top:43px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+}

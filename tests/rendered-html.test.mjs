@@ -181,3 +181,29 @@ test("keeps the AI assistant in an accessible right-edge dock", async () => {
   assert.match(css, /@media\(hover:none\),\(pointer:coarse\)/);
   assert.doesNotMatch(css, /button\.hover-bounce\{\s*position:relative/);
 });
+
+test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
+  const [smoothScroll, layout, css, packageJson] = await Promise.all([
+    readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(smoothScroll, /new Lenis\(\{/);
+  assert.match(smoothScroll, /autoRaf: true/);
+  assert.match(smoothScroll, /duration: 1\.05/);
+  assert.match(smoothScroll, /anchors: \{ offset: -82 \}/);
+  assert.match(smoothScroll, /data-lenis-prevent/);
+  assert.match(smoothScroll, /prefers-reduced-motion: reduce/);
+  assert.match(smoothScroll, /\.graph-shell/);
+  assert.doesNotMatch(smoothScroll, /allowNestedScroll/);
+  assert.match(layout, /<SmoothScrollMotion \/>/);
+  assert.match(layout, /lenis\/dist\/lenis\.css/);
+  assert.match(packageJson, /"lenis":/);
+  assert.match(css, /--mac-graphite:#0d1118/);
+  assert.match(css, /\.pane-head:before,\s*\.run-history-head:before/);
+  assert.match(css, /background:#ff5f57/);
+  assert.match(css, /box-shadow:16px 0 #febc2e,32px 0 #28c840/);
+  assert.match(css, /"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas/);
+});
