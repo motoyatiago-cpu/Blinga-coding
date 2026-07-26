@@ -222,3 +222,25 @@ test("removes decorative and redundant UI prompts while preserving status feedba
   assert.match(page, /statusDescription/);
   assert.match(page, /aria-live="polite"/);
 });
+
+test("applies the Blinga coding V2 product design system without replacing feature modules", async () => {
+  const [css, page, motion, smoothScroll] = await Promise.all([
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(css, /Blinga coding V2/);
+  assert.match(css, /--accent:#7182ff/);
+  assert.match(css, /--radius-lg:24px/);
+  assert.match(css, /@view-transition\{\s*navigation:auto/);
+  assert.match(css, /\.chat\{\s*right:18px/);
+  assert.match(css, /\.graph-shell\{/);
+  assert.match(css, /\.sandbox\{/);
+  assert.match(page, /<StableKnowledgeGraph lesson=\{lesson\} code=\{lesson\.code\}/);
+  assert.match(page, /<StableSandbox lang=\{lang\}/);
+  assert.match(page, /\/api\/ai/);
+  assert.match(motion, /gsap\.utils\.toArray/);
+  assert.match(smoothScroll, /new Lenis/);
+});
