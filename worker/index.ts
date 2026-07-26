@@ -31,6 +31,7 @@ const MAX_CODE_INPUT = 12_000;
 const MAX_STDIN_INPUT = 2_000;
 const MAX_RUNNER_OUTPUT = 16_000;
 const MAX_NOTE_INPUT = 8_000;
+const AI_UPSTREAM_TIMEOUT_MS = 45_000;
 
 type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
 type LearningProgress = {
@@ -600,9 +601,12 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
     ? baseUrl
     : `${baseUrl.replace(/\/$/, "")}/chat/completions`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_UPSTREAM_TIMEOUT_MS);
   try {
     const upstream = await fetch(endpoint, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${env.LLM_API_KEY}`,
         "Content-Type": "application/json",
@@ -661,7 +665,12 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
 
     return jsonResponse({ answer: content.slice(0, 8000) });
   } catch {
+    if (controller.signal.aborted) {
+      return jsonResponse({ error: "AI 服务响应超时，请稍后重试" }, 504);
+    }
     return jsonResponse({ error: "AI 响应处理失败，请重新尝试" }, 502);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

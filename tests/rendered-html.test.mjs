@@ -38,6 +38,8 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /停止输入 500ms 后自动保存/);
   assert.match(html, /全站课程与 AI 搜索/);
   assert.match(html, /AI 深度搜索/);
+  assert.match(html, /清空/);
+  assert.match(html, /发送问题/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -66,4 +68,19 @@ test("indexes every independent lesson for instant course search", async () => {
   assert.match(page, /terms\.every\(\(term\) => item\.searchText\.includes\(term\)\)/);
   assert.match(page, /navigateToCourse\(item\.language, item\.topicIndex, true\)/);
   assert.match(page, /即时课程匹配/);
+});
+
+test("makes AI requests cancellable and time-bounded", async () => {
+  const [page, worker] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /function stopAiAnswer\(\)/);
+  assert.match(page, /chatAbortRef\.current\?\.abort\(\)/);
+  assert.match(page, /container\.scrollTo\(\{ top: container\.scrollHeight, behavior: "smooth" \}\)/);
+  assert.match(page, /aria-label=\{aiBusy \? "停止 AI 回答" : "发送问题"\}/);
+  assert.match(worker, /const AI_UPSTREAM_TIMEOUT_MS = 45_000/);
+  assert.match(worker, /signal: controller\.signal/);
+  assert.match(worker, /AI 服务响应超时，请稍后重试/);
 });

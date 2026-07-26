@@ -58,6 +58,11 @@ type KnowledgeData = {
 };
 type KnowledgeNode = Node<KnowledgeData, "knowledge">;
 
+const INITIAL_CHAT_MESSAGE = {
+  role: "ai",
+  text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。",
+};
+
 const lessons: Record<Lang, Course> = {
   Python: {
     icon: "Py",
@@ -1620,7 +1625,7 @@ export default function Home() {
   const [searchBusy, setSearchBusy] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([{ role: "ai", text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。" }]);
+  const [messages, setMessages] = useState([{ ...INITIAL_CHAT_MESSAGE }]);
   const [aiBusy, setAiBusy] = useState(false);
   const [sandboxContext, setSandboxContext] = useState<SandboxContext>({
     code: lessons.Python.code,
@@ -1629,6 +1634,10 @@ export default function Home() {
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchRequestRef = useRef(0);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const chatRequestRef = useRef(0);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
   const syncSandboxContext = useCallback((context: SandboxContext) => {
     setSandboxContext(context);
   }, []);
@@ -1689,6 +1698,7 @@ export default function Home() {
   }
 
   function updateSearchQuery(value: string) {
+    searchAbortRef.current?.abort();
     searchRequestRef.current += 1;
     setSearchQuery(value);
     setSearchResult("");
@@ -1710,6 +1720,22 @@ export default function Home() {
   useEffect(() => {
     if (searchOpen) window.setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      const container = chatMessagesRef.current;
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [aiBusy, chatOpen, messages]);
+
+  useEffect(() => () => {
+    searchAbortRef.current?.abort();
+    chatAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1819,7 +1845,7 @@ export default function Home() {
     };
   }, []);
 
-  async function callAi(mode: "chat" | "search", prompt: string) {
+  async function callAi(mode: "chat" | "search", prompt: string, signal?: AbortSignal) {
     const context = mode === "chat"
       ? [
           `当前课程：${lesson.kicker}`,
@@ -1845,6 +1871,7 @@ export default function Home() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode, prompt, context }),
+      signal,
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "AI 服务暂时不可用");
@@ -1853,33 +1880,88 @@ export default function Home() {
 
   async function search() {
     if (!searchQuery.trim()) return;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     const requestId = ++searchRequestRef.current;
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 50_000);
     setSearchBusy(true);
     setSearchResult("正在检索课程知识与扩展资料…");
     try {
-      const answer = await callAi("search", searchQuery);
+      const answer = await callAi("search", searchQuery, controller.signal);
       if (requestId === searchRequestRef.current) setSearchResult(answer);
     } catch (error) {
       if (requestId === searchRequestRef.current) {
-        setSearchResult(error instanceof Error ? error.message : "搜索失败");
+        if (error instanceof DOMException && error.name === "AbortError") {
+          if (timedOut) setSearchResult("AI 搜索响应超时，请稍后重试");
+        } else {
+          setSearchResult(error instanceof Error ? error.message : "搜索失败");
+        }
       }
     } finally {
-      if (requestId === searchRequestRef.current) setSearchBusy(false);
+      window.clearTimeout(timeoutId);
+      if (requestId === searchRequestRef.current) {
+        searchAbortRef.current = null;
+        setSearchBusy(false);
+      }
     }
   }
 
   async function ask(text = question) {
     if (!text.trim() || aiBusy) return;
     const value = text.trim();
-    setMessages((current) => [...current, { role: "user", text: value }]);
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+    const requestId = ++chatRequestRef.current;
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 50_000);
+
+    setMessages((current) => [...current, { role: "user", text: value }].slice(-40));
     setQuestion("");
     setAiBusy(true);
     try {
-      const answer = await callAi("chat", value);
-      setMessages((current) => [...current, { role: "ai", text: answer }]);
+      const answer = await callAi("chat", value, controller.signal);
+      if (requestId === chatRequestRef.current) {
+        setMessages((current) => [...current, { role: "ai", text: answer }].slice(-40));
+      }
     } catch (error) {
-      setMessages((current) => [...current, { role: "ai", text: error instanceof Error ? error.message : "AI 服务暂时不可用" }]);
-    } finally { setAiBusy(false); }
+      if (requestId === chatRequestRef.current) {
+        const text = error instanceof DOMException && error.name === "AbortError"
+          ? timedOut
+            ? "AI 响应超时，本次请求已自动停止，请稍后重试。"
+            : "已停止本次回答。你可以调整问题后重新发送。"
+          : error instanceof Error
+            ? error.message
+            : "AI 服务暂时不可用";
+        setMessages((current) => [...current, { role: "ai", text }].slice(-40));
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (requestId === chatRequestRef.current) {
+        chatAbortRef.current = null;
+        setAiBusy(false);
+      }
+    }
+  }
+
+  function stopAiAnswer() {
+    chatAbortRef.current?.abort();
+  }
+
+  function clearConversation() {
+    chatRequestRef.current += 1;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setAiBusy(false);
+    setQuestion("");
+    setMessages([{ ...INITIAL_CHAT_MESSAGE }]);
   }
 
   return (
@@ -2009,10 +2091,10 @@ export default function Home() {
 
         <button className={`chat-fab ${chatOpen ? "open" : ""}`} onClick={() => setChatOpen((current) => !current)}><span>✦</span>{chatOpen ? "收起" : "问 AI"}</button>
         <aside className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
-          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><button onClick={() => setChatOpen(false)}>×</button></div>
-          <div className="messages">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai">正在组织答案…</div>}</div>
-          <div className="chips"><button onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
-          <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="输入你的编程问题…" /><button onClick={() => ask()}>↑</button></div>
+          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
+          <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
+          <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
+          <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的编程问题…"} /><button className={aiBusy ? "stop" : ""} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? "■" : "↑"}</button></div>
         </aside>
       </main>
     </ReactFlowProvider>
