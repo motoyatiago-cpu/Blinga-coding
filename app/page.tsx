@@ -1737,6 +1737,7 @@ function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
         </article>)}
       </div>
       <div className="deep-example glass">
+        <div className="mac-code-head" aria-hidden="true"><span>code walkthrough</span></div>
         <div className="example-explain">
           <span className="eyebrow purple">CODE WALKTHROUGH</span>
           <h3>{guide.syntaxTitle}</h3>

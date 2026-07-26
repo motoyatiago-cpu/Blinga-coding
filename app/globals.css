@@ -1412,3 +1412,525 @@ button.hover-bounce:focus-visible{
     animation:none;
   }
 }
+
+/* Xcode code surfaces — visual-only layer */
+:root{
+  --xcode-window:#0b0d12;
+  --xcode-editor:#080a0f;
+  --xcode-gutter:#0d1016;
+  --xcode-titlebar-top:#30323a;
+  --xcode-titlebar-bottom:#22242b;
+  --xcode-statusbar-top:#25272e;
+  --xcode-statusbar-bottom:#1a1c22;
+  --xcode-border:rgba(255,255,255,.105);
+  --xcode-divider:rgba(255,255,255,.075);
+  --xcode-text:#d9dee8;
+  --xcode-secondary:#9299a6;
+  --xcode-tertiary:#5d6573;
+  --xcode-blue:#7f8fff;
+  --xcode-console:#62d69f;
+  --xcode-warning:#f2c66d;
+  --xcode-error:#ff837a;
+  --xcode-red:#ff5f57;
+  --xcode-yellow:#febc2e;
+  --xcode-green:#28c840;
+}
+
+.code-example,
+.deep-example,
+.sandbox,
+.run-history{
+  overflow:hidden;
+  border:1px solid var(--xcode-border);
+  border-radius:20px;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.018),transparent 42%),
+    var(--xcode-window);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.085),
+    inset 0 0 0 1px rgba(255,255,255,.012),
+    0 30px 76px rgba(0,0,0,.36);
+}
+
+.pane-head,
+.run-history-head,
+.mac-code-head{
+  position:relative;
+  min-height:50px;
+  border-bottom:1px solid var(--xcode-divider);
+  background:
+    linear-gradient(180deg,var(--xcode-titlebar-top),var(--xcode-titlebar-bottom));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.095),
+    inset 0 -1px rgba(0,0,0,.2);
+  color:var(--xcode-secondary);
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+}
+
+.pane-head{
+  height:50px;
+  padding:0 14px 0 82px;
+}
+
+.run-history-head{
+  padding:10px 16px 10px 82px;
+}
+
+.mac-code-head{
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  padding:0 16px 0 82px;
+}
+
+.mac-code-head>span{
+  min-width:0;
+  overflow:hidden;
+  color:#aeb4bf;
+  font-size:10px;
+  letter-spacing:.2px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.pane-head::before,
+.run-history-head::before,
+.mac-code-head::before{
+  content:"";
+  position:absolute;
+  left:18px;
+  top:50%;
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:var(--xcode-red);
+  box-shadow:18px 0 var(--xcode-yellow),36px 0 var(--xcode-green);
+  transform:translateY(-50%);
+  pointer-events:none;
+}
+
+.pane-head::after,
+.run-history-head::after,
+.mac-code-head::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,.018),transparent 32%);
+}
+
+.pane-head>*,
+.run-history-head>*,
+.mac-code-head>*{
+  position:relative;
+  z-index:1;
+}
+
+.pane-head>span{
+  color:#b4bac5;
+  font-size:10px;
+  font-weight:540;
+  letter-spacing:.15px;
+}
+
+.pane-head button,
+.editor-file-actions button{
+  min-height:30px;
+  padding:0 10px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:8px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
+  color:#aeb5c1;
+  box-shadow:inset 0 1px rgba(255,255,255,.04);
+}
+
+.pane-head button:hover,
+.editor-file-actions button:hover{
+  border-color:rgba(255,255,255,.16);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.055));
+  color:#f4f6fa;
+}
+
+.editor-file-actions{
+  flex:0 0 auto;
+  gap:6px;
+}
+
+.deep-example{
+  grid-template-rows:50px auto;
+}
+
+.example-explain{
+  border-right-color:var(--xcode-divider);
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.025),transparent 55%),
+    #14171e;
+}
+
+.code-example pre,
+.deep-example pre,
+.code-editor-body,
+.terminal-pane>pre,
+.stdin-panel textarea{
+  background:
+    linear-gradient(110deg,rgba(255,255,255,.012),transparent 38%),
+    var(--xcode-editor);
+  color:var(--xcode-text);
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  font-variant-ligatures:none;
+  font-size:13px;
+  line-height:1.72;
+  text-rendering:optimizeLegibility;
+}
+
+.code-example pre{
+  padding:28px 30px;
+}
+
+.deep-example pre{
+  min-height:310px;
+  padding:30px;
+}
+
+.code-editor-body{
+  height:390px;
+  grid-template-columns:50px minmax(0,1fr);
+}
+
+.code-line-numbers{
+  height:390px;
+  padding:24px 12px 24px 0;
+  border-right:1px solid var(--xcode-divider);
+  background:var(--xcode-gutter);
+  color:#4f5765;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  font-size:13px;
+  line-height:1.72;
+}
+
+.editor-pane{
+  min-width:0;
+  border-right-color:var(--xcode-divider);
+  background:var(--xcode-editor);
+}
+
+.editor-pane .code-editor-body textarea{
+  height:390px;
+  padding:24px;
+  background:transparent;
+  caret-color:var(--xcode-blue);
+  color:var(--xcode-text);
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+  font-size:13px;
+  line-height:1.72;
+}
+
+.editor-pane .code-editor-body textarea:focus{
+  background:rgba(127,143,255,.018);
+  box-shadow:
+    inset 2px 0 rgba(127,143,255,.68),
+    inset 0 0 28px rgba(127,143,255,.018);
+}
+
+.editor-pane .code-editor-body textarea::selection,
+.stdin-panel textarea::selection,
+.terminal-pane pre::selection,
+.code-example pre::selection,
+.deep-example pre::selection{
+  color:#fff;
+  background:#3c4a91;
+}
+
+.editor-foot,
+.judge-row{
+  min-height:54px;
+  border-top:1px solid var(--xcode-divider);
+  background:
+    linear-gradient(180deg,var(--xcode-statusbar-top),var(--xcode-statusbar-bottom));
+  box-shadow:inset 0 1px rgba(255,255,255,.035);
+}
+
+.editor-foot{
+  color:#69717f;
+  font-family:"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,var(--font-geist-mono),monospace;
+}
+
+.editor-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.editor-actions button{
+  min-height:32px;
+  border-radius:8px;
+  box-shadow:inset 0 1px rgba(255,255,255,.05);
+}
+
+.stop-run{
+  border-color:rgba(255,131,122,.28);
+  background:rgba(255,131,122,.075);
+  color:#ff9b94;
+}
+
+.stop-run:not(:disabled):hover{
+  border-color:rgba(255,131,122,.46);
+  background:rgba(255,131,122,.13);
+}
+
+.judge-submit{
+  border:1px solid rgba(98,214,159,.25);
+  background:rgba(98,214,159,.075);
+  color:#82dfb2;
+}
+
+.judge-submit:not(:disabled):hover{
+  border-color:rgba(98,214,159,.42);
+  background:rgba(98,214,159,.12);
+}
+
+.terminal-pane{
+  min-width:0;
+  background:var(--xcode-editor);
+}
+
+.stdin-panel{
+  padding:12px 14px;
+  border-bottom:1px solid var(--xcode-divider);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.022),transparent),
+    #11141b;
+}
+
+.stdin-panel>div{
+  color:#737b89;
+}
+
+.stdin-panel textarea{
+  height:76px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:10px;
+  background:#090b10;
+  caret-color:var(--xcode-blue);
+  color:#cbd1dc;
+  box-shadow:
+    inset 0 1px 10px rgba(0,0,0,.3),
+    0 1px rgba(255,255,255,.018);
+}
+
+.stdin-panel textarea:focus{
+  border-color:rgba(127,143,255,.5);
+  box-shadow:
+    0 0 0 3px rgba(127,143,255,.075),
+    inset 0 1px 10px rgba(0,0,0,.3);
+}
+
+.terminal-pane>pre{
+  min-height:210px;
+  color:var(--xcode-console);
+  text-shadow:0 0 18px rgba(98,214,159,.07);
+}
+
+.judge-row{
+  color:#7d8593;
+}
+
+.judge-row b{
+  color:#9199a7;
+}
+
+.judge-row b.passed{
+  color:var(--xcode-console);
+}
+
+.status-dot{
+  background:var(--xcode-console);
+  box-shadow:0 0 10px rgba(98,214,159,.55);
+}
+
+.run-history{
+  border-radius:18px;
+}
+
+.run-history-head>div span{
+  color:#a9b2ff;
+}
+
+.run-history-list{
+  background:var(--xcode-editor);
+}
+
+.run-history-list article{
+  min-height:50px;
+  border-bottom-color:var(--xcode-divider);
+  background:rgba(8,10,15,.94);
+}
+
+.run-history-list article:hover{
+  background:rgba(255,255,255,.025);
+}
+
+.run-history-list article.accepted>i{
+  background:rgba(98,214,159,.12);
+  color:var(--xcode-console);
+}
+
+.run-history-list article.failed>i{
+  background:rgba(255,131,122,.12);
+  color:var(--xcode-error);
+}
+
+.run-history-metrics span{
+  border:1px solid rgba(255,255,255,.045);
+  background:rgba(255,255,255,.035);
+  color:#7b8492;
+}
+
+.code-example pre,
+.deep-example pre,
+.code-editor-body textarea,
+.terminal-pane>pre,
+.stdin-panel textarea{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(142,149,162,.42) transparent;
+}
+
+.code-example pre::-webkit-scrollbar,
+.deep-example pre::-webkit-scrollbar,
+.code-editor-body textarea::-webkit-scrollbar,
+.terminal-pane>pre::-webkit-scrollbar,
+.stdin-panel textarea::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+
+.code-example pre::-webkit-scrollbar-thumb,
+.deep-example pre::-webkit-scrollbar-thumb,
+.code-editor-body textarea::-webkit-scrollbar-thumb,
+.terminal-pane>pre::-webkit-scrollbar-thumb,
+.stdin-panel textarea::-webkit-scrollbar-thumb{
+  border:2px solid transparent;
+  border-radius:999px;
+  background:rgba(142,149,162,.42);
+  background-clip:padding-box;
+}
+
+.sandbox-focus-mode .sandbox{
+  border-color:rgba(255,255,255,.13);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.085),
+    0 36px 100px rgba(0,0,0,.5);
+}
+
+.sandbox-focus-mode .code-editor-body,
+.sandbox-focus-mode .code-line-numbers,
+.sandbox-focus-mode .editor-pane .code-editor-body textarea{
+  font-size:13px;
+}
+
+@media(max-width:650px){
+  .code-example,
+  .deep-example,
+  .sandbox,
+  .run-history{
+    border-radius:16px;
+  }
+
+  .pane-head,
+  .run-history-head,
+  .mac-code-head{
+    min-height:46px;
+  }
+
+  .pane-head{
+    height:46px;
+    padding-right:10px;
+    padding-left:72px;
+  }
+
+  .run-history-head,
+  .mac-code-head{
+    padding-left:72px;
+  }
+
+  .pane-head::before,
+  .run-history-head::before,
+  .mac-code-head::before{
+    left:15px;
+    width:10px;
+    height:10px;
+    box-shadow:16px 0 var(--xcode-yellow),32px 0 var(--xcode-green);
+  }
+
+  .deep-example{
+    grid-template-rows:46px auto auto;
+  }
+
+  .code-editor-body{
+    height:370px;
+    grid-template-columns:42px minmax(0,1fr);
+  }
+
+  .code-line-numbers{
+    height:370px;
+    padding-right:9px;
+    font-size:12px;
+  }
+
+  .editor-pane .code-editor-body textarea{
+    height:370px;
+    padding:20px 16px;
+    font-size:12px;
+  }
+
+  .code-example pre,
+  .deep-example pre{
+    padding:22px 18px;
+    font-size:12px;
+  }
+
+  .editor-foot{
+    min-height:58px;
+    height:auto;
+    gap:8px;
+    padding:7px 10px;
+  }
+
+  .editor-foot>span{
+    max-width:34%;
+  }
+
+  .editor-actions{
+    gap:4px;
+  }
+
+  .editor-actions button{
+    min-height:30px;
+    padding-right:7px;
+    padding-left:7px;
+  }
+}
+
+@media(max-width:460px){
+  .pane-head>span{
+    max-width:86px;
+  }
+
+  .editor-file-actions{
+    gap:3px;
+  }
+
+  .editor-foot>span{
+    max-width:27%;
+    font-size:7px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .status-dot{
+    animation:none;
+  }
+}

@@ -183,11 +183,12 @@ test("keeps the AI assistant in an accessible right-edge dock", async () => {
 });
 
 test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
-  const [smoothScroll, layout, css, packageJson] = await Promise.all([
+  const [smoothScroll, layout, css, packageJson, page] = await Promise.all([
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(smoothScroll, /new Lenis\(\{/);
@@ -202,8 +203,13 @@ test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () 
   assert.match(layout, /lenis\/dist\/lenis\.css/);
   assert.match(packageJson, /"lenis":/);
   assert.match(css, /--mac-graphite:#0d1118/);
-  assert.doesNotMatch(css, /\.pane-head:before,\s*\.run-history-head:before/);
-  assert.doesNotMatch(css, /box-shadow:16px 0 #febc2e,32px 0 #28c840/);
+  assert.match(css, /--xcode-titlebar-top:#30323a/);
+  assert.match(css, /\.pane-head::before,\s*\.run-history-head::before,\s*\.mac-code-head::before/);
+  assert.match(css, /box-shadow:18px 0 var\(--xcode-yellow\),36px 0 var\(--xcode-green\)/);
+  assert.match(css, /\.terminal-pane>pre\{/);
+  assert.match(css, /\.stdin-panel textarea\{/);
+  assert.match(css, /\.code-line-numbers\{/);
+  assert.match(page, /className="mac-code-head" aria-hidden="true"/);
   assert.match(css, /"SFMono-Regular","SF Mono",Menlo,Monaco,Consolas/);
 });
 
