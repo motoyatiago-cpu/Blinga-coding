@@ -1117,6 +1117,7 @@ function Sandbox({
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+  const [focusMode, setFocusMode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftEditRevisionRef = useRef(0);
@@ -1271,6 +1272,23 @@ function Sandbox({
   useEffect(() => {
     void loadRunHistory();
   }, [loadRunHistory]);
+
+  useEffect(() => {
+    if (!focusMode) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFocusMode(false);
+    };
+    window.addEventListener("keydown", exitOnEscape);
+    window.requestAnimationFrame(() => editorRef.current?.focus());
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", exitOnEscape);
+    };
+  }, [focusMode]);
 
   useEffect(() => {
     // 数据流第 2 步：每次 code 变化都取消上一轮计时，重新开始 500ms 防抖。
@@ -1435,10 +1453,20 @@ function Sandbox({
   }
 
   return (
-    <section className="feature-section" id="lab">
+    <section className={`feature-section ${focusMode ? "sandbox-focus-mode" : ""}`} id="lab">
       <div className="section-heading">
         <div><span className="eyebrow purple">LIVE SANDBOX</span><h2>在线实训沙盒</h2><p>输入变化即时诊断，运行状态与终端结果动态同步。</p></div>
-        <select value={lang} onChange={(event) => setLang(event.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map((key) => <option key={key}>{key}</option>)}</select>
+        <div className="sandbox-heading-actions">
+          <select value={lang} onChange={(event) => setLang(event.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map((key) => <option key={key}>{key}</option>)}</select>
+          <button
+            className="focus-mode-toggle"
+            onClick={() => setFocusMode((current) => !current)}
+            aria-pressed={focusMode}
+            aria-label={focusMode ? "退出实训专注模式" : "进入实训专注模式"}
+          >
+            {focusMode ? "↙ 退出专注" : "⛶ 专注模式"}
+          </button>
+        </div>
       </div>
       <div className="sandbox glass">
         <div className="editor-pane">

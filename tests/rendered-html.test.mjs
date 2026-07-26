@@ -42,6 +42,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /发送问题/);
   assert.match(html, /code-line-numbers/);
   assert.match(html, /Tab 缩进/);
+  assert.match(html, /专注模式/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -96,4 +97,18 @@ test("keeps editor line numbers, cursor position, and indentation synchronized",
   assert.match(page, /function handleEditorKeyDown/);
   assert.match(page, /event\.key !== "Tab"/);
   assert.match(page, /Ln \{cursorPosition\.line\}, Col \{cursorPosition\.column\}/);
+});
+
+test("provides a reversible sandbox focus mode", async () => {
+  const [page, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /const \[focusMode, setFocusMode\] = useState\(false\)/);
+  assert.match(page, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(page, /event\.key === "Escape"/);
+  assert.match(page, /aria-pressed=\{focusMode\}/);
+  assert.match(css, /\.sandbox-focus-mode\{position:fixed!important/);
+  assert.match(css, /\.sandbox-focus-mode \.run-history\{display:none\}/);
 });
