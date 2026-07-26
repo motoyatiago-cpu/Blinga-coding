@@ -1413,6 +1413,115 @@ function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
   );
 }
 
+function LessonNotes({
+  lang,
+  topicIndex,
+  lessonTitle,
+}: {
+  lang: Lang;
+  topicIndex: number;
+  lessonTitle: string;
+}) {
+  const [content, setContent] = useState("");
+  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState("正在读取笔记…");
+  const savedContentRef = useRef("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadNote = async () => {
+      try {
+        const params = new URLSearchParams({
+          language: lang,
+          topicIndex: String(topicIndex),
+        });
+        const response = await fetch(`/api/notes?${params}`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = await response.json() as {
+          note?: { content: string; updatedAt: string } | null;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(data.error || "学习笔记读取失败");
+
+        const restoredContent = data.note?.content || "";
+        savedContentRef.current = restoredContent;
+        setContent(restoredContent);
+        setStatus(data.note ? "笔记已恢复" : "输入后自动保存");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setStatus(error instanceof Error ? error.message : "学习笔记暂未同步");
+      } finally {
+        if (!controller.signal.aborted) setReady(true);
+      }
+    };
+
+    void loadNote();
+    return () => controller.abort();
+  }, [lang, topicIndex]);
+
+  useEffect(() => {
+    if (!ready || content === savedContentRef.current) return;
+
+    setStatus("等待自动保存…");
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setStatus("正在保存…");
+      try {
+        const response = await fetch("/api/notes", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language: lang, topicIndex, content }),
+          signal: controller.signal,
+        });
+        const data = await response.json() as { saved?: boolean; error?: string };
+        if (!response.ok) throw new Error(data.error || "学习笔记保存失败");
+        savedContentRef.current = content;
+        setStatus("笔记已保存");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setStatus(error instanceof Error ? error.message : "学习笔记暂未同步");
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [content, lang, ready, topicIndex]);
+
+  return (
+    <section className="lesson-notes glass" aria-labelledby="lesson-notes-title">
+      <div className="lesson-notes-head">
+        <div>
+          <span>PERSONAL NOTES</span>
+          <h2 id="lesson-notes-title">我的学习笔记</h2>
+          <p>{lang} · {lessonTitle}，仅保存到你的账号。</p>
+        </div>
+        <div className="lesson-notes-status" role="status">
+          <i className={status.includes("已") || status.includes("自动") ? "synced" : ""} />
+          {status}
+        </div>
+      </div>
+      <textarea
+        value={content}
+        maxLength={8000}
+        disabled={!ready}
+        onChange={(event) => setContent(event.target.value)}
+        placeholder={"记录你对本节知识点的理解、易错点和复习结论…\n\n建议结构：\n1. 核心概念\n2. 容易犯的错误\n3. 我自己的代码示例"}
+        aria-label={`${lessonTitle}学习笔记`}
+      />
+      <footer>
+        <span>停止输入 500ms 后自动保存</span>
+        <b>{content.length} / 8000</b>
+      </footer>
+    </section>
+  );
+}
+
 function GraphDocumentExport({ lesson }: { lesson: Course }) {
   const [format, setFormat] = useState<"pdf" | "word">("pdf");
 
@@ -1764,6 +1873,12 @@ export default function Home() {
               <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">打开实训沙盒 →</a></div>
             </div>
 
+            <LessonNotes
+              key={`${lang}:${selectedTopicIndex}`}
+              lang={lang}
+              topicIndex={selectedTopicIndex}
+              lessonTitle={lesson.title}
+            />
             <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
             <GraphDocumentExport lesson={lesson} />
             <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />

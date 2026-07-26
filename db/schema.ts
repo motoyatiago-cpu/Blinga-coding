@@ -43,3 +43,13 @@ export const codeRunHistory = sqliteTable("code_run_history", {
   totalTests: integer("total_tests"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const learningNotes = sqliteTable("learning_notes", {
+  userEmail: text("user_email").notNull(),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  content: text("content").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.userEmail, table.language, table.topicIndex] }),
+]);

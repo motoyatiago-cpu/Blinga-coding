@@ -30,6 +30,7 @@ const MAX_AI_INPUT = 6000;
 const MAX_CODE_INPUT = 12_000;
 const MAX_STDIN_INPUT = 2_000;
 const MAX_RUNNER_OUTPUT = 16_000;
+const MAX_NOTE_INPUT = 8_000;
 
 type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
 type LearningProgress = {
@@ -119,6 +120,24 @@ async function ensureRunHistorySchema(database: D1Database): Promise<void> {
       CREATE INDEX IF NOT EXISTS code_run_history_lookup_idx
       ON code_run_history (user_email, language, topic_index, id DESC)
     `),
+  ]);
+}
+
+async function ensureNotesSchema(database: D1Database): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS learning_notes (
+        user_email TEXT NOT NULL,
+        language TEXT NOT NULL,
+        topic_index INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_email, language, topic_index)
+      )
+    `),
+    database.prepare(
+      "CREATE INDEX IF NOT EXISTS learning_notes_updated_at_idx ON learning_notes (updated_at)",
+    ),
   ]);
 }
 
@@ -384,6 +403,72 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
       createdAt: record.created_at,
     })),
   });
+}
+
+async function handleNotesRequest(request: Request, env: Env): Promise<Response> {
+  const userEmail = authenticatedUserEmail(request);
+  if (!userEmail) {
+    return jsonResponse({ error: "请先登录后再同步学习笔记" }, 401);
+  }
+
+  await ensureNotesSchema(env.DB);
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const identity = safeDraftIdentity(
+      url.searchParams.get("language"),
+      url.searchParams.get("topicIndex"),
+    );
+    if (!identity) return jsonResponse({ error: "课程标识无效" }, 400);
+
+    const record = await env.DB
+      .prepare(`
+        SELECT content, updated_at
+        FROM learning_notes
+        WHERE user_email = ? AND language = ? AND topic_index = ?
+      `)
+      .bind(userEmail, identity.language, identity.topicIndex)
+      .first<{ content: string; updated_at: string }>();
+
+    return jsonResponse({
+      note: record ? { content: record.content, updatedAt: record.updated_at } : null,
+    });
+  }
+
+  if (request.method !== "PUT") {
+    return jsonResponse({ error: "仅支持 GET 或 PUT 请求" }, 405);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return jsonResponse({ error: "请求来源无效" }, 403);
+  }
+
+  let body: { language?: unknown; topicIndex?: unknown; content?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "请求格式无效" }, 400);
+  }
+
+  const identity = safeDraftIdentity(body.language, body.topicIndex);
+  const content = typeof body.content === "string" ? body.content : "";
+  if (!identity || content.length > MAX_NOTE_INPUT) {
+    return jsonResponse({ error: "学习笔记数据无效或内容过长" }, 400);
+  }
+
+  await env.DB
+    .prepare(`
+      INSERT INTO learning_notes (user_email, language, topic_index, content, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+        content = excluded.content,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(userEmail, identity.language, identity.topicIndex, content)
+    .run();
+
+  return jsonResponse({ saved: true });
 }
 
 const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = {
@@ -817,6 +902,10 @@ const worker = {
 
     if (url.pathname === "/api/run-history") {
       return handleRunHistoryRequest(request, env);
+    }
+
+    if (url.pathname === "/api/notes") {
+      return handleNotesRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {
