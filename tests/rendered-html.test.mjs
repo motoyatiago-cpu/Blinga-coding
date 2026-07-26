@@ -126,3 +126,19 @@ test("imports and downloads source files without an upload endpoint", async () =
   assert.match(page, /new Blob\(\[code\], \{ type: "text\/plain;charset=utf-8" \}\)/);
   assert.doesNotMatch(page, /fetch\([^)]*importSourceFile/);
 });
+
+test("protects source reset with confirmation and a timed undo", async () => {
+  const [page, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /useState<"idle" \| "confirm" \| "undo">\("idle"\)/);
+  assert.match(page, /resetSnapshotRef/);
+  assert.match(page, /再次点击“确认重置”将恢复课程初始代码/);
+  assert.match(page, /已重置，可在 10 秒内撤销/);
+  assert.match(page, /resetAction === "confirm"/);
+  assert.match(page, /resetAction === "undo"/);
+  assert.match(css, /\.editor-file-actions button\.reset-confirm/);
+  assert.match(css, /\.editor-file-actions button\.reset-undo/);
+});

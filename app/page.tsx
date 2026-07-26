@@ -1134,8 +1134,11 @@ function Sandbox({
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [focusMode, setFocusMode] = useState(false);
   const [sourceFileName, setSourceFileName] = useState(defaultSourceFileName(lang));
+  const [resetAction, setResetAction] = useState<"idle" | "confirm" | "undo">("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetActionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetSnapshotRef = useRef<{ code: string; fileName: string } | null>(null);
   const draftEditRevisionRef = useRef(0);
   const draftSaveRevisionRef = useRef(0);
   const lastSavedCodeRef = useRef(lesson.code);
@@ -1186,6 +1189,17 @@ function Sandbox({
     onContextChange({ code: nextCode, stdin: stdinRef.current, output: outputRef.current });
   }, [onContextChange]);
 
+  function cancelResetAction() {
+    if (resetActionTimerRef.current) {
+      clearTimeout(resetActionTimerRef.current);
+      resetActionTimerRef.current = null;
+    }
+    if (resetAction !== "idle" || resetSnapshotRef.current) {
+      setResetAction("idle");
+      resetSnapshotRef.current = null;
+    }
+  }
+
   const updateOutput = useCallback((nextOutput: string, sourceCode = code) => {
     outputRef.current = nextOutput;
     setOutput(nextOutput);
@@ -1209,6 +1223,10 @@ function Sandbox({
     setCode(lesson.code);
     setCursorPosition({ line: 1, column: 1 });
     setSourceFileName(defaultSourceFileName(lang));
+    if (resetActionTimerRef.current) clearTimeout(resetActionTimerRef.current);
+    resetActionTimerRef.current = null;
+    resetSnapshotRef.current = null;
+    setResetAction("idle");
     stdinRef.current = "";
     setStdin("");
     const initialOutput = "终端已连接 · 等待输入";
@@ -1291,6 +1309,10 @@ function Sandbox({
     void loadRunHistory();
   }, [loadRunHistory]);
 
+  useEffect(() => () => {
+    if (resetActionTimerRef.current) clearTimeout(resetActionTimerRef.current);
+  }, []);
+
   useEffect(() => {
     if (!focusMode) return;
 
@@ -1334,14 +1356,59 @@ function Sandbox({
   }, [code, lang, updateOutput]);
 
   function handleCodeInput(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    cancelResetAction();
     // 数据流第 1 步：React onChange 对应文本框原生 input 事件，每次键入都同步最新代码。
     updateCode(event.target.value);
     updateCursorPosition(event.target);
   }
 
   function resetCode() {
+    if (resetAction === "undo") {
+      const snapshot = resetSnapshotRef.current;
+      cancelResetAction();
+      if (!snapshot) return;
+      updateCode(snapshot.code);
+      setSourceFileName(snapshot.fileName);
+      setDraftStatus("已撤销重置，正在恢复原草稿…");
+      window.requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.setSelectionRange(0, 0);
+        updateCursorPosition(editor);
+        editor.focus();
+      });
+      return;
+    }
+
+    if (code === lesson.code && sourceFileName === defaultSourceFileName(lang)) {
+      cancelResetAction();
+      setDraftStatus("当前已经是课程初始代码");
+      return;
+    }
+
+    if (resetAction !== "confirm") {
+      cancelResetAction();
+      setResetAction("confirm");
+      setDraftStatus("再次点击“确认重置”将恢复课程初始代码");
+      resetActionTimerRef.current = setTimeout(() => {
+        setResetAction("idle");
+        setDraftStatus("已取消重置，当前代码保持不变");
+        resetActionTimerRef.current = null;
+      }, 5_000);
+      return;
+    }
+
+    if (resetActionTimerRef.current) clearTimeout(resetActionTimerRef.current);
+    resetSnapshotRef.current = { code, fileName: sourceFileName };
     updateCode(lesson.code);
     setSourceFileName(defaultSourceFileName(lang));
+    setResetAction("undo");
+    setDraftStatus("已重置，可在 10 秒内撤销");
+    resetActionTimerRef.current = setTimeout(() => {
+      setResetAction("idle");
+      resetSnapshotRef.current = null;
+      resetActionTimerRef.current = null;
+    }, 10_000);
     window.requestAnimationFrame(() => {
       const editor = editorRef.current;
       if (!editor) return;
@@ -1376,6 +1443,7 @@ function Sandbox({
         throw new Error(`源码最多支持 ${MAX_SOURCE_FILE_CHARS} 个字符`);
       }
 
+      cancelResetAction();
       updateCode(importedCode);
       setSourceFileName(file.name.slice(0, 80));
       setDraftStatus(`已导入 ${file.name}，等待自动保存…`);
@@ -1452,6 +1520,7 @@ function Sandbox({
     }
 
     event.preventDefault();
+    cancelResetAction();
     const target = event.currentTarget;
     const selectionStart = target.selectionStart;
     const selectionEnd = target.selectionEnd;
@@ -1559,7 +1628,12 @@ function Sandbox({
               />
               <button onClick={() => sourceFileInputRef.current?.click()}>⇧ 导入</button>
               <button onClick={downloadSourceFile}>⇩ 下载</button>
-              <button onClick={resetCode}>↺ 重置</button>
+              <button
+                className={resetAction === "confirm" ? "reset-confirm" : resetAction === "undo" ? "reset-undo" : ""}
+                onClick={resetCode}
+              >
+                {resetAction === "confirm" ? "! 确认重置" : resetAction === "undo" ? "↶ 撤销" : "↺ 重置"}
+              </button>
             </div>
           </div>
           <div className="code-editor-body">
