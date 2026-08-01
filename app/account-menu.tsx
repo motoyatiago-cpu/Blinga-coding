@@ -30,63 +30,103 @@ function initials(name: string): string {
   return Array.from(trimmed)[0].toUpperCase();
 }
 
+async function readJsonResponse<T>(response: Response, fallback: string): Promise<T> {
+  const contentType = response.headers.get("Content-Type") || "";
+  const text = await response.text();
+  let payload: (T & { error?: string }) | null = null;
+  if (contentType.includes("application/json")) {
+    try {
+      payload = JSON.parse(text) as T & { error?: string };
+    } catch {
+      payload = null;
+    }
+  }
+  if (!payload || !response.ok) {
+    throw new Error(payload?.error || fallback);
+  }
+  return payload;
+}
+
+let transitionActivationPromise: Promise<SessionPayload> | null = null;
+
+function activateTransitionAccount(): Promise<SessionPayload> {
+  if (!transitionActivationPromise) {
+    transitionActivationPromise = (async () => {
+      await readJsonResponse(
+        await fetch("/api/auth/transition/activate", {
+          method: "POST",
+          credentials: "same-origin",
+        }),
+        "账户暂时无法打开，请稍后重试",
+      );
+      const session = await readJsonResponse<SessionPayload>(
+        await fetch("/api/auth/session", { credentials: "same-origin" }),
+        "无法读取账户状态",
+      );
+      if (!session.authenticated) throw new Error("账户暂时无法打开，请稍后重试");
+      return session;
+    })().catch((error) => {
+      transitionActivationPromise = null;
+      throw error;
+    });
+  }
+  return transitionActivationPromise;
+}
+
 export default function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<SessionPayload | null>(null);
-  const [activating, setActivating] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [avatarRevision, setAvatarRevision] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const activationAttemptedRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/auth/session", { signal: controller.signal, credentials: "same-origin" })
-      .then((response) => response.json())
-      .then((payload: SessionPayload) => setSession(payload))
-      .catch(() => setSession({
-        authenticated: false,
-        providers: {
-          microsoft: false,
-          qq: false,
-          "wechat-open": false,
-          "wechat-oa": false,
-        },
-      }));
-    return () => controller.abort();
+    let cancelled = false;
+    const prepareAccount = async () => {
+      try {
+        const payload = await readJsonResponse<SessionPayload>(
+          await fetch("/api/auth/session", { signal: controller.signal, credentials: "same-origin" }),
+          "无法读取账户状态",
+        );
+        if (cancelled) return;
+        setSession(payload);
+        if (!payload.authenticated && payload.transition?.active) {
+          try {
+            const activated = await activateTransitionAccount();
+            if (!cancelled) setSession(activated);
+          } catch {
+            // 后台准备失败时保持菜单可用，具体操作会再次尝试并给出中文反馈。
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSession({
+            authenticated: false,
+            providers: {
+              microsoft: false,
+              qq: false,
+              "wechat-open": false,
+              "wechat-oa": false,
+            },
+          });
+        }
+      }
+    };
+    void prepareAccount();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, []);
 
   useEffect(() => {
-    if (!open || session?.authenticated || !session?.transition?.active || activationAttemptedRef.current) {
-      return;
-    }
-    activationAttemptedRef.current = true;
-    const activate = async () => {
-      setActivating(true);
-      setFeedback("");
-      try {
-        const response = await fetch("/api/auth/transition/activate", {
-          method: "POST",
-          credentials: "same-origin",
-        });
-        const payload = await response.json() as { error?: string };
-        if (!response.ok) throw new Error(payload.error || "个人账号激活失败");
-        const nextSession = await fetch("/api/auth/session", { credentials: "same-origin" });
-        const nextPayload = await nextSession.json() as SessionPayload & { error?: string };
-        if (!nextSession.ok) throw new Error(nextPayload.error || "无法读取账户状态");
-        setSession(nextPayload);
-        setFeedback("个人账户已就绪");
-      } catch (error) {
-        activationAttemptedRef.current = false;
-        setFeedback(error instanceof Error ? error.message : "个人账号激活失败");
-      } finally {
-        setActivating(false);
-      }
-    };
-    void activate();
-  }, [open, session]);
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(""), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
 
   useEffect(() => {
     if (!open) return;
@@ -131,6 +171,10 @@ export default function AccountMenu() {
     setAvatarBusy(true);
     setFeedback("");
     try {
+      if (!session?.authenticated) {
+        const activated = await activateTransitionAccount();
+        setSession(activated);
+      }
       const body = new FormData();
       body.set("avatar", file);
       const response = await fetch("/api/profile/avatar", {
@@ -138,11 +182,11 @@ export default function AccountMenu() {
         credentials: "same-origin",
         body,
       });
-      const payload = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(payload.error || "头像上传失败");
-      const nextSession = await fetch("/api/auth/session", { credentials: "same-origin" });
-      const nextPayload = await nextSession.json() as SessionPayload & { error?: string };
-      if (!nextSession.ok) throw new Error(nextPayload.error || "无法更新头像状态");
+      await readJsonResponse(response, "头像上传失败，请稍后重试");
+      const nextPayload = await readJsonResponse<SessionPayload>(
+        await fetch("/api/auth/session", { credentials: "same-origin" }),
+        "无法更新头像状态",
+      );
       setSession(nextPayload);
       setAvatarRevision(Date.now());
       setFeedback("头像已更新");
@@ -157,6 +201,7 @@ export default function AccountMenu() {
   const avatarSrc = session?.user?.avatarType === "upload"
     ? `/api/profile/avatar?v=${avatarRevision}`
     : null;
+  const showAccountActions = session === null || session.authenticated || Boolean(session.transition?.active);
 
   return (
     <div className="account-menu" ref={rootRef}>
@@ -207,15 +252,13 @@ export default function AccountMenu() {
               {session?.authenticated
                 ? session.user?.email || "已安全登录"
                 : session?.transition
-                  ? "旧学习数据已安全保留"
+                  ? "个人账户"
                   : "尚未登录"}
             </small>
           </span>
         </header>
 
-        {activating ? (
-          <p className="account-menu-status" role="status">正在准备个人账户…</p>
-        ) : session?.authenticated ? (
+        {showAccountActions ? (
           <>
             <button
               type="button"
@@ -245,14 +288,7 @@ export default function AccountMenu() {
               </a>
             ))}
           </section>
-        ) : (
-          <p className="account-config-note">
-            微信、QQ 与 Microsoft 登录将在平台应用审核和密钥配置完成后自动开放。
-          </p>
-        )}
-        {!activating && !session?.authenticated && feedback && (
-          <p className="account-menu-feedback" role="status">{feedback}</p>
-        )}
+        ) : null}
       </div>
     </div>
   );

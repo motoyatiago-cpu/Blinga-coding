@@ -396,32 +396,128 @@ async function migrateLegacyData(
   if (!email) return;
   await ensureOwnershipColumns(env.DB);
   const userKey = `user:${userId}`;
-  const statements: D1PreparedStatement[] = [];
-  for (const table of [
-    "learning_progress",
-    "code_drafts",
-    "lesson_completions",
-    "code_run_history",
-    "learning_notes",
-  ]) {
-    const exists = await env.DB
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .bind(table)
-      .first<{ name: string }>();
-    if (exists) {
-      statements.push(
-        env.DB
-          .prepare(`UPDATE ${table} SET user_email = ?, user_id = ? WHERE user_email = ?`)
-          .bind(userKey, userId, email),
-      );
+  const tableExists = async (table: string): Promise<boolean> => Boolean(await env.DB
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .bind(table)
+    .first<{ name: string }>());
+
+  if (await tableExists("learning_progress")) {
+    const rows = await env.DB
+      .prepare(`
+        SELECT user_email, active_language, topics_json, updated_at
+        FROM learning_progress
+        WHERE user_email IN (?, ?)
+      `)
+      .bind(email, userKey)
+      .all<{
+        user_email: string;
+        active_language: string;
+        topics_json: string;
+        updated_at: string;
+      }>();
+    const legacy = rows.results.find((row) => row.user_email === email);
+    const current = rows.results.find((row) => row.user_email === userKey);
+    if (legacy) {
+      const readTopics = (value: string): Record<string, number> => {
+        try {
+          const parsed = JSON.parse(value) as Record<string, unknown>;
+          return Object.fromEntries(Object.entries(parsed).flatMap(([language, topic]) => {
+            const numericTopic = Number(topic);
+            return Number.isInteger(numericTopic) ? [[language, numericTopic]] : [];
+          }));
+        } catch {
+          return {};
+        }
+      };
+      const mergedTopics = readTopics(current?.topics_json || "{}");
+      for (const [language, topic] of Object.entries(readTopics(legacy.topics_json))) {
+        mergedTopics[language] = Math.max(mergedTopics[language] ?? 0, topic);
+      }
+      const legacyIsNewest = !current || Date.parse(legacy.updated_at) >= Date.parse(current.updated_at);
+      const activeLanguage = legacyIsNewest ? legacy.active_language : current.active_language;
+      if (!(activeLanguage in mergedTopics)) mergedTopics[activeLanguage] = 0;
+      const updatedAt = !current || legacyIsNewest ? legacy.updated_at : current.updated_at;
+      await env.DB
+        .prepare(`
+          INSERT INTO learning_progress (user_email, user_id, active_language, topics_json, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(user_email) DO UPDATE SET
+            user_id = excluded.user_id,
+            active_language = excluded.active_language,
+            topics_json = excluded.topics_json,
+            updated_at = excluded.updated_at
+        `)
+        .bind(userKey, userId, activeLanguage, JSON.stringify(mergedTopics), updatedAt)
+        .run();
+      await env.DB.prepare("DELETE FROM learning_progress WHERE user_email = ?").bind(email).run();
     }
   }
-  statements.push(
-    env.DB
-      .prepare("UPDATE users SET legacy_email = COALESCE(legacy_email, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(email, userId),
-  );
-  await env.DB.batch(statements);
+
+  if (await tableExists("code_drafts")) {
+    await env.DB
+      .prepare(`
+        INSERT INTO code_drafts (user_email, user_id, language, topic_index, code, updated_at)
+        SELECT ?, ?, language, topic_index, code, updated_at
+        FROM code_drafts
+        WHERE user_email = ?
+        ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+          user_id = excluded.user_id,
+          code = CASE WHEN excluded.updated_at >= code_drafts.updated_at THEN excluded.code ELSE code_drafts.code END,
+          updated_at = MAX(code_drafts.updated_at, excluded.updated_at)
+      `)
+      .bind(userKey, userId, email)
+      .run();
+    await env.DB.prepare("DELETE FROM code_drafts WHERE user_email = ?").bind(email).run();
+  }
+
+  if (await tableExists("learning_notes")) {
+    await env.DB
+      .prepare(`
+        INSERT INTO learning_notes (user_email, user_id, language, topic_index, content, updated_at)
+        SELECT ?, ?, language, topic_index, content, updated_at
+        FROM learning_notes
+        WHERE user_email = ?
+        ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+          user_id = excluded.user_id,
+          content = CASE WHEN excluded.updated_at >= learning_notes.updated_at THEN excluded.content ELSE learning_notes.content END,
+          updated_at = MAX(learning_notes.updated_at, excluded.updated_at)
+      `)
+      .bind(userKey, userId, email)
+      .run();
+    await env.DB.prepare("DELETE FROM learning_notes WHERE user_email = ?").bind(email).run();
+  }
+
+  if (await tableExists("lesson_completions")) {
+    await env.DB
+      .prepare(`
+        INSERT INTO lesson_completions (
+          user_email, user_id, language, topic_index, passed_tests, total_tests, completed_at
+        )
+        SELECT ?, ?, language, topic_index, passed_tests, total_tests, completed_at
+        FROM lesson_completions
+        WHERE user_email = ?
+        ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+          user_id = excluded.user_id,
+          passed_tests = MAX(lesson_completions.passed_tests, excluded.passed_tests),
+          total_tests = MAX(lesson_completions.total_tests, excluded.total_tests),
+          completed_at = MAX(lesson_completions.completed_at, excluded.completed_at)
+      `)
+      .bind(userKey, userId, email)
+      .run();
+    await env.DB.prepare("DELETE FROM lesson_completions WHERE user_email = ?").bind(email).run();
+  }
+
+  if (await tableExists("code_run_history")) {
+    await env.DB
+      .prepare("UPDATE code_run_history SET user_email = ?, user_id = ? WHERE user_email = ?")
+      .bind(userKey, userId, email)
+      .run();
+  }
+
+  await env.DB
+    .prepare("UPDATE users SET legacy_email = COALESCE(legacy_email, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(email, userId)
+    .run();
 }
 
 async function activateTransition(request: Request, env: AuthEnv): Promise<Response> {
@@ -433,6 +529,8 @@ async function activateTransition(request: Request, env: AuthEnv): Promise<Respo
 
   const email = legacyEmail(request);
   if (!email) return authJson({ error: "未检测到可信的平台身份" }, 401);
+
+  try {
 
   const activeSession = await getSessionUser(request, env);
   if (activeSession) {
@@ -512,6 +610,12 @@ async function activateTransition(request: Request, env: AuthEnv): Promise<Respo
   });
   response.headers.append("Set-Cookie", sessionCookie(token));
   return response;
+  } catch {
+    return authJson({
+      code: "ACCOUNT_ACTIVATION_FAILED",
+      error: "账户暂时无法打开，请稍后重试",
+    }, 500);
+  }
 }
 
 function providerClientId(provider: AuthProvider, env: AuthEnv): string {

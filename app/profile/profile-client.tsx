@@ -101,8 +101,19 @@ function formatDate(value: string | null | undefined): string {
 }
 
 async function readJson<T>(response: Response): Promise<T> {
-  const payload = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error || "请求失败");
+  const contentType = response.headers.get("Content-Type") || "";
+  const text = await response.text();
+  let payload: (T & { error?: string }) | null = null;
+  if (contentType.includes("application/json")) {
+    try {
+      payload = JSON.parse(text) as T & { error?: string };
+    } catch {
+      payload = null;
+    }
+  }
+  if (!payload || !response.ok) {
+    throw new Error(payload?.error || "服务暂时不可用，请稍后重试");
+  }
   return payload;
 }
 
@@ -331,7 +342,6 @@ export default function ProfileClient() {
           <span className="profile-kicker">PERSONAL WORKSPACE</span>
           <h1>你的学习，归于一个账号</h1>
           <p>登录后可同步课程进度、运行历史、代码草稿、学习笔记和个人偏好。</p>
-          {session.transition && <div className="profile-transition-note">检测到受保护的旧学习数据。首次绑定外部账号后会自动迁移，不会丢失。</div>}
           {message && <div className="profile-message error" role="status">{message}</div>}
           {configuredProviders.length ? (
             <div className="profile-login-list">
@@ -342,12 +352,7 @@ export default function ProfileClient() {
                 </a>
               ))}
             </div>
-          ) : (
-            <div className="profile-unavailable">
-              <b>外部登录正在等待平台配置</b>
-              <p>微信、QQ 与 Microsoft 的应用审核和密钥完成后，登录入口会自动出现。</p>
-            </div>
-          )}
+          ) : null}
           <a className="profile-back" href="/">← 返回学习中心</a>
         </section>
       </main>
