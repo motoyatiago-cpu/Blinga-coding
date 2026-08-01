@@ -67,13 +67,13 @@ type HistoryPayload = {
   }>;
 };
 
-const tabs: Array<{ id: Tab; label: string; symbol: string }> = [
-  { id: "overview", label: "概览", symbol: "⌂" },
-  { id: "history", label: "历史", symbol: "↺" },
-  { id: "content", label: "我的内容", symbol: "◇" },
-  { id: "settings", label: "偏好设置", symbol: "⌘" },
-  { id: "security", label: "密码与安全", symbol: "◎" },
-  { id: "data", label: "数据管理", symbol: "⇩" },
+const tabs: Array<{ id: Tab; label: string }> = [
+  { id: "overview", label: "概览" },
+  { id: "history", label: "历史" },
+  { id: "content", label: "我的内容" },
+  { id: "settings", label: "偏好设置" },
+  { id: "security", label: "密码与安全" },
+  { id: "data", label: "数据管理" },
 ];
 
 const providerLabels: Record<Provider, string> = {
@@ -370,7 +370,7 @@ export default function ProfileClient() {
       <div className="profile-orb one" /><div className="profile-orb two" />
       <header className="profile-topbar glass">
         <a className="profile-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
-        <a href="/">返回学习中心 <span>→</span></a>
+        <a href="/">返回学习中心</a>
       </header>
 
       <div className="profile-layout">
@@ -389,17 +389,16 @@ export default function ProfileClient() {
           <nav aria-label="个人主页导航">
             {tabs.map((item) => (
               <button className={tab === item.id ? "active" : ""} key={item.id} onClick={() => changeTab(item.id)}>
-                <i>{item.symbol}</i><span>{item.label}</span><b>›</b>
+                <span>{item.label}</span>
               </button>
             ))}
           </nav>
-          <button className="profile-signout" onClick={() => signOut(false)}>退出登录 <span>↗</span></button>
+          <button className="profile-signout" onClick={() => signOut(false)}>退出登录</button>
         </aside>
 
         <section className="profile-main">
           <header className="profile-section-head">
             <div><h1>{tabs.find((item) => item.id === tab)?.label}</h1></div>
-            <div className="profile-mini-avatar">{initial(profile.user.displayName)}</div>
           </header>
           {message && <div className="profile-message" role="status">{message}<button onClick={() => setMessage("")}>×</button></div>}
 
@@ -407,8 +406,8 @@ export default function ProfileClient() {
             <section className="profile-hero-card glass">
               <div><span>欢迎回来</span><h2>{profile.user.displayName}</h2><p>从上次停下的位置继续，学习记录会自动同步到你的账号。</p></div>
               {overview.continueLearning
-                ? <a href={`/?lang=${encodeURIComponent(overview.continueLearning.language)}&topic=${overview.continueLearning.topicIndex}#learn`}>继续 {overview.continueLearning.language}<b>→</b></a>
-                : <a href="/#learn">开始第一节课<b>→</b></a>}
+                ? <a href={`/?lang=${encodeURIComponent(overview.continueLearning.language)}&topic=${overview.continueLearning.topicIndex}#learn`}>继续 {overview.continueLearning.language}</a>
+                : <a href="/#learn">开始第一节课</a>}
             </section>
             <div className="profile-stats">
               {[
@@ -435,7 +434,7 @@ export default function ProfileClient() {
                         setCodeViewerRequest({ kind: "draft", language: item.language, topicIndex: item.topicIndex });
                       }
                     } : undefined}
-                  ><i>{isDraft ? "{}" : "Aa"}</i><div><small>{item.type} · {item.language}</small><b>第 {item.topicIndex + 1} 节</b><p>{item.preview || "暂无内容"}</p></div><time>{formatDate(item.updatedAt)}</time></article>;
+                  ><div><small>{item.type} · {item.language}</small><b>第 {item.topicIndex + 1} 节</b><p>{item.preview || "暂无内容"}</p></div><time>{formatDate(item.updatedAt)}</time></article>;
                 })}
                 {!profile.drafts.length && !profile.notes.length && <p className="profile-empty">完成一次练习或写下笔记后，最近内容会出现在这里。</p>}
               </div>
@@ -481,10 +480,7 @@ export default function ProfileClient() {
             <section className="profile-panel glass"><header><div><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || profile.links.length <= 1} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
             <section className="profile-panel profile-password-card glass">
               <header><div><h2>密码与账号恢复</h2></div></header>
-              <div className="profile-password-summary">
-                <i>⌁</i>
-                <div><b>密码由登录平台管理</b><p>Blinga coding 不保存独立密码。修改密码、找回账号和多因素认证请在对应登录平台完成。</p></div>
-              </div>
+              <div className="profile-password-summary"><div><b>密码由登录平台管理</b><p>Blinga coding 不保存独立密码。修改密码、找回账号和多因素认证请在对应登录平台完成。</p></div></div>
               <ul className="profile-password-list">
                 {profile.links.length ? profile.links.map((link) => (
                   <li key={link.provider}><b>{providerLabels[link.provider]}</b><span>请前往该平台的“账号与安全”完成密码或恢复设置</span></li>
@@ -493,7 +489,7 @@ export default function ProfileClient() {
                 )}
               </ul>
             </section>
-            <section className="profile-panel glass"><header><div><h2>活跃设备</h2></div><button onClick={() => signOut(true)}>退出全部设备</button></header><div className="profile-session-list">{profile.sessions.map((item) => <article key={item.id}><i>{item.current ? "●" : "○"}</i><div><b>{item.current ? "当前设备" : "其他设备"}</b><p>{item.device}</p><small>{item.ipHint || "未知网络"} · {formatDate(item.lastSeenAt)}</small></div></article>)}</div></section>
+            <section className="profile-panel glass"><header><div><h2>活跃设备</h2></div><button onClick={() => signOut(true)}>退出全部设备</button></header><div className="profile-session-list">{profile.sessions.map((item) => <article key={item.id}><div><b>{item.current ? "当前设备" : "其他设备"}</b><p>{item.device}</p><small>{item.ipHint || "未知网络"} · {formatDate(item.lastSeenAt)}</small></div></article>)}</div></section>
           </div>}
 
           {tab === "data" && <div className="profile-data-grid">

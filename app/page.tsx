@@ -2320,12 +2320,8 @@ export default function Home() {
           <aside className="sidebar glass" aria-label="课程导航">
             <a className="course-nav-back" href="/">← 全部编程语言</a>
             <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
-              <i style={{ background: lessons[lang].color }}>{lessons[lang].icon}</i>
-              <span>{lang}<small>已完成 {completedCount}/{lesson.topics.length} · {completionPercent}%</small></span><b>⌂</b>
+              <span>{lang}<small>已完成 {completedCount}/{lesson.topics.length} · {completionPercent}%</small></span>
             </a>
-            <div className="course-progress" aria-label={`${lang} 课程完成度 ${completionPercent}%`}>
-              <span style={{ width: `${completionPercent}%` }} />
-            </div>
             <nav className="course-topic-nav" aria-label={`${lang} 知识点`}>
               {lesson.topics.map((topic, index) =>
                 <a
@@ -2342,18 +2338,16 @@ export default function Home() {
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <b>{topic}</b>
-                  <i>{completedForCurrentLanguage.includes(index) ? "✓" : selectedTopicIndex === index ? "●" : "›"}</i>
                 </a>
               )}
             </nav>
             <div className="course-switcher">
               <span>切换编程语言</span>
               <div>{(Object.keys(lessons) as Lang[]).filter((key) => key !== lang).map((key) =>
-                <a href={`/courses/${languageSlugs[key]}`} aria-label={`进入 ${key} 课程`} key={key} style={{ "--switch-color": lessons[key].color } as React.CSSProperties}>{lessons[key].icon}</a>
+                <a href={`/courses/${languageSlugs[key]}`} aria-label={`进入 ${key} 课程`} key={key}>{key}</a>
               )}</div>
             </div>
             <div className="progress-sync" role="status">
-              <span className={progressStatus.includes("已") || progressStatus.includes("自动") ? "synced" : ""} />
               {progressStatus}
             </div>
           </aside>

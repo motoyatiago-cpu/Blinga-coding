@@ -394,6 +394,33 @@ test("stores authenticated run snapshots and opens saved code in an accessible v
   assert.match(css, /@media\(max-width:700px\)/);
 });
 
+test("removes redundant sidebar glyphs and balances the learning and profile type scale", async () => {
+  const [page, coursePage, profile, css, profileCss, motion] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /className="course-progress"/);
+  assert.doesNotMatch(page, /completedForCurrentLanguage\.includes\(index\) \? "✓"/);
+  assert.doesNotMatch(page, /style=\{\{ background: lessons\[lang\]\.color \}\}/);
+  assert.doesNotMatch(coursePage, /className="course-icon"/);
+  assert.doesNotMatch(coursePage, /className="entry-marker"/);
+  assert.doesNotMatch(coursePage, /className="sidebar-tip"/);
+  assert.doesNotMatch(profile, /item\.symbol/);
+  assert.doesNotMatch(profile, /profile-mini-avatar/);
+  assert.doesNotMatch(profile, /profile-password-summary">\s*<i>/);
+  assert.doesNotMatch(motion, /"\.course-icon"|"\.entry-marker"/);
+  assert.match(css, /\.course-topic-nav a>b\{\s*font-size:13px/);
+  assert.match(css, /\.lesson-card>p,\s*\.deep-intro p\{\s*font-size:15px/);
+  assert.match(profileCss, /\.profile-sidebar nav button span\{\s*font-size:13px/);
+  assert.match(profileCss, /\.profile-panel header h2\{\s*font-size:17px/);
+  assert.match(profileCss, /\.profile-orb\.one\{\s*display:none/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

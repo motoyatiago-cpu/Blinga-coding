@@ -34,3 +34,145 @@
 .profile-history-list article.code-record-trigger{
   outline:0;
 }
+
+/* Remove decorative green navigation glyphs and normalize profile typography. */
+.profile-orb.one{
+  display:none;
+}
+.profile-brand>i{
+  background:linear-gradient(135deg,#9aa5ff,#6675ef);
+  color:#090c18;
+}
+.profile-brand b,
+.profile-topbar>a:last-child,
+.profile-sidebar nav button.active span{
+  color:#aab2ff;
+}
+.profile-avatar>span{
+  background:#8793ff;
+}
+.profile-sidebar nav button{
+  grid-template-columns:1fr;
+  height:48px;
+  padding:0 16px;
+}
+.profile-sidebar nav button:hover,
+.profile-sidebar nav button.active{
+  border-color:#7182ff38;
+  background:linear-gradient(90deg,#7182ff1a,#7182ff05);
+}
+.profile-sidebar nav button span{
+  font-size:13px;
+  font-weight:600;
+}
+.profile-signout{
+  justify-content:flex-start;
+  padding:0 16px;
+  font-size:12px;
+}
+.profile-identity>b{
+  font-size:16px;
+}
+.profile-identity>small{
+  font-size:11px;
+}
+.profile-section-head h1{
+  font-size:30px;
+}
+.profile-hero-card>div>span,
+.profile-stats span,
+.profile-panel header span{
+  font-size:11px;
+}
+.profile-hero-card h2{
+  font-size:30px;
+}
+.profile-hero-card p{
+  font-size:13px;
+}
+.profile-hero-card>a{
+  font-size:12px;
+}
+.profile-stats span{
+  font-size:11px;
+}
+.profile-stats b{
+  font-size:29px;
+}
+.profile-stats small{
+  font-size:11px;
+}
+.profile-panel header h2{
+  font-size:17px;
+}
+.profile-panel header>button,
+.profile-history-head button{
+  font-size:11px;
+}
+.profile-recent-grid article{
+  grid-template-columns:minmax(0,1fr) auto;
+}
+.profile-recent-grid small,
+.profile-content-list small,
+.profile-content-list time,
+.profile-recent-grid time{
+  font-size:10px;
+}
+.profile-recent-grid b,
+.profile-history-list b,
+.profile-content-list>button>b{
+  font-size:12px;
+}
+.profile-recent-grid p,
+.profile-history-list p,
+.profile-content-list p,
+.profile-content-list pre{
+  font-size:11px;
+}
+.profile-history-list small,
+.profile-history-list>article>span,
+.profile-history-list time{
+  font-size:10px;
+}
+.profile-history-head select,
+.profile-field select,
+.profile-field input,
+.profile-field>span,
+.profile-toggle b,
+.profile-upload,
+.profile-primary{
+  font-size:12px;
+}
+.profile-toggle small,
+.profile-avatar-settings small,
+.profile-link-list article div small,
+.profile-session-list small,
+.profile-password-list span{
+  font-size:10px;
+}
+.profile-link-list article div b,
+.profile-session-list b,
+.profile-password-summary b,
+.profile-password-list b{
+  font-size:12px;
+}
+.profile-link-list article>span,
+.profile-link-list article>button,
+.profile-link-list article>a,
+.profile-session-list p,
+.profile-password-summary p,
+.profile-data-grid .profile-panel>p{
+  font-size:11px;
+}
+.profile-password-summary,
+.profile-session-list article{
+  grid-template-columns:1fr;
+}
+@media(max-width:650px){
+  .profile-sidebar nav button{
+    min-width:104px;
+  }
+  .profile-section-head h1{
+    font-size:25px;
+  }
+}

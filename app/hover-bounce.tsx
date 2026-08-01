@@ -7,8 +7,6 @@ const AUTO_BOUNCE_SELECTOR = [
   "button",
   ".brandmark",
   ".avatar",
-  ".course-icon",
-  ".entry-marker",
   ".status-dot",
   ".sidebar-tip > span",
   ".chat-head > div > span",

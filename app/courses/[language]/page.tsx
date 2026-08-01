@@ -98,34 +98,31 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
       <aside className="course-language-nav glass">
         <a className="course-nav-back" href="/">← 全部编程语言</a>
         <div className="language selected course-root-link">
-          <i style={{ background: course.color }}>{course.icon}</i><span>{course.name}<small>{course.topics.length} 个核心知识点</small></span><b>↓</b>
+          <span>{course.name}<small>{course.topics.length} 个核心知识点</small></span>
         </div>
         <nav className="course-topic-nav" aria-label={`${course.name} 知识点`}>
           {course.topics.map((topic, index) =>
             <a href={`/?lang=${encodeURIComponent(course.queryName)}&topic=${index}#learn`} key={topic.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span><b>{topic.title}</b><i>›</i>
+              <span>{String(index + 1).padStart(2, "0")}</span><b>{topic.title}</b>
             </a>
           )}
         </nav>
         <div className="course-switcher">
           <span>切换编程语言</span>
           <div>{languageOrder.filter((item) => item !== slug).map((item) =>
-            <a href={`/courses/${item}`} aria-label={`进入 ${courses[item].name} 课程`} key={item} style={{ "--switch-color": courses[item].color } as React.CSSProperties}>{courses[item].icon}</a>
+            <a href={`/courses/${item}`} aria-label={`进入 ${courses[item].name} 课程`} key={item}>{courses[item].name}</a>
           )}</div>
         </div>
-        <div className="sidebar-tip"><span>02</span><div><b>从左侧选择知识点</b><p>知识点始终保留在左侧，学习内容只在右侧切换。</p></div></div>
       </aside>
 
       <section className="course-catalog">
         <div className="catalog-breadcrumb"><a href="/">学习中心</a><span>/</span><b>{course.name}</b></div>
-        <header className="course-hero glass" style={{ "--course-color": course.color } as React.CSSProperties}>
-          <div className="course-icon">{course.icon}</div>
+        <header className="course-hero glass">
           <div><h1>{course.name} 分级课程</h1><p>{course.description}</p></div>
           <div className="course-stats"><div><b>3</b><span>学习级别</span></div><div><b>7</b><span>核心知识点</span></div><div><b>∞</b><span>在线练习</span></div></div>
         </header>
 
         <div className="course-entry glass">
-          <div className="entry-marker">02</div>
           <div><h2>从左侧选择一个知识点开始学习</h2><p>语言名称与全部知识点会始终固定在左侧。选择知识点后，右侧进入对应讲解页，左侧目录不会消失或移动到中间。</p></div>
           <a href={`/?lang=${encodeURIComponent(course.queryName)}&topic=0#learn`}>开始第一节 →</a>
         </div>
