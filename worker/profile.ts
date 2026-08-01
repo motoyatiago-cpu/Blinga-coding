@@ -1,4 +1,5 @@
 import {
+  ensureColumn,
   ensureAuthSchema,
   ensureOwnershipColumns,
   getSessionUser,
@@ -124,6 +125,7 @@ async function readProfile(user: SessionUser, env: ProfileEnv): Promise<Response
       language: item.language,
       topicIndex: item.topic_index,
       preview: item.code.slice(0, 180),
+      codeAvailable: true,
       updatedAt: item.updated_at,
     }));
   }
@@ -426,6 +428,7 @@ async function history(request: Request, user: SessionUser, env: ProfileEnv): Pr
   let runs: Array<Record<string, unknown>> = [];
 
   if (await tableExists(env.DB, "code_run_history")) {
+    await ensureColumn(env.DB, "code_run_history", "source_code", "TEXT");
     const conditions = ["user_email = ?"];
     const values: Array<string | number> = [userKey];
     if (language) {
@@ -442,7 +445,8 @@ async function history(request: Request, user: SessionUser, env: ProfileEnv): Pr
       .prepare(`
         SELECT
           id, language, topic_index, mode, status_id, status_description,
-          duration_ms, memory_kb, passed_tests, total_tests, created_at
+          duration_ms, memory_kb, passed_tests, total_tests,
+          source_code IS NOT NULL AS code_available, created_at
         FROM code_run_history
         WHERE ${conditions.join(" AND ")}
         ORDER BY id DESC
@@ -460,6 +464,7 @@ async function history(request: Request, user: SessionUser, env: ProfileEnv): Pr
         memory_kb: number | null;
         passed_tests: number | null;
         total_tests: number | null;
+        code_available: number;
         created_at: string;
       }>();
     runs = result.results.map((item) => ({
@@ -473,6 +478,7 @@ async function history(request: Request, user: SessionUser, env: ProfileEnv): Pr
       memoryKb: item.memory_kb,
       passedTests: item.passed_tests,
       totalTests: item.total_tests,
+      codeAvailable: Boolean(item.code_available),
       createdAt: item.created_at,
     }));
   }

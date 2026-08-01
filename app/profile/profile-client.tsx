@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import CodeViewerDialog, { type CodeRecordRequest } from "../code-viewer-dialog";
 
 type Provider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
 type Tab = "overview" | "history" | "content" | "settings" | "security" | "data";
@@ -34,7 +35,7 @@ type ProfilePayload = {
     ipHint: string | null;
     lastSeenAt: string;
   }>;
-  drafts: Array<{ language: string; topicIndex: number; preview: string; updatedAt: string }>;
+  drafts: Array<{ language: string; topicIndex: number; preview: string; codeAvailable: boolean; updatedAt: string }>;
   notes: Array<{ language: string; topicIndex: number; preview: string; updatedAt: string }>;
 };
 
@@ -54,6 +55,7 @@ type HistoryPayload = {
     durationMs: number | null;
     passedTests: number | null;
     totalTests: number | null;
+    codeAvailable: boolean;
     createdAt: string;
   }>;
   activities: Array<{
@@ -128,6 +130,7 @@ export default function ProfileClient() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [codeViewerRequest, setCodeViewerRequest] = useState<CodeRecordRequest | null>(null);
   const [form, setForm] = useState({
     displayName: "",
     defaultLanguage: "Python",
@@ -418,9 +421,22 @@ export default function ProfileClient() {
             <section className="profile-panel glass">
               <header><div><h2>最近编辑</h2></div><button onClick={() => changeTab("content")}>查看全部</button></header>
               <div className="profile-recent-grid">
-                {[...profile.drafts.slice(0, 2).map((item) => ({ ...item, type: "代码草稿" })), ...profile.notes.slice(0, 2).map((item) => ({ ...item, type: "学习笔记" }))].map((item, index) => (
-                  <article key={`${item.type}-${item.language}-${item.topicIndex}-${index}`}><i>{item.type === "代码草稿" ? "{}" : "Aa"}</i><div><small>{item.type} · {item.language}</small><b>第 {item.topicIndex + 1} 节</b><p>{item.preview || "暂无内容"}</p></div><time>{formatDate(item.updatedAt)}</time></article>
-                ))}
+                {[...profile.drafts.slice(0, 2).map((item) => ({ ...item, type: "代码草稿" })), ...profile.notes.slice(0, 2).map((item) => ({ ...item, type: "学习笔记" }))].map((item, index) => {
+                  const isDraft = item.type === "代码草稿";
+                  return <article
+                    className={isDraft ? "code-record-trigger" : undefined}
+                    key={`${item.type}-${item.language}-${item.topicIndex}-${index}`}
+                    role={isDraft ? "button" : undefined}
+                    tabIndex={isDraft ? 0 : undefined}
+                    onClick={isDraft ? () => setCodeViewerRequest({ kind: "draft", language: item.language, topicIndex: item.topicIndex }) : undefined}
+                    onKeyDown={isDraft ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setCodeViewerRequest({ kind: "draft", language: item.language, topicIndex: item.topicIndex });
+                      }
+                    } : undefined}
+                  ><i>{isDraft ? "{}" : "Aa"}</i><div><small>{item.type} · {item.language}</small><b>第 {item.topicIndex + 1} 节</b><p>{item.preview || "暂无内容"}</p></div><time>{formatDate(item.updatedAt)}</time></article>;
+                })}
                 {!profile.drafts.length && !profile.notes.length && <p className="profile-empty">完成一次练习或写下笔记后，最近内容会出现在这里。</p>}
               </div>
             </section>
@@ -433,13 +449,26 @@ export default function ProfileClient() {
               <button disabled={busy} onClick={reloadHistory}>筛选</button>
             </div></header>
             <div className="profile-history-list">
-              {history.runs.map((item) => <article key={item.id}><i className={item.statusId === 3 ? "success" : "failed"}>{item.statusId === 3 ? "✓" : "!"}</i><div><small>{item.language} · 第 {item.topicIndex + 1} 节</small><b>{item.mode === "judge" ? "自动判题" : "运行代码"}</b><p>{item.statusDescription}{item.passedTests !== null ? ` · ${item.passedTests}/${item.totalTests} 测试` : ""}</p></div><span>{item.durationMs === null ? "—" : `${item.durationMs}ms`}<time>{formatDate(item.createdAt)}</time></span></article>)}
+              {history.runs.map((item) => <article
+                className="code-record-trigger"
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`查看 ${item.language} 第 ${item.topicIndex + 1} 节运行代码`}
+                onClick={() => setCodeViewerRequest({ kind: "run", id: item.id, language: item.language, topicIndex: item.topicIndex })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setCodeViewerRequest({ kind: "run", id: item.id, language: item.language, topicIndex: item.topicIndex });
+                  }
+                }}
+              ><i className={item.statusId === 3 ? "success" : "failed"}>{item.statusId === 3 ? "✓" : "!"}</i><div><small>{item.language} · 第 {item.topicIndex + 1} 节</small><b>{item.mode === "judge" ? "自动判题" : "运行代码"}</b><p>{item.statusDescription}{item.passedTests !== null ? ` · ${item.passedTests}/${item.totalTests} 测试` : ""}</p></div><span>{item.codeAvailable ? "查看源码" : "旧记录无源码"}<time>{formatDate(item.createdAt)}</time></span></article>)}
               {!history.runs.length && <p className="profile-empty">当前筛选条件下没有运行记录。</p>}
             </div>
           </section>}
 
           {tab === "content" && <div className="profile-content-columns">
-            <section className="profile-panel glass"><header><div><h2>代码草稿</h2></div><b>{profile.drafts.length}</b></header><div className="profile-content-list">{profile.drafts.map((item, index) => <a href={`/?lang=${encodeURIComponent(item.language)}&topic=${item.topicIndex}#lab`} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><pre>{item.preview || "// 空草稿"}</pre><time>{formatDate(item.updatedAt)}</time></a>)}{!profile.drafts.length && <p className="profile-empty">还没有云端代码草稿。</p>}</div></section>
+            <section className="profile-panel glass"><header><div><h2>代码草稿</h2></div><b>{profile.drafts.length}</b></header><div className="profile-content-list">{profile.drafts.map((item, index) => <button type="button" className="code-record-trigger" onClick={() => setCodeViewerRequest({ kind: "draft", language: item.language, topicIndex: item.topicIndex })} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><pre>{item.preview || "// 空草稿"}</pre><time>{formatDate(item.updatedAt)}</time><b>查看完整代码 →</b></button>)}{!profile.drafts.length && <p className="profile-empty">还没有云端代码草稿。</p>}</div></section>
             <section className="profile-panel glass"><header><div><h2>学习笔记</h2></div><b>{profile.notes.length}</b></header><div className="profile-content-list notes">{profile.notes.map((item, index) => <a href={`/?lang=${encodeURIComponent(item.language)}&topic=${item.topicIndex}#notes`} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><p>{item.preview || "空笔记"}</p><time>{formatDate(item.updatedAt)}</time></a>)}{!profile.notes.length && <p className="profile-empty">还没有云端学习笔记。</p>}</div></section>
           </div>}
 
@@ -472,6 +501,7 @@ export default function ProfileClient() {
             <section className="profile-panel danger glass"><header><div><h2>清除学习数据</h2></div></header><p>该操作会删除本站进度、历史、草稿和笔记，但保留账号、头像和已绑定登录方式。</p><label className="profile-field"><span>输入“清除我的学习数据”进行确认</span><input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} /></label><button disabled={busy || deleteConfirmation !== "清除我的学习数据"} onClick={clearLearningData}>永久清除学习数据</button></section>
           </div>}
         </section>
+        <CodeViewerDialog request={codeViewerRequest} onClose={() => setCodeViewerRequest(null)} />
       </div>
     </main>
   );

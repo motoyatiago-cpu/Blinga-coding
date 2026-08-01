@@ -2,6 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import {
+  ensureColumn,
   ensureOwnershipColumns,
   handleAuthRequest,
   resolvePrincipal,
@@ -128,6 +129,7 @@ async function ensureRunHistorySchema(database: D1Database): Promise<void> {
         memory_kb INTEGER,
         passed_tests INTEGER,
         total_tests INTEGER,
+        source_code TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `),
@@ -137,6 +139,7 @@ async function ensureRunHistorySchema(database: D1Database): Promise<void> {
     `),
   ]);
   await ensureOwnershipColumns(database);
+  await ensureColumn(database, "code_run_history", "source_code", "TEXT");
 }
 
 async function ensureNotesSchema(database: D1Database): Promise<void> {
@@ -401,7 +404,8 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
     .prepare(`
       SELECT
         id, mode, status_id, status_description, duration_ms,
-        memory_kb, passed_tests, total_tests, created_at
+        memory_kb, passed_tests, total_tests,
+        source_code IS NOT NULL AS code_available, created_at
       FROM code_run_history
       WHERE user_email = ? AND language = ? AND topic_index = ?
       ORDER BY id DESC
@@ -417,6 +421,7 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
       memory_kb: number | null;
       passed_tests: number | null;
       total_tests: number | null;
+      code_available: number;
       created_at: string;
     }>();
 
@@ -430,9 +435,97 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
       memoryKb: record.memory_kb,
       passedTests: record.passed_tests,
       totalTests: record.total_tests,
+      codeAvailable: Boolean(record.code_available),
       createdAt: record.created_at,
     })),
   });
+}
+
+async function handleCodeRecordRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "仅支持 GET 请求" }, 405);
+  }
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
+    return jsonResponse({ error: "请先登录后再查看代码" }, 401);
+  }
+
+  const url = new URL(request.url);
+  const kind = url.searchParams.get("kind");
+  if (kind === "draft") {
+    const identity = safeDraftIdentity(
+      url.searchParams.get("language"),
+      url.searchParams.get("topicIndex"),
+    );
+    if (!identity) return jsonResponse({ error: "课程标识无效" }, 400);
+    await ensureDraftSchema(env.DB);
+    const record = await env.DB
+      .prepare(`
+        SELECT code, updated_at
+        FROM code_drafts
+        WHERE user_email = ? AND language = ? AND topic_index = ?
+      `)
+      .bind(principal.userKey, identity.language, identity.topicIndex)
+      .first<{ code: string; updated_at: string }>();
+    if (!record) return jsonResponse({ error: "没有找到这份代码草稿" }, 404);
+    return jsonResponse({
+      record: {
+        kind: "draft",
+        language: identity.language,
+        topicIndex: identity.topicIndex,
+        code: record.code,
+        codeAvailable: true,
+        updatedAt: record.updated_at,
+      },
+    });
+  }
+
+  if (kind === "run") {
+    const id = Number(url.searchParams.get("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return jsonResponse({ error: "运行记录标识无效" }, 400);
+    }
+    await ensureRunHistorySchema(env.DB);
+    const record = await env.DB
+      .prepare(`
+        SELECT
+          id, language, topic_index, mode, status_id, status_description,
+          source_code, created_at
+        FROM code_run_history
+        WHERE id = ? AND user_email = ?
+      `)
+      .bind(id, principal.userKey)
+      .first<{
+        id: number;
+        language: string;
+        topic_index: number;
+        mode: string;
+        status_id: number;
+        status_description: string;
+        source_code: string | null;
+        created_at: string;
+      }>();
+    if (!record) return jsonResponse({ error: "没有找到这条运行记录" }, 404);
+    return jsonResponse({
+      record: {
+        kind: "run",
+        id: record.id,
+        language: record.language,
+        topicIndex: record.topic_index,
+        code: record.source_code,
+        codeAvailable: record.source_code !== null,
+        mode: record.mode,
+        statusId: record.status_id,
+        statusDescription: record.status_description,
+        createdAt: record.created_at,
+        unavailableReason: record.source_code === null
+          ? "该记录创建时未保存源码"
+          : null,
+      },
+    });
+  }
+
+  return jsonResponse({ error: "代码记录类型无效" }, 400);
 }
 
 async function handleNotesRequest(request: Request, env: Env): Promise<Response> {
@@ -853,9 +946,9 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
             INSERT INTO code_run_history (
               user_email, user_id, language, topic_index, mode, status_id,
               status_description, duration_ms, memory_kb,
-              passed_tests, total_tests, created_at
+              passed_tests, total_tests, source_code, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
           `)
           .bind(
             userKey,
@@ -869,6 +962,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
             result.memory == null ? null : Math.max(0, Math.round(Number(result.memory))),
             judge?.passed ?? null,
             judge?.total ?? null,
+            code,
           )
           .run();
         await env.DB
@@ -956,6 +1050,10 @@ const worker = {
 
     if (url.pathname === "/api/run-history") {
       return handleRunHistoryRequest(request, env);
+    }
+
+    if (url.pathname === "/api/code-record") {
+      return handleCodeRecordRequest(request, env);
     }
 
     if (url.pathname === "/api/notes") {

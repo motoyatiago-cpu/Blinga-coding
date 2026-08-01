@@ -1948,3 +1948,66 @@ button.hover-bounce:focus-visible{
 .course-entry h2{
   margin-top:0;
 }
+
+/* Read-only source viewer shared by sandbox history and the profile workspace. */
+.code-record-trigger{
+  cursor:pointer;
+  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.code-record-trigger:focus-visible{
+  outline:0;
+  box-shadow:inset 0 0 0 1px rgba(126,231,195,.68),0 0 0 3px rgba(88,230,186,.09);
+}
+.run-history-list article.code-record-trigger{
+  grid-template-columns:23px minmax(120px,1fr) minmax(150px,auto) 66px auto;
+}
+.code-record-availability{
+  color:#91dbc4;
+  font:8px var(--font-geist-mono);
+  white-space:nowrap;
+}
+.code-viewer-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:220;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(2,4,8,.78);
+  backdrop-filter:blur(18px) saturate(115%);
+  -webkit-backdrop-filter:blur(18px) saturate(115%);
+  animation:code-viewer-fade .18s ease-out;
+}
+.code-viewer-dialog{
+  width:min(1040px,100%);
+  height:min(760px,calc(100vh - 48px));
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(35,39,47,.98),rgba(13,16,22,.99));
+  box-shadow:inset 0 1px rgba(255,255,255,.1),0 38px 110px rgba(0,0,0,.72);
+  animation:code-viewer-enter .24s cubic-bezier(.2,.8,.2,1);
+}
+.code-viewer-titlebar{
+  min-height:64px;
+  display:grid;
+  grid-template-columns:116px minmax(0,1fr) 116px;
+  align-items:center;
+  padding:0 20px;
+  border-bottom:1px solid rgba(255,255,255,.085);
+  background:linear-gradient(180deg,rgba(52,56,65,.96),rgba(31,35,43,.96));
+  box-shadow:inset 0 1px rgba(255,255,255,.09);
+}
+.mac-traffic-lights{display:flex;gap:8px}.mac-traffic-lights i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 -1px 2px rgba(0,0,0,.2)}.mac-traffic-lights i:nth-child(1){background:#ff5f57}.mac-traffic-lights i:nth-child(2){background:#febc2e}.mac-traffic-lights i:nth-child(3){background:#28c840}
+.code-viewer-heading{min-width:0;text-align:center}.code-viewer-heading b,.code-viewer-heading span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.code-viewer-heading b{color:#e7e9ee;font-size:12px}.code-viewer-heading span{margin-top:4px;color:#8a919d;font:9px var(--font-geist-mono)}
+.code-viewer-titlebar>button{justify-self:end;width:32px;height:32px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(0,0,0,.14);color:#9aa1ad;font-size:19px;cursor:pointer}.code-viewer-titlebar>button:hover{background:rgba(255,255,255,.07);color:#fff}
+.code-viewer-meta{min-height:44px;display:flex;align-items:center;gap:9px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.065);background:#171a20;color:#818996;font:9px var(--font-geist-mono)}.code-viewer-meta>span{padding:4px 7px;border:1px solid rgba(255,255,255,.07);border-radius:6px;background:rgba(255,255,255,.025)}.code-viewer-meta .success{color:#62d69f}.code-viewer-meta .failed{color:#ff837a}.code-viewer-meta time{margin-left:auto;color:#656d79}
+.code-viewer-body{min-height:0;overflow:auto;overscroll-behavior:contain;background:#0a0d12;scrollbar-width:thin;scrollbar-color:#48505c transparent}.code-viewer-body::-webkit-scrollbar{width:8px;height:8px}.code-viewer-body::-webkit-scrollbar-thumb{border-radius:8px;background:#48505c}
+.code-viewer-source{min-width:max-content;min-height:100%;display:grid;grid-template-columns:58px minmax(0,1fr);background:radial-gradient(circle at 70% 0,rgba(113,130,255,.04),transparent 34%),#0a0d12}.code-viewer-source pre{margin:0;padding:24px 26px;color:#d6dce7;font:12px/1.8 "SFMono-Regular","SF Mono",Menlo,Monaco,Consolas,"Liberation Mono",monospace;tab-size:2;white-space:pre}.code-viewer-source .code-viewer-lines{position:sticky;left:0;z-index:1;padding-right:15px;border-right:1px solid rgba(255,255,255,.055);background:#090c10;color:#4e5867;text-align:right;user-select:none}
+.code-viewer-state{height:100%;min-height:260px;display:grid;place-items:center;align-content:center;gap:9px;padding:30px;color:#788292;font-size:11px;text-align:center}.code-viewer-state b{color:#bac2ce;font-size:14px}.code-viewer-state p{margin:0;color:#697382}.code-viewer-state.error{color:#ff938a}
+.code-viewer-dialog>footer{min-height:66px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:11px 16px;border-top:1px solid rgba(255,255,255,.075);background:linear-gradient(180deg,#1a1e25,#13161c)}.code-viewer-dialog>footer>span{color:#6f7785;font-size:9px}.code-viewer-dialog>footer>div{display:flex;gap:7px}.code-viewer-dialog>footer button{min-height:36px;padding:0 13px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.035);color:#aeb5c0;font-size:9px;cursor:pointer}.code-viewer-dialog>footer button:hover:not(:disabled){background:rgba(255,255,255,.075);color:#fff}.code-viewer-dialog>footer button.primary{border-color:rgba(88,230,186,.4);background:#58e6ba;color:#071b15;font-weight:760}.code-viewer-dialog>footer button:disabled{opacity:.35;cursor:not-allowed}
+@keyframes code-viewer-fade{from{opacity:0}to{opacity:1}}@keyframes code-viewer-enter{from{opacity:0;transform:translate3d(0,12px,0) scale(.985)}to{opacity:1;transform:none}}
+@media(max-width:700px){.run-history-list article.code-record-trigger{grid-template-columns:22px minmax(0,1fr) 62px}.run-history-list .code-record-availability{grid-column:2/4}.code-viewer-backdrop{padding:0}.code-viewer-dialog{height:100vh;border:0;border-radius:0}.code-viewer-titlebar{grid-template-columns:76px minmax(0,1fr) 76px;padding:0 13px}.code-viewer-meta{overflow-x:auto}.code-viewer-meta time{margin-left:0;white-space:nowrap}.code-viewer-source{grid-template-columns:46px minmax(0,1fr)}.code-viewer-source pre{padding:20px 16px}.code-viewer-source .code-viewer-lines{padding-right:11px}.code-viewer-dialog>footer{align-items:stretch;flex-direction:column}.code-viewer-dialog>footer>div{display:grid;grid-template-columns:1fr 1fr}.code-viewer-dialog>footer button.primary{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){.code-viewer-backdrop,.code-viewer-dialog{animation:none}}

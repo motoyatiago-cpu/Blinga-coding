@@ -188,7 +188,7 @@ function callbackUrl(provider: AuthProvider, request: Request, env: AuthEnv): st
   return `${oauthOrigin(request, env)}/api/auth/${provider}/callback`;
 }
 
-async function ensureColumn(
+export async function ensureColumn(
   database: D1Database,
   table: string,
   column: string,

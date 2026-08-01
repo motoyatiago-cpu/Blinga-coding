@@ -360,6 +360,40 @@ test("implements external OAuth sessions, account linking, private avatars, and 
   assert.match(envExample, /QQ_CLIENT_SECRET=/);
 });
 
+test("stores authenticated run snapshots and opens saved code in an accessible viewer", async () => {
+  const [page, profile, viewer, worker, profileWorker, schema, migration, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/code-viewer-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/profile.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0007_living_lady_vermin.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(schema, /sourceCode: text\("source_code"\)/);
+  assert.match(migration, /ALTER TABLE `code_run_history` ADD `source_code` text/);
+  assert.match(worker, /passed_tests, total_tests, source_code, created_at/);
+  assert.match(worker, /judge\?\.total \?\? null,\s*code,/);
+  assert.match(worker, /url\.pathname === "\/api\/code-record"/);
+  assert.match(worker, /WHERE id = \? AND user_email = \?/);
+  assert.match(worker, /source_code IS NOT NULL AS code_available/);
+  assert.match(profileWorker, /codeAvailable: Boolean\(item\.code_available\)/);
+  assert.match(page, /consumeCodeImport\(lang, topicIndex\)/);
+  assert.match(page, /<CodeViewerDialog request=\{codeViewerRequest\}/);
+  assert.match(profile, /kind: "draft"/);
+  assert.match(profile, /kind: "run"/);
+  assert.match(viewer, /role="dialog"/);
+  assert.match(viewer, /aria-modal="true"/);
+  assert.match(viewer, /data-lenis-prevent/);
+  assert.match(viewer, /navigator\.clipboard\.writeText/);
+  assert.match(viewer, /sessionStorage\.removeItem\(CODE_IMPORT_STORAGE_KEY\)/);
+  assert.doesNotMatch(viewer, /searchParams\.set\("code"/);
+  assert.match(css, /\.code-viewer-dialog\{/);
+  assert.match(css, /@media\(max-width:700px\)/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

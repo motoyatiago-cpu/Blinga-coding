@@ -45,6 +45,7 @@ export const codeRunHistory = sqliteTable("code_run_history", {
   memoryKb: integer("memory_kb"),
   passedTests: integer("passed_tests"),
   totalTests: integer("total_tests"),
+  sourceCode: text("source_code"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

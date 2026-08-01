@@ -28,6 +28,10 @@ import {
   useState,
 } from "react";
 import AccountMenu from "./account-menu";
+import CodeViewerDialog, {
+  consumeCodeImport,
+  type CodeRecordRequest,
+} from "./code-viewer-dialog";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
 type LearningProgress = {
@@ -968,6 +972,7 @@ type RunHistoryItem = {
   memoryKb: number | null;
   passedTests: number | null;
   totalTests: number | null;
+  codeAvailable: boolean;
   createdAt: string;
 };
 
@@ -1131,6 +1136,7 @@ function Sandbox({
   const [draftReadyKey, setDraftReadyKey] = useState("");
   const [draftStatus, setDraftStatus] = useState("正在读取草稿…");
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+  const [codeViewerRequest, setCodeViewerRequest] = useState<CodeRecordRequest | null>(null);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [focusMode, setFocusMode] = useState(false);
@@ -1236,6 +1242,17 @@ function Sandbox({
     onContextChange({ code: lesson.code, stdin: "", output: initialOutput });
 
     const loadDraft = async () => {
+      const importedCode = consumeCodeImport(lang, topicIndex);
+      if (importedCode !== null) {
+        if (!active) return;
+        draftEditRevisionRef.current = 1;
+        lastSavedCodeRef.current = lesson.code;
+        setCode(importedCode);
+        onContextChange({ code: importedCode, stdin: stdinRef.current, output: outputRef.current });
+        setDraftStatus("已载入历史代码，正在保存为当前草稿…");
+        setDraftReadyKey(draftKey);
+        return;
+      }
       let restoredCode = lesson.code;
       try {
         const params = new URLSearchParams({
@@ -1695,7 +1712,25 @@ function Sandbox({
             {runHistory.map((item) => {
               const accepted = item.statusId === 3;
               return (
-                <article className={accepted ? "accepted" : "failed"} key={item.id}>
+                <article
+                  className={`${accepted ? "accepted" : "failed"} code-record-trigger`}
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`查看第 ${item.id} 条运行代码`}
+                  onClick={() => setCodeViewerRequest({
+                    kind: "run",
+                    id: item.id,
+                    language: lang,
+                    topicIndex,
+                  })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setCodeViewerRequest({ kind: "run", id: item.id, language: lang, topicIndex });
+                    }
+                  }}
+                >
                   <i>{accepted ? "✓" : "!"}</i>
                   <div>
                     <b>{item.mode === "judge" ? "自动判题" : "普通运行"}</b>
@@ -1707,6 +1742,7 @@ function Sandbox({
                     {item.memoryKb != null && <span>{Math.max(1, Math.round(item.memoryKb / 1024))} MB</span>}
                   </div>
                   <time>{formatRunHistoryTime(item.createdAt)}</time>
+                  <span className="code-record-availability">{item.codeAvailable ? "查看源码" : "旧记录无源码"}</span>
                 </article>
               );
             })}
@@ -1715,6 +1751,7 @@ function Sandbox({
           <div className="run-history-empty">还没有运行记录，完成一次运行后会显示在这里。</div>
         )}
       </section>
+      <CodeViewerDialog request={codeViewerRequest} onClose={() => setCodeViewerRequest(null)} />
     </section>
   );
 }
