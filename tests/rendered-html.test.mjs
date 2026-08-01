@@ -263,8 +263,14 @@ test("adds an accessible avatar menu and a dedicated personal workspace", async 
   assert.match(menu, /aria-haspopup="menu"/);
   assert.match(menu, /aria-expanded=\{open\}/);
   assert.match(menu, /href="\/profile"/);
+  assert.match(menu, /\/api\/auth\/transition\/activate/);
+  assert.match(menu, /更换头像/);
+  assert.match(menu, /accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(menu, /密码与安全/);
   assert.match(profile, /学习与运行记录/);
-  assert.match(profile, /登录方式与安全|账号安全/);
+  assert.match(profile, /密码与安全/);
+  assert.match(profile, /密码由登录平台管理/);
+  assert.match(profile, /Blinga coding 不保存独立密码/);
   assert.match(profile, /清除我的学习数据/);
   assert.match(profile, /accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(css, /\.profile-layout/);
@@ -288,6 +294,10 @@ test("implements external OAuth sessions, account linking, private avatars, and 
   assert.match(auth, /crypto\.subtle\.verify/);
   assert.match(auth, /必须至少保留一种登录方式/);
   assert.match(auth, /migrateLegacyData/);
+  assert.match(auth, /async function activateTransition/);
+  assert.match(auth, /未检测到可信的平台身份/);
+  assert.match(auth, /INSERT OR IGNORE INTO users/);
+  assert.match(auth, /\/api\/auth\/transition\/activate/);
   assert.match(profile, /AVATAR_MAX_BYTES = 2 \* 1024 \* 1024/);
   assert.match(profile, /仅支持真实的 JPEG、PNG 或 WebP 图片/);
   assert.match(profile, /DELETE FROM learning_activity WHERE user_id = \?/);
@@ -297,6 +307,7 @@ test("implements external OAuth sessions, account linking, private avatars, and 
   assert.match(schema, /sqliteTable\("oauth_identities"/);
   assert.match(schema, /sqliteTable\("auth_sessions"/);
   assert.match(schema, /sqliteTable\("learning_activity"/);
+  assert.match(schema, /uniqueIndex\("users_legacy_email_idx"\)/);
   assert.match(hosting, /"r2": "AVATARS"/);
   assert.match(envExample, /MICROSOFT_CLIENT_SECRET=/);
   assert.match(envExample, /WECHAT_OPEN_APP_SECRET=/);

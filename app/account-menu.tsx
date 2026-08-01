@@ -33,7 +33,13 @@ function initials(name: string): string {
 export default function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<SessionPayload | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [avatarRevision, setAvatarRevision] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const activationAttemptedRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,6 +57,36 @@ export default function AccountMenu() {
       }));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!open || session?.authenticated || !session?.transition?.active || activationAttemptedRef.current) {
+      return;
+    }
+    activationAttemptedRef.current = true;
+    const activate = async () => {
+      setActivating(true);
+      setFeedback("");
+      try {
+        const response = await fetch("/api/auth/transition/activate", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) throw new Error(payload.error || "个人账号激活失败");
+        const nextSession = await fetch("/api/auth/session", { credentials: "same-origin" });
+        const nextPayload = await nextSession.json() as SessionPayload & { error?: string };
+        if (!nextSession.ok) throw new Error(nextPayload.error || "无法读取账户状态");
+        setSession(nextPayload);
+        setFeedback("个人账户已就绪");
+      } catch (error) {
+        activationAttemptedRef.current = false;
+        setFeedback(error instanceof Error ? error.message : "个人账号激活失败");
+      } finally {
+        setActivating(false);
+      }
+    };
+    void activate();
+  }, [open, session]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +117,47 @@ export default function AccountMenu() {
     window.location.href = "/";
   }
 
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return;
+    if (![/^image\/png$/, /^image\/jpeg$/, /^image\/webp$/].some((pattern) => pattern.test(file.type))) {
+      setFeedback("请选择 JPEG、PNG 或 WebP 图片");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setFeedback("头像文件不能超过 2MB");
+      return;
+    }
+
+    setAvatarBusy(true);
+    setFeedback("");
+    try {
+      const body = new FormData();
+      body.set("avatar", file);
+      const response = await fetch("/api/profile/avatar", {
+        method: "POST",
+        credentials: "same-origin",
+        body,
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "头像上传失败");
+      const nextSession = await fetch("/api/auth/session", { credentials: "same-origin" });
+      const nextPayload = await nextSession.json() as SessionPayload & { error?: string };
+      if (!nextSession.ok) throw new Error(nextPayload.error || "无法更新头像状态");
+      setSession(nextPayload);
+      setAvatarRevision(Date.now());
+      setFeedback("头像已更新");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "头像上传失败");
+    } finally {
+      setAvatarBusy(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
+  const avatarSrc = session?.user?.avatarType === "upload"
+    ? `/api/profile/avatar?v=${avatarRevision}`
+    : null;
+
   return (
     <div className="account-menu" ref={rootRef}>
       <button
@@ -96,11 +173,19 @@ export default function AccountMenu() {
             : undefined
         }
       >
-        {session?.user?.avatarType === "upload"
-          ? <img src="/api/profile/avatar" alt="" />
+        {avatarSrc
+          ? <img src={avatarSrc} alt="" />
           : initials(displayName)}
         <span aria-hidden="true" />
       </button>
+      <input
+        ref={avatarInputRef}
+        className="account-avatar-input"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label="选择新的头像图片"
+        onChange={(event) => void uploadAvatar(event.target.files?.[0])}
+      />
 
       <div className={`account-popover glass ${open ? "open" : ""}`} role="menu" aria-hidden={!open}>
         <header>
@@ -112,8 +197,8 @@ export default function AccountMenu() {
                 : undefined
             }
           >
-            {session?.user?.avatarType === "upload"
-              ? <img src="/api/profile/avatar" alt="" />
+            {avatarSrc
+              ? <img src={avatarSrc} alt="" />
               : initials(displayName)}
           </div>
           <span>
@@ -128,12 +213,24 @@ export default function AccountMenu() {
           </span>
         </header>
 
-        {session?.authenticated ? (
+        {activating ? (
+          <p className="account-menu-status" role="status">正在准备个人账户…</p>
+        ) : session?.authenticated ? (
           <>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={avatarBusy}
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              <span>{avatarBusy ? "正在上传" : "更换头像"}</span><i>↗</i>
+            </button>
             <a href="/profile" role="menuitem"><span>个人主页</span><i>→</i></a>
             <a href="/profile?tab=history" role="menuitem"><span>学习历史</span><i>⌁</i></a>
-            <a href="/profile?tab=security" role="menuitem"><span>登录方式与安全</span><i>◇</i></a>
-            <button type="button" role="menuitem" onClick={signOut}><span>退出登录</span><i>↗</i></button>
+            <a href="/profile?tab=settings" role="menuitem"><span>偏好设置</span><i>⌘</i></a>
+            <a href="/profile?tab=security" role="menuitem"><span>密码与安全</span><i>◇</i></a>
+            <button type="button" role="menuitem" onClick={signOut}><span>退出当前会话</span><i>↗</i></button>
+            {feedback && <p className="account-menu-feedback" role="status">{feedback}</p>}
           </>
         ) : configured.length ? (
           <section className="account-provider-list" aria-label="可用登录方式">
@@ -152,6 +249,9 @@ export default function AccountMenu() {
           <p className="account-config-note">
             微信、QQ 与 Microsoft 登录将在平台应用审核和密钥配置完成后自动开放。
           </p>
+        )}
+        {!activating && !session?.authenticated && feedback && (
+          <p className="account-menu-feedback" role="status">{feedback}</p>
         )}
       </div>
     </div>

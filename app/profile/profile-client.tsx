@@ -70,7 +70,7 @@ const tabs: Array<{ id: Tab; label: string; symbol: string }> = [
   { id: "history", label: "历史", symbol: "↺" },
   { id: "content", label: "我的内容", symbol: "◇" },
   { id: "settings", label: "偏好设置", symbol: "⌘" },
-  { id: "security", label: "账号安全", symbol: "◎" },
+  { id: "security", label: "密码与安全", symbol: "◎" },
   { id: "data", label: "数据管理", symbol: "⇩" },
 ];
 
@@ -142,9 +142,18 @@ export default function ProfileClient() {
 
   async function loadSession() {
     try {
-      const nextSession = await readJson<SessionPayload>(
+      let nextSession = await readJson<SessionPayload>(
         await fetch("/api/auth/session", { credentials: "same-origin" }),
       );
+      if (!nextSession.authenticated && nextSession.transition?.active) {
+        await readJson(await fetch("/api/auth/transition/activate", {
+          method: "POST",
+          credentials: "same-origin",
+        }));
+        nextSession = await readJson<SessionPayload>(
+          await fetch("/api/auth/session", { credentials: "same-origin" }),
+        );
+      }
       setSession(nextSession);
       if (nextSession.authenticated) await loadPrivateData();
     } catch (error) {
@@ -431,12 +440,26 @@ export default function ProfileClient() {
           </div>}
 
           {tab === "settings" && <form className="profile-settings" onSubmit={saveSettings}>
-            <section className="profile-panel glass"><header><div><span>PROFILE</span><h2>头像与昵称</h2></div></header><div className="profile-avatar-settings"><div className="profile-avatar large" style={profile.user.avatarType === "preset" && profile.user.avatarValue ? { background: profile.user.avatarValue } : undefined}>{profile.user.avatarType === "upload" ? <img src="/api/profile/avatar" alt="当前头像" /> : initial(profile.user.displayName)}</div><div><label className="profile-upload"><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadAvatar(event.target.files?.[0])} disabled={busy} /><span>上传新头像</span></label><small>JPEG、PNG 或 WebP，最大 2MB</small><div className="profile-preset-list">{avatarPresets.map((color) => <button type="button" aria-label={`使用 ${color} 头像配色`} style={{ background: color }} key={color} onClick={() => setAvatarPreset(color)} disabled={busy} />)}</div></div></div><label className="profile-field"><span>显示昵称</span><input value={form.displayName} maxLength={40} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label></section>
+            <section className="profile-panel glass" id="avatar-settings"><header><div><span>PROFILE</span><h2>头像与昵称</h2></div></header><div className="profile-avatar-settings"><div className="profile-avatar large" style={profile.user.avatarType === "preset" && profile.user.avatarValue ? { background: profile.user.avatarValue } : undefined}>{profile.user.avatarType === "upload" ? <img src="/api/profile/avatar" alt="当前头像" /> : initial(profile.user.displayName)}</div><div><label className="profile-upload"><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadAvatar(event.target.files?.[0])} disabled={busy} /><span>上传新头像</span></label><small>JPEG、PNG 或 WebP，最大 2MB</small><div className="profile-preset-list">{avatarPresets.map((color) => <button type="button" aria-label={`使用 ${color} 头像配色`} style={{ background: color }} key={color} onClick={() => setAvatarPreset(color)} disabled={busy} />)}</div></div></div><label className="profile-field"><span>显示昵称</span><input value={form.displayName} maxLength={40} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label></section>
             <section className="profile-panel glass"><header><div><span>PREFERENCES</span><h2>学习体验</h2></div></header><div className="profile-form-grid"><label className="profile-field"><span>默认编程语言</span><select value={form.defaultLanguage} onChange={(event) => setForm({ ...form, defaultLanguage: event.target.value })}><option>Python</option><option>C/C++</option><option>JavaScript</option><option>Java</option></select></label><label className="profile-field"><span>编辑器字号</span><input type="number" min={12} max={20} value={form.editorFontSize} onChange={(event) => setForm({ ...form, editorFontSize: Number(event.target.value) })} /></label><label className="profile-field"><span>AI 回答详细程度</span><select value={form.aiDetail} onChange={(event) => setForm({ ...form, aiDetail: event.target.value })}><option value="concise">简洁</option><option value="balanced">均衡</option><option value="detailed">详细</option></select></label><label className="profile-toggle"><input type="checkbox" checked={form.reduceMotion} onChange={(event) => setForm({ ...form, reduceMotion: event.target.checked })} /><span><b>减少动画</b><small>降低弹跳与页面过渡效果</small></span></label></div><button className="profile-primary" disabled={busy} type="submit">{busy ? "保存中" : "保存个人设置"}</button></section>
           </form>}
 
           {tab === "security" && <div className="profile-security">
             <section className="profile-panel glass"><header><div><span>CONNECTED ACCOUNTS</span><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || profile.links.length <= 1} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
+            <section className="profile-panel profile-password-card glass">
+              <header><div><span>PASSWORD &amp; RECOVERY</span><h2>密码与账号恢复</h2></div></header>
+              <div className="profile-password-summary">
+                <i>⌁</i>
+                <div><b>密码由登录平台管理</b><p>Blinga coding 不保存独立密码。修改密码、找回账号和多因素认证请在对应登录平台完成。</p></div>
+              </div>
+              <ul className="profile-password-list">
+                {profile.links.length ? profile.links.map((link) => (
+                  <li key={link.provider}><b>{providerLabels[link.provider]}</b><span>请前往该平台的“账号与安全”完成密码或恢复设置</span></li>
+                )) : (
+                  <li><b>当前受保护账号</b><span>目前由站点访问保护；绑定微信、QQ 或 Microsoft 后由对应平台管理密码</span></li>
+                )}
+              </ul>
+            </section>
             <section className="profile-panel glass"><header><div><span>ACTIVE SESSIONS</span><h2>活跃设备</h2></div><button onClick={() => signOut(true)}>退出全部设备</button></header><div className="profile-session-list">{profile.sessions.map((item) => <article key={item.id}><i>{item.current ? "●" : "○"}</i><div><b>{item.current ? "当前设备" : "其他设备"}</b><p>{item.device}</p><small>{item.ipHint || "未知网络"} · {formatDate(item.lastSeenAt)}</small></div></article>)}</div></section>
           </div>}
 

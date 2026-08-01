@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `users_legacy_email_idx` ON `users` (`legacy_email`);

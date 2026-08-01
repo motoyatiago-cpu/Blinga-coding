@@ -43,6 +43,13 @@
       "when": 1785549257938,
       "tag": "0005_magenta_matthew_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785550435347,
+      "tag": "0006_fair_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

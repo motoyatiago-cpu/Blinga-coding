@@ -69,7 +69,9 @@ export const users = sqliteTable("users", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: text("last_login_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  uniqueIndex("users_legacy_email_idx").on(table.legacyEmail),
+]);
 
 export const oauthIdentities = sqliteTable("oauth_identities", {
   provider: text("provider").notNull(),

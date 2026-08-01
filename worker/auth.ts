@@ -294,6 +294,7 @@ export async function ensureAuthSchema(database: D1Database): Promise<void> {
       )
     `),
     database.prepare("CREATE INDEX IF NOT EXISTS oauth_identities_user_idx ON oauth_identities (user_id)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS users_legacy_email_idx ON users (legacy_email)"),
     database.prepare("CREATE INDEX IF NOT EXISTS auth_sessions_user_idx ON auth_sessions (user_id, expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS oauth_transactions_expiry_idx ON oauth_transactions (expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS learning_activity_user_idx ON learning_activity (user_id, id DESC)"),
@@ -395,26 +396,122 @@ async function migrateLegacyData(
   if (!email) return;
   await ensureOwnershipColumns(env.DB);
   const userKey = `user:${userId}`;
-  await env.DB.batch([
-    env.DB
-      .prepare("UPDATE learning_progress SET user_email = ?, user_id = ? WHERE user_email = ?")
-      .bind(userKey, userId, email),
-    env.DB
-      .prepare("UPDATE code_drafts SET user_email = ?, user_id = ? WHERE user_email = ?")
-      .bind(userKey, userId, email),
-    env.DB
-      .prepare("UPDATE lesson_completions SET user_email = ?, user_id = ? WHERE user_email = ?")
-      .bind(userKey, userId, email),
-    env.DB
-      .prepare("UPDATE code_run_history SET user_email = ?, user_id = ? WHERE user_email = ?")
-      .bind(userKey, userId, email),
-    env.DB
-      .prepare("UPDATE learning_notes SET user_email = ?, user_id = ? WHERE user_email = ?")
-      .bind(userKey, userId, email),
+  const statements: D1PreparedStatement[] = [];
+  for (const table of [
+    "learning_progress",
+    "code_drafts",
+    "lesson_completions",
+    "code_run_history",
+    "learning_notes",
+  ]) {
+    const exists = await env.DB
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .bind(table)
+      .first<{ name: string }>();
+    if (exists) {
+      statements.push(
+        env.DB
+          .prepare(`UPDATE ${table} SET user_email = ?, user_id = ? WHERE user_email = ?`)
+          .bind(userKey, userId, email),
+      );
+    }
+  }
+  statements.push(
     env.DB
       .prepare("UPDATE users SET legacy_email = COALESCE(legacy_email, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .bind(email, userId),
+  );
+  await env.DB.batch(statements);
+}
+
+async function activateTransition(request: Request, env: AuthEnv): Promise<Response> {
+  if (request.method !== "POST") return authJson({ error: "仅支持 POST 请求" }, 405);
+  if (!sameOrigin(request)) return authJson({ error: "请求来源无效" }, 403);
+  if (!legacyTransitionEnabled(env)) {
+    return authJson({ error: "过渡账号激活已关闭" }, 403);
+  }
+
+  const email = legacyEmail(request);
+  if (!email) return authJson({ error: "未检测到可信的平台身份" }, 401);
+
+  const activeSession = await getSessionUser(request, env);
+  if (activeSession) {
+    return authJson({ activated: false, authenticated: true });
+  }
+
+  await ensureAuthSchema(env.DB);
+  let user = await env.DB
+    .prepare(`
+      SELECT id, display_name, email, avatar_type, avatar_value
+      FROM users
+      WHERE legacy_email = ?
+    `)
+    .bind(email)
+    .first<{
+      id: string;
+      display_name: string;
+      email: string | null;
+      avatar_type: string;
+      avatar_value: string | null;
+    }>();
+
+  if (!user) {
+    const userId = crypto.randomUUID();
+    const displayName = decodeLegacyName(request) || email.split("@")[0] || "Blinga 学员";
+    await env.DB
+      .prepare(`
+        INSERT OR IGNORE INTO users (
+          id, display_name, email, avatar_type, avatar_value, legacy_email
+        ) VALUES (?, ?, ?, 'preset', '#7182ff', ?)
+      `)
+      .bind(userId, displayName, email, email)
+      .run();
+    user = await env.DB
+      .prepare(`
+        SELECT id, display_name, email, avatar_type, avatar_value
+        FROM users
+        WHERE legacy_email = ?
+      `)
+      .bind(email)
+      .first<{
+        id: string;
+        display_name: string;
+        email: string | null;
+        avatar_type: string;
+        avatar_value: string | null;
+      }>();
+  }
+
+  if (!user) return authJson({ error: "个人账号激活失败，请稍后重试" }, 500);
+
+  await env.DB.batch([
+    env.DB
+      .prepare(`
+        UPDATE users
+        SET email = COALESCE(email, ?), last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `)
+      .bind(email, user.id),
+    env.DB
+      .prepare("INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT(user_id) DO NOTHING")
+      .bind(user.id),
   ]);
+  await migrateLegacyData(user.id, request, env);
+
+  const token = await createSession(user.id, request, env);
+  const response = authJson({
+    activated: true,
+    authenticated: true,
+    user: {
+      displayName: user.display_name,
+      email: user.email || email,
+      avatarType: user.avatar_type,
+      avatarValue: user.avatar_value,
+      avatarUrl: user.avatar_type === "upload" ? "/api/profile/avatar" : null,
+    },
+  });
+  response.headers.append("Set-Cookie", sessionCookie(token));
+  return response;
 }
 
 function providerClientId(provider: AuthProvider, env: AuthEnv): string {
@@ -914,6 +1011,9 @@ export async function handleAuthRequest(
   env: AuthEnv,
 ): Promise<Response | null> {
   const url = new URL(request.url);
+  if (url.pathname === "/api/auth/transition/activate") {
+    return activateTransition(request, env);
+  }
   if (url.pathname === "/api/auth/providers" || url.pathname === "/api/auth/session") {
     if (request.method !== "GET") return authJson({ error: "仅支持 GET 请求" }, 405);
     return sessionPayload(request, env);
