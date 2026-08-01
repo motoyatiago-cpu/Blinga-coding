@@ -250,3 +250,63 @@ test("applies the Blinga coding V2 product design system without replacing featu
   assert.match(motion, /gsap\.utils\.toArray/);
   assert.match(smoothScroll, /new Lenis/);
 });
+
+test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
+  const [page, menu, profile, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/account-menu.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /<AccountMenu \/>/);
+  assert.match(menu, /aria-haspopup="menu"/);
+  assert.match(menu, /aria-expanded=\{open\}/);
+  assert.match(menu, /href="\/profile"/);
+  assert.match(profile, /学习与运行记录/);
+  assert.match(profile, /登录方式与安全|账号安全/);
+  assert.match(profile, /清除我的学习数据/);
+  assert.match(profile, /accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(css, /\.profile-layout/);
+  assert.match(css, /@media\(max-width:650px\)/);
+});
+
+test("implements external OAuth sessions, account linking, private avatars, and user-owned data", async () => {
+  const [auth, profile, worker, schema, hosting, envExample] = await Promise.all([
+    readFile(new URL("../worker/auth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/profile.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(auth, /type AuthProvider = "microsoft" \| "qq" \| "wechat-open" \| "wechat-oa"/);
+  assert.match(auth, /code_challenge_method: "S256"/);
+  assert.match(auth, /SameSite=Lax/);
+  assert.match(auth, /HttpOnly/);
+  assert.match(auth, /crypto\.subtle\.verify/);
+  assert.match(auth, /必须至少保留一种登录方式/);
+  assert.match(auth, /migrateLegacyData/);
+  assert.match(profile, /AVATAR_MAX_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(profile, /仅支持真实的 JPEG、PNG 或 WebP 图片/);
+  assert.match(profile, /DELETE FROM learning_activity WHERE user_id = \?/);
+  assert.match(worker, /handleAuthRequest\(request, env\)/);
+  assert.match(worker, /handleProfileRequest\(request, env\)/);
+  assert.match(worker, /请先登录后使用 AI 助教/);
+  assert.match(schema, /sqliteTable\("oauth_identities"/);
+  assert.match(schema, /sqliteTable\("auth_sessions"/);
+  assert.match(schema, /sqliteTable\("learning_activity"/);
+  assert.match(hosting, /"r2": "AVATARS"/);
+  assert.match(envExample, /MICROSOFT_CLIENT_SECRET=/);
+  assert.match(envExample, /WECHAT_OPEN_APP_SECRET=/);
+  assert.match(envExample, /QQ_CLIENT_SECRET=/);
+});
+
+test("server-renders the personal workspace route", async () => {
+  const response = await render("/profile");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /个人主页 · Blinga coding/);
+  assert.match(html, /正在读取个人空间/);
+});

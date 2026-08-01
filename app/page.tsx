@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
 } from "react";
+import AccountMenu from "./account-menu";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
 type LearningProgress = {
@@ -2251,7 +2252,7 @@ export default function Home() {
         <header className="topbar glass">
           <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
           <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
-          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span></button><div className="avatar">林</div></div>
+          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span></button><AccountMenu /></div>
         </header>
 
         <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>

@@ -1,10 +1,17 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import {
+  ensureOwnershipColumns,
+  handleAuthRequest,
+  resolvePrincipal,
+} from "./auth";
+import { handleProfileRequest, type ProfileEnv } from "./profile";
 
-interface Env {
+interface Env extends ProfileEnv {
   ASSETS: Fetcher;
   DB: D1Database;
+  AVATARS?: R2Bucket;
   LLM_API_KEY?: string;
   LLM_API_BASE_URL?: string;
   LLM_MODEL?: string;
@@ -51,6 +58,7 @@ async function ensureProgressSchema(database: D1Database): Promise<void> {
     database.prepare(`
       CREATE TABLE IF NOT EXISTS learning_progress (
         user_email TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT,
         active_language TEXT NOT NULL,
         topics_json TEXT NOT NULL,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -60,6 +68,7 @@ async function ensureProgressSchema(database: D1Database): Promise<void> {
       "CREATE INDEX IF NOT EXISTS learning_progress_updated_at_idx ON learning_progress (updated_at)",
     ),
   ]);
+  await ensureOwnershipColumns(database);
 }
 
 async function ensureDraftSchema(database: D1Database): Promise<void> {
@@ -67,6 +76,7 @@ async function ensureDraftSchema(database: D1Database): Promise<void> {
     database.prepare(`
       CREATE TABLE IF NOT EXISTS code_drafts (
         user_email TEXT NOT NULL,
+        user_id TEXT,
         language TEXT NOT NULL,
         topic_index INTEGER NOT NULL,
         code TEXT NOT NULL,
@@ -78,6 +88,7 @@ async function ensureDraftSchema(database: D1Database): Promise<void> {
       "CREATE INDEX IF NOT EXISTS code_drafts_updated_at_idx ON code_drafts (updated_at)",
     ),
   ]);
+  await ensureOwnershipColumns(database);
 }
 
 async function ensureCompletionSchema(database: D1Database): Promise<void> {
@@ -85,6 +96,7 @@ async function ensureCompletionSchema(database: D1Database): Promise<void> {
     database.prepare(`
       CREATE TABLE IF NOT EXISTS lesson_completions (
         user_email TEXT NOT NULL,
+        user_id TEXT,
         language TEXT NOT NULL,
         topic_index INTEGER NOT NULL,
         passed_tests INTEGER NOT NULL,
@@ -97,6 +109,7 @@ async function ensureCompletionSchema(database: D1Database): Promise<void> {
       "CREATE INDEX IF NOT EXISTS lesson_completions_completed_at_idx ON lesson_completions (completed_at)",
     ),
   ]);
+  await ensureOwnershipColumns(database);
 }
 
 async function ensureRunHistorySchema(database: D1Database): Promise<void> {
@@ -105,6 +118,7 @@ async function ensureRunHistorySchema(database: D1Database): Promise<void> {
       CREATE TABLE IF NOT EXISTS code_run_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_email TEXT NOT NULL,
+        user_id TEXT,
         language TEXT NOT NULL,
         topic_index INTEGER NOT NULL,
         mode TEXT NOT NULL,
@@ -122,6 +136,7 @@ async function ensureRunHistorySchema(database: D1Database): Promise<void> {
       ON code_run_history (user_email, language, topic_index, id DESC)
     `),
   ]);
+  await ensureOwnershipColumns(database);
 }
 
 async function ensureNotesSchema(database: D1Database): Promise<void> {
@@ -129,6 +144,7 @@ async function ensureNotesSchema(database: D1Database): Promise<void> {
     database.prepare(`
       CREATE TABLE IF NOT EXISTS learning_notes (
         user_email TEXT NOT NULL,
+        user_id TEXT,
         language TEXT NOT NULL,
         topic_index INTEGER NOT NULL,
         content TEXT NOT NULL,
@@ -140,11 +156,7 @@ async function ensureNotesSchema(database: D1Database): Promise<void> {
       "CREATE INDEX IF NOT EXISTS learning_notes_updated_at_idx ON learning_notes (updated_at)",
     ),
   ]);
-}
-
-function authenticatedUserEmail(request: Request): string | null {
-  const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
-  return email && email.length <= 320 ? email : null;
+  await ensureOwnershipColumns(database);
 }
 
 function safeProgress(input: unknown): LearningProgress | null {
@@ -172,10 +184,11 @@ function safeProgress(input: unknown): LearningProgress | null {
 }
 
 async function handleProgressRequest(request: Request, env: Env): Promise<Response> {
-  const userEmail = authenticatedUserEmail(request);
-  if (!userEmail) {
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: "请先登录后再同步学习进度" }, 401);
   }
+  const userKey = principal.userKey;
 
   await ensureProgressSchema(env.DB);
 
@@ -184,7 +197,7 @@ async function handleProgressRequest(request: Request, env: Env): Promise<Respon
       .prepare(
         "SELECT active_language, topics_json, updated_at FROM learning_progress WHERE user_email = ?",
       )
-      .bind(userEmail)
+      .bind(userKey)
       .first<{ active_language: string; topics_json: string; updated_at: string }>();
 
     if (!record) return jsonResponse({ progress: null });
@@ -224,15 +237,29 @@ async function handleProgressRequest(request: Request, env: Env): Promise<Respon
 
   await env.DB
     .prepare(`
-      INSERT INTO learning_progress (user_email, active_language, topics_json, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO learning_progress (user_email, user_id, active_language, topics_json, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_email) DO UPDATE SET
+        user_id = excluded.user_id,
         active_language = excluded.active_language,
         topics_json = excluded.topics_json,
         updated_at = CURRENT_TIMESTAMP
     `)
-    .bind(userEmail, progress.activeLanguage, JSON.stringify(progress.topics))
+    .bind(userKey, principal.userId, progress.activeLanguage, JSON.stringify(progress.topics))
     .run();
+  if (principal.userId) {
+    await env.DB
+      .prepare(`
+        INSERT INTO learning_activity (user_id, language, topic_index, action)
+        VALUES (?, ?, ?, 'view')
+      `)
+      .bind(
+        principal.userId,
+        progress.activeLanguage,
+        Number(progress.topics[progress.activeLanguage] || 0),
+      )
+      .run();
+  }
 
   return jsonResponse({ saved: true });
 }
@@ -249,10 +276,11 @@ function safeDraftIdentity(languageInput: unknown, topicInput: unknown): {
 }
 
 async function handleDraftRequest(request: Request, env: Env): Promise<Response> {
-  const userEmail = authenticatedUserEmail(request);
-  if (!userEmail) {
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: "请先登录后再同步代码草稿" }, 401);
   }
+  const userKey = principal.userKey;
 
   await ensureDraftSchema(env.DB);
 
@@ -270,7 +298,7 @@ async function handleDraftRequest(request: Request, env: Env): Promise<Response>
         FROM code_drafts
         WHERE user_email = ? AND language = ? AND topic_index = ?
       `)
-      .bind(userEmail, identity.language, identity.topicIndex)
+      .bind(userKey, identity.language, identity.topicIndex)
       .first<{ code: string; updated_at: string }>();
 
     return jsonResponse({
@@ -302,13 +330,14 @@ async function handleDraftRequest(request: Request, env: Env): Promise<Response>
 
   await env.DB
     .prepare(`
-      INSERT INTO code_drafts (user_email, language, topic_index, code, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO code_drafts (user_email, user_id, language, topic_index, code, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+        user_id = excluded.user_id,
         code = excluded.code,
         updated_at = CURRENT_TIMESTAMP
     `)
-    .bind(userEmail, identity.language, identity.topicIndex, code)
+    .bind(userKey, principal.userId, identity.language, identity.topicIndex, code)
     .run();
 
   return jsonResponse({ saved: true });
@@ -318,8 +347,8 @@ async function handleCompletionsRequest(request: Request, env: Env): Promise<Res
   if (request.method !== "GET") {
     return jsonResponse({ error: "仅支持 GET 请求" }, 405);
   }
-  const userEmail = authenticatedUserEmail(request);
-  if (!userEmail) {
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: "请先登录后再读取课程完成状态" }, 401);
   }
 
@@ -331,7 +360,7 @@ async function handleCompletionsRequest(request: Request, env: Env): Promise<Res
       WHERE user_email = ?
       ORDER BY completed_at ASC
     `)
-    .bind(userEmail)
+    .bind(principal.userKey)
     .all<{
       language: string;
       topic_index: number;
@@ -355,8 +384,8 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
   if (request.method !== "GET") {
     return jsonResponse({ error: "仅支持 GET 请求" }, 405);
   }
-  const userEmail = authenticatedUserEmail(request);
-  if (!userEmail) {
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: "请先登录后再读取运行历史" }, 401);
   }
 
@@ -378,7 +407,7 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
       ORDER BY id DESC
       LIMIT 8
     `)
-    .bind(userEmail, identity.language, identity.topicIndex)
+    .bind(principal.userKey, identity.language, identity.topicIndex)
     .all<{
       id: number;
       mode: string;
@@ -407,10 +436,11 @@ async function handleRunHistoryRequest(request: Request, env: Env): Promise<Resp
 }
 
 async function handleNotesRequest(request: Request, env: Env): Promise<Response> {
-  const userEmail = authenticatedUserEmail(request);
-  if (!userEmail) {
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
     return jsonResponse({ error: "请先登录后再同步学习笔记" }, 401);
   }
+  const userKey = principal.userKey;
 
   await ensureNotesSchema(env.DB);
 
@@ -428,7 +458,7 @@ async function handleNotesRequest(request: Request, env: Env): Promise<Response>
         FROM learning_notes
         WHERE user_email = ? AND language = ? AND topic_index = ?
       `)
-      .bind(userEmail, identity.language, identity.topicIndex)
+      .bind(userKey, identity.language, identity.topicIndex)
       .first<{ content: string; updated_at: string }>();
 
     return jsonResponse({
@@ -460,13 +490,14 @@ async function handleNotesRequest(request: Request, env: Env): Promise<Response>
 
   await env.DB
     .prepare(`
-      INSERT INTO learning_notes (user_email, language, topic_index, content, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO learning_notes (user_email, user_id, language, topic_index, content, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+        user_id = excluded.user_id,
         content = excluded.content,
         updated_at = CURRENT_TIMESTAMP
     `)
-    .bind(userEmail, identity.language, identity.topicIndex, content)
+    .bind(userKey, principal.userId, identity.language, identity.topicIndex, content)
     .run();
 
   return jsonResponse({ saved: true });
@@ -573,6 +604,11 @@ async function handleAiRequest(request: Request, env: Env): Promise<Response> {
   const contentLength = Number(request.headers.get("Content-Length") || "0");
   if (contentLength > 20_000) {
     return jsonResponse({ error: "请求内容过大" }, 413);
+  }
+
+  const principal = await resolvePrincipal(request, env);
+  if (!principal) {
+    return jsonResponse({ error: "请先登录后使用 AI 助教" }, 401);
   }
 
   if (!env.LLM_API_KEY) {
@@ -777,24 +813,26 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     } : undefined;
     if (judge) judge.passed = judge.tests.filter((test) => test.passed).length;
 
-    const userEmail = authenticatedUserEmail(request);
+    const principal = await resolvePrincipal(request, env);
+    const userKey = principal?.userKey || null;
     let completionSaved = false;
     if (body.judge && judge && judge.passed === judge.total) {
-      if (userEmail) {
+      if (userKey) {
         try {
           await ensureCompletionSchema(env.DB);
           await env.DB
             .prepare(`
               INSERT INTO lesson_completions (
-                user_email, language, topic_index, passed_tests, total_tests, completed_at
+                user_email, user_id, language, topic_index, passed_tests, total_tests, completed_at
               )
-              VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
               ON CONFLICT(user_email, language, topic_index) DO UPDATE SET
+                user_id = excluded.user_id,
                 passed_tests = excluded.passed_tests,
                 total_tests = excluded.total_tests,
                 completed_at = CURRENT_TIMESTAMP
             `)
-            .bind(userEmail, language, topicIndex, judge.passed, judge.total)
+            .bind(userKey, principal?.userId || null, language, topicIndex, judge.passed, judge.total)
             .run();
           completionSaved = true;
         } catch {
@@ -804,7 +842,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     }
 
     let runRecorded = false;
-    if (userEmail) {
+    if (userKey) {
       try {
         await ensureRunHistorySchema(env.DB);
         const durationMs = result.time == null
@@ -813,14 +851,15 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
         await env.DB
           .prepare(`
             INSERT INTO code_run_history (
-              user_email, language, topic_index, mode, status_id,
+              user_email, user_id, language, topic_index, mode, status_id,
               status_description, duration_ms, memory_kb,
               passed_tests, total_tests, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
           `)
           .bind(
-            userEmail,
+            userKey,
+            principal?.userId || null,
             language,
             topicIndex,
             body.judge ? "judge" : "run",
@@ -844,10 +883,10 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
               )
           `)
           .bind(
-            userEmail,
+            userKey,
             language,
             topicIndex,
-            userEmail,
+            userKey,
             language,
             topicIndex,
           )
@@ -888,6 +927,12 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    const authResponse = await handleAuthRequest(request, env);
+    if (authResponse) return authResponse;
+
+    const profileResponse = await handleProfileRequest(request, env);
+    if (profileResponse) return profileResponse;
 
     if (url.pathname === "/api/ai") {
       return handleAiRequest(request, env);
