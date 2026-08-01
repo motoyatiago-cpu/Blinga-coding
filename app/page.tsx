@@ -896,7 +896,7 @@ function KnowledgeGraph({ lesson, code }: { lesson: Course; code: string }) {
   return (
     <section className="feature-section" id="map">
       <div className="section-heading">
-        <div><span className="eyebrow">AI KNOWLEDGE GRAPH</span><h2>动态知识图谱</h2></div>
+        <div><h2>动态知识图谱</h2></div>
         <div className="toolbar">
           <button onClick={addKnowledgeNode}>＋ 新增节点</button>
           <button onClick={() => generateGraph(true)} disabled={busy}>✦ 扩写选中</button>
@@ -1601,7 +1601,7 @@ function Sandbox({
   return (
     <section className={`feature-section ${focusMode ? "sandbox-focus-mode" : ""}`} id="lab">
       <div className="section-heading">
-        <div><span className="eyebrow purple">LIVE SANDBOX</span><h2>在线实训沙盒</h2></div>
+        <div><h2>在线实训沙盒</h2></div>
         <div className="sandbox-heading-actions">
           <select value={lang} onChange={(event) => setLang(event.target.value as Lang)}>{(Object.keys(lessons) as Lang[]).map((key) => <option key={key}>{key}</option>)}</select>
           <button
@@ -1686,7 +1686,7 @@ function Sandbox({
       </div>
       <section className="run-history glass" aria-label="当前知识点运行历史">
         <div className="run-history-head">
-          <div><span>RUN HISTORY</span><b>最近运行记录</b></div>
+          <div><b>最近运行记录</b></div>
         </div>
         {historyLoading ? (
           <div className="run-history-empty">正在读取运行记录…</div>
@@ -1727,20 +1727,18 @@ function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
   return (
     <section className="deep-lesson" aria-labelledby="deep-lesson-title">
       <div className="deep-intro">
-        <span className="eyebrow">IN-DEPTH GUIDE</span>
         <h2 id="deep-lesson-title">从执行模型理解，而不是只记住语法</h2>
         <p>{guide.summary}</p>
       </div>
       <div className="concept-flow" aria-label="知识点执行流程">
         {guide.principles.map((item, index) => <article key={item.title}>
-          <div><span>{item.badge}</span><b>0{index + 1}</b></div>
+          <div><b>0{index + 1}</b></div>
           <h3>{item.title}</h3><p>{item.text}</p>
         </article>)}
       </div>
       <div className="deep-example glass">
         <div className="mac-code-head" aria-hidden="true"><span>code walkthrough</span></div>
         <div className="example-explain">
-          <span className="eyebrow purple">CODE WALKTHROUGH</span>
           <h3>{guide.syntaxTitle}</h3>
           <p>{guide.syntaxNote}</p>
           <ol><li>先确认输入数据及其类型</li><li>观察每轮循环变量的变化</li><li>验证终止条件和空数据边界</li></ol>
@@ -1748,7 +1746,7 @@ function DeepLesson({ lang, topicIndex }: { lang: Lang; topicIndex: number }) {
         <pre><code>{guide.syntaxCode}</code></pre>
       </div>
       <div className="pitfall-section">
-        <div><span className="eyebrow">DEBUG CHECKLIST</span><h3>三个高频错误与修复方法</h3></div>
+        <div><h3>三个高频错误与修复方法</h3></div>
         <div className="pitfall-grid">{guide.pitfalls.map((item) => <article key={item.title}>
           <h4>{item.title}</h4><p className="wrong">× {item.wrong}</p><p className="right">✓ {item.right}</p>
         </article>)}</div>
@@ -1841,7 +1839,6 @@ function LessonNotes({
     <section className="lesson-notes glass" aria-labelledby="lesson-notes-title">
       <div className="lesson-notes-head">
         <div>
-          <span>PERSONAL NOTES</span>
           <h2 id="lesson-notes-title">我的学习笔记</h2>
           <p>{lang} · {lessonTitle}，仅保存到你的账号。</p>
         </div>
@@ -1891,7 +1888,7 @@ function GraphDocumentExport({ lesson }: { lesson: Course }) {
     URL.revokeObjectURL(url);
   }
 
-  return <div className="document-export glass"><div><span>DOCUMENT EXPORT</span><b>导出当前知识图谱</b></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
+  return <div className="document-export glass"><div><b>导出当前知识图谱</b></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
 }
 
 export default function Home() {
@@ -2278,14 +2275,13 @@ export default function Home() {
                   )}</div>
                 : <p>没有找到完全匹配的课程，可调整关键词或使用 AI 深度搜索。</p>}
             </section>}
-            {searchResult && <div className="search-answer"><span>✦ AI ANSWER</span><p>{searchResult}</p></div>}
+            {searchResult && <div className="search-answer"><p>{searchResult}</p></div>}
           </div>
         </div>
 
         <div className="workspace">
           <aside className="sidebar glass" aria-label="课程导航">
             <a className="course-nav-back" href="/">← 全部编程语言</a>
-            <div className="sidebar-brandline"><span>CURRENT COURSE</span><i>LEVEL 02</i></div>
             <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
               <i style={{ background: lessons[lang].color }}>{lessons[lang].icon}</i>
               <span>{lang}<small>已完成 {completedCount}/{lesson.topics.length} · {completionPercent}%</small></span><b>⌂</b>
@@ -2348,7 +2344,7 @@ export default function Home() {
               </div>
             </div>
 
-            <article className="lesson-card glass"><span className="eyebrow">CORE CONCEPT</span><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
+            <article className="lesson-card glass"><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
             <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
 
             <div className="code-example glass">

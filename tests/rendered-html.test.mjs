@@ -229,6 +229,40 @@ test("removes decorative and redundant UI prompts while preserving status feedba
   assert.match(page, /aria-live="polite"/);
 });
 
+test("removes decorative uppercase eyebrow labels across learning and profile pages", async () => {
+  const [page, coursePage, profile] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+  ]);
+
+  const renderedLabels = [
+    "CORE CONCEPT",
+    "AI KNOWLEDGE GRAPH",
+    "LIVE SANDBOX",
+    "RUN HISTORY",
+    "IN-DEPTH GUIDE",
+    "CODE WALKTHROUGH",
+    "DEBUG CHECKLIST",
+    "PERSONAL NOTES",
+    "DOCUMENT EXPORT",
+    "AI ANSWER",
+    "CURRENT COURSE",
+    "PROGRAMMING PATH",
+    "COURSE NAVIGATION",
+    "PERSONAL WORKSPACE",
+    "RECENT CONTENT",
+    "CONNECTED ACCOUNTS",
+    "PASSWORD &amp; RECOVERY",
+    "ACTIVE SESSIONS",
+    "DANGER ZONE",
+  ];
+
+  for (const label of renderedLabels) {
+    assert.doesNotMatch(`${page}\n${coursePage}\n${profile}`, new RegExp(`>${label}(?:[^<]*)<`));
+  }
+});
+
 test("applies the Blinga coding V2 product design system without replacing feature modules", async () => {
   const [css, page, motion, smoothScroll] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),

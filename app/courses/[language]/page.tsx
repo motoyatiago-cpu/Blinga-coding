@@ -97,7 +97,6 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
     <div className="course-layout">
       <aside className="course-language-nav glass">
         <a className="course-nav-back" href="/">← 全部编程语言</a>
-        <div className="sidebar-brandline"><span>CURRENT COURSE</span><i>STEP 02</i></div>
         <div className="language selected course-root-link">
           <i style={{ background: course.color }}>{course.icon}</i><span>{course.name}<small>{course.topics.length} 个核心知识点</small></span><b>↓</b>
         </div>
@@ -121,13 +120,13 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
         <div className="catalog-breadcrumb"><a href="/">学习中心</a><span>/</span><b>{course.name}</b></div>
         <header className="course-hero glass" style={{ "--course-color": course.color } as React.CSSProperties}>
           <div className="course-icon">{course.icon}</div>
-          <div><span>PROGRAMMING PATH · 7 LESSONS</span><h1>{course.name} 分级课程</h1><p>{course.description}</p></div>
+          <div><h1>{course.name} 分级课程</h1><p>{course.description}</p></div>
           <div className="course-stats"><div><b>3</b><span>学习级别</span></div><div><b>7</b><span>核心知识点</span></div><div><b>∞</b><span>在线练习</span></div></div>
         </header>
 
         <div className="course-entry glass">
           <div className="entry-marker">02</div>
-          <div><span>COURSE NAVIGATION</span><h2>从左侧选择一个知识点开始学习</h2><p>语言名称与全部知识点会始终固定在左侧。选择知识点后，右侧进入对应讲解页，左侧目录不会消失或移动到中间。</p></div>
+          <div><h2>从左侧选择一个知识点开始学习</h2><p>语言名称与全部知识点会始终固定在左侧。选择知识点后，右侧进入对应讲解页，左侧目录不会消失或移动到中间。</p></div>
           <a href={`/?lang=${encodeURIComponent(course.queryName)}&topic=0#learn`}>开始第一节 →</a>
         </div>
         <div className="course-level-summary">
