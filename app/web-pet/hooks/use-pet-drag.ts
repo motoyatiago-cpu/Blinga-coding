@@ -13,6 +13,9 @@ type DragSession = {
   pointerId: number;
   offsetX: number;
   offsetY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
 };
 
 export function usePetDrag(size: number) {
@@ -20,6 +23,7 @@ export function usePetDrag(size: number) {
   const [dragging, setDragging] = useState(false);
   const positionRef = useRef<PetPosition | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
+  const suppressClickRef = useRef(false);
 
   const updatePosition = useCallback((nextPosition: PetPosition) => {
     positionRef.current = nextPosition;
@@ -48,6 +52,9 @@ export function usePetDrag(size: number) {
       pointerId: event.pointerId,
       offsetX: event.clientX - bounds.left,
       offsetY: event.clientY - bounds.top,
+      originX: event.clientX,
+      originY: event.clientY,
+      moved: false,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
@@ -56,6 +63,10 @@ export function usePetDrag(size: number) {
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const session = dragSessionRef.current;
     if (!session || session.pointerId !== event.pointerId) return;
+
+    if (Math.hypot(event.clientX - session.originX, event.clientY - session.originY) > 5) {
+      session.moved = true;
+    }
 
     updatePosition(clampPetPosition({
       x: event.clientX - session.offsetX,
@@ -68,6 +79,7 @@ export function usePetDrag(size: number) {
     if (!session || session.pointerId !== pointerId) return;
 
     if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+    suppressClickRef.current = session.moved;
     dragSessionRef.current = null;
     setDragging(false);
     if (positionRef.current) savePetPosition(positionRef.current);
@@ -85,6 +97,12 @@ export function usePetDrag(size: number) {
     ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
     : undefined;
 
+  const consumeClickSuppression = useCallback(() => {
+    const shouldSuppress = suppressClickRef.current;
+    suppressClickRef.current = false;
+    return shouldSuppress;
+  }, []);
+
   return {
     dragging,
     style,
@@ -93,6 +111,7 @@ export function usePetDrag(size: number) {
       onPointerMove,
       onPointerUp,
       onPointerCancel,
+      consumeClickSuppression,
     },
   };
 }

@@ -44,13 +44,22 @@ export const PET_DRAG_POSES = [
 export type PetPose = (typeof PET_POSES)[number];
 export type PetPoseId = PetPose["id"];
 export type PetExpression = (typeof PET_EXPRESSIONS)[number];
+export type PetExpressionId = PetExpression["id"];
 export type PetDragPose = (typeof PET_DRAG_POSES)[number];
-export type PetState = "dragging" | PetPoseId;
+export type PetState = "dragging" | "menu" | PetPoseId;
+
+export type PetAssetFormat = "png" | "webp" | "gif" | "svg" | "lottie";
+
+export type PetAssetDefinition = {
+  src: string;
+  format: PetAssetFormat;
+  loop?: boolean;
+};
 
 export type PetVisualFrame = {
   key: string;
   poseId: PetPoseId;
-  asset: string;
+  asset: PetAssetDefinition;
 };
 
 export type PetPosition = {

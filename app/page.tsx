@@ -28,6 +28,7 @@ import {
   useState,
 } from "react";
 import AccountMenu from "./account-menu";
+import { OPEN_AI_ASSISTANT_EVENT } from "./ai-assistant-events";
 import CodeViewerDialog, {
   consumeCodeImport,
   type CodeRecordRequest,
@@ -2030,6 +2031,28 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    const openAssistant = (event: Event) => {
+      event.preventDefault();
+      setChatOpen(true);
+    };
+    window.addEventListener(OPEN_AI_ASSISTANT_EVENT, openAssistant);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("assistant") === "open") {
+      setChatOpen(true);
+      params.delete("assistant");
+      const query = params.toString();
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+      );
+    }
+
+    return () => window.removeEventListener(OPEN_AI_ASSISTANT_EVENT, openAssistant);
   }, []);
 
   useEffect(() => {

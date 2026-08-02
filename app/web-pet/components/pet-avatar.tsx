@@ -1,4 +1,5 @@
 import type { PetVisualFrame } from "../types/pet-state";
+import { PetAssetMedia } from "./pet-asset-media";
 
 type PetAvatarProps = {
   current: PetVisualFrame;
@@ -8,14 +9,7 @@ type PetAvatarProps = {
 function PetFrame({ frame, previous = false }: { frame: PetVisualFrame; previous?: boolean }) {
   return (
     <span className={`web-pet-frame ${previous ? "is-previous" : "is-current"}`}>
-      <img
-        className="web-pet-sprite"
-        data-pose={previous ? undefined : frame.poseId}
-        src={frame.asset}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-      />
+      <PetAssetMedia asset={frame.asset} pose={previous ? undefined : frame.poseId} />
     </span>
   );
 }

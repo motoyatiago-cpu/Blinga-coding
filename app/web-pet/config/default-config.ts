@@ -1,6 +1,4 @@
 export const WEB_PET_CONFIG = {
-  poseBasePath: "/web-pet/robot/poses",
-  expressionBasePath: "/web-pet/robot/expressions",
   desktopSize: 120,
   mobileSize: 88,
   mobileBreakpoint: 650,
@@ -12,5 +10,9 @@ export const WEB_PET_CONFIG = {
   actionDelayMaxMs: 20_000,
   expressionFirstDelayMs: 1_800,
   frameTransitionMs: 160,
+  bubbleFirstDelayMs: 20_000,
+  bubbleDelayMinMs: 30_000,
+  bubbleDelayMaxMs: 60_000,
+  bubbleVisibleMs: 4_800,
   positionStorageKey: "blinga:web-pet-position:v1",
 } as const;
