@@ -1,6 +1,7 @@
 import type { PetIdleAction } from "../types/pet-state";
 
 type IdleSchedulerOptions = {
+  initialDelayMs: number;
   minDelayMs: number;
   maxDelayMs: number;
 };
@@ -8,6 +9,7 @@ type IdleSchedulerOptions = {
 export class IdleScheduler {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastAction: PetIdleAction | null = null;
+  private hasTriggered = false;
 
   constructor(
     private readonly actions: readonly PetIdleAction[],
@@ -27,7 +29,9 @@ export class IdleScheduler {
 
   private scheduleNext() {
     const delayRange = Math.max(0, this.options.maxDelayMs - this.options.minDelayMs);
-    const delay = this.options.minDelayMs + Math.round(Math.random() * delayRange);
+    const delay = this.hasTriggered
+      ? this.options.minDelayMs + Math.round(Math.random() * delayRange)
+      : this.options.initialDelayMs;
 
     this.timer = setTimeout(() => {
       this.timer = null;
@@ -36,6 +40,7 @@ export class IdleScheduler {
       const action = pool[Math.floor(Math.random() * pool.length)];
 
       this.lastAction = action;
+      this.hasTriggered = true;
       this.onAction(action);
       this.scheduleNext();
     }, delay);

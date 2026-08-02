@@ -30,6 +30,16 @@
   will-change:transform;
 }
 
+.web-pet-idle-motion{
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  transform-origin:50% 80%;
+  animation:web-pet-breathe 3.2s ease-in-out infinite;
+  will-change:transform;
+}
+
 .web-pet-root:not(.is-dragging):hover .web-pet-visual-shell{
   transform:scale(1.05);
   filter:drop-shadow(0 13px 18px rgba(52,92,155,.24));
@@ -38,6 +48,12 @@
 .web-pet-root.is-dragging .web-pet-visual-shell{
   transform:scale(1.035) rotate(-1.5deg);
   filter:drop-shadow(0 18px 25px rgba(0,0,0,.32));
+}
+
+.web-pet-root.is-dragging .web-pet-idle-motion,
+.web-pet-root[data-paused="true"] .web-pet-idle-motion,
+.web-pet-root[data-paused="true"] .web-pet-avatar{
+  animation-play-state:paused;
 }
 
 .web-pet-avatar{
@@ -68,27 +84,32 @@
 
 @keyframes web-pet-sway{
   0%,100%{transform:rotate(0)}
-  25%{transform:rotate(-5deg)}
-  70%{transform:rotate(4deg)}
+  25%{transform:rotate(-9deg)}
+  70%{transform:rotate(8deg)}
 }
 
 @keyframes web-pet-float{
   0%,100%{transform:translate3d(0,0,0)}
-  45%{transform:translate3d(0,-9px,0)}
-  70%{transform:translate3d(0,-5px,0)}
+  45%{transform:translate3d(0,-15px,0)}
+  70%{transform:translate3d(0,-7px,0)}
 }
 
 @keyframes web-pet-jump{
   0%,100%{transform:translate3d(0,0,0) scaleY(1)}
   18%{transform:translate3d(0,3px,0) scaleY(.96)}
-  48%{transform:translate3d(0,-14px,0) scaleY(1.025)}
+  48%{transform:translate3d(0,-22px,0) scaleY(1.035)}
   72%{transform:translate3d(0,1px,0) scaleY(.985)}
 }
 
 @keyframes web-pet-look{
   0%,100%{transform:translate3d(0,0,0)}
-  28%{transform:translate3d(-5px,0,0) rotate(-2deg)}
-  68%{transform:translate3d(5px,0,0) rotate(2deg)}
+  28%{transform:translate3d(-9px,0,0) rotate(-4deg)}
+  68%{transform:translate3d(9px,0,0) rotate(4deg)}
+}
+
+@keyframes web-pet-breathe{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(0,-5px,0) scale(1.018)}
 }
 
 @media(max-width:650px){
@@ -110,6 +131,10 @@
   }
 
   .web-pet-avatar[data-state]{
+    animation:none;
+  }
+
+  .web-pet-idle-motion{
     animation:none;
   }
 }

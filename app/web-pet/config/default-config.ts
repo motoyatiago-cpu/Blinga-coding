@@ -6,6 +6,7 @@ export const WEB_PET_CONFIG = {
   viewportPadding: 8,
   rightDockGap: 58,
   bottomDockGap: 18,
+  firstIdleActionDelayMs: 900,
   idleDelayMinMs: 5_000,
   idleDelayMaxMs: 15_000,
   idleActionDurationMs: 1_450,

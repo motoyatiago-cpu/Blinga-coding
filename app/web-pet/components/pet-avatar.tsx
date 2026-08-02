@@ -8,14 +8,16 @@ type PetAvatarProps = {
 export function PetAvatar({ asset, state }: PetAvatarProps) {
   return (
     <span className="web-pet-visual-shell">
-      <img
-        className="web-pet-avatar"
-        data-state={state}
-        src={asset}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-      />
+      <span className="web-pet-idle-motion">
+        <img
+          className="web-pet-avatar"
+          data-state={state}
+          src={asset}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      </span>
     </span>
   );
 }

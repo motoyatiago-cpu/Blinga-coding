@@ -17,12 +17,14 @@ test("mounts a modular draggable web desktop pet across the site", async () => {
   assert.match(layout, /<WebDesktopPet \/>/);
   assert.match(component, /new IdleScheduler/);
   assert.match(component, /visibilitychange/);
+  assert.match(component, /data-paused=\{pageHidden/);
   assert.match(component, /aria-grabbed=\{dragging\}/);
   assert.match(dragHook, /setPointerCapture/);
   assert.match(dragHook, /releasePointerCapture/);
   assert.match(positionManager, /window\.localStorage\.setItem/);
   assert.match(positionManager, /window\.innerWidth - size/);
   assert.match(scheduler, /setTimeout/);
+  assert.match(scheduler, /initialDelayMs/);
   assert.doesNotMatch(scheduler, /requestAnimationFrame/);
   assert.match(scheduler, /action !== this\.lastAction/);
   assert.match(stateMachine, /class PetStateMachine/);
@@ -31,5 +33,7 @@ test("mounts a modular draggable web desktop pet across the site", async () => {
   assert.match(css, /width:120px/);
   assert.match(css, /width:88px/);
   assert.match(css, /cursor:grabbing/);
+  assert.match(css, /web-pet-breathe 3\.2s/);
+  assert.match(css, /animation-play-state:paused/);
   assert.ok(asset.size > 10_000);
 });

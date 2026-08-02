@@ -18,6 +18,7 @@ export default function WebDesktopPet() {
   const size = usePetSize();
   const { dragging, style, dragBindings } = usePetDrag(size);
   const [state, setState] = useState<PetState>(machine.state);
+  const [pageHidden, setPageHidden] = useState(false);
   const schedulerRef = useRef<IdleScheduler | null>(null);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -27,6 +28,7 @@ export default function WebDesktopPet() {
     const scheduler = new IdleScheduler(
       PET_IDLE_ACTIONS,
       {
+        initialDelayMs: WEB_PET_CONFIG.firstIdleActionDelayMs,
         minDelayMs: WEB_PET_CONFIG.idleDelayMinMs,
         maxDelayMs: WEB_PET_CONFIG.idleDelayMaxMs,
       },
@@ -43,6 +45,7 @@ export default function WebDesktopPet() {
 
     schedulerRef.current = scheduler;
     const syncVisibility = () => {
+      setPageHidden(document.hidden);
       if (document.hidden) {
         scheduler.stop();
         machine.transition("idle");
@@ -78,6 +81,7 @@ export default function WebDesktopPet() {
     <div
       className={`web-pet-root ${dragging ? "is-dragging" : ""}`}
       data-state={state}
+      data-paused={pageHidden ? "true" : "false"}
       style={style}
       role="img"
       aria-label="Blinga coding 网页桌宠，可拖动"
