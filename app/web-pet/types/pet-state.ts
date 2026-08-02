@@ -35,9 +35,16 @@ export const PET_EXPRESSIONS = [
   { id: "amazed", holdMs: 1_900 },
 ] as const;
 
+export const PET_DRAG_POSES = [
+  { id: "wave", holdMs: 540 },
+  { id: "dance", holdMs: 620 },
+  { id: "turn", holdMs: 560 },
+] as const;
+
 export type PetPose = (typeof PET_POSES)[number];
 export type PetPoseId = PetPose["id"];
 export type PetExpression = (typeof PET_EXPRESSIONS)[number];
+export type PetDragPose = (typeof PET_DRAG_POSES)[number];
 export type PetState = "dragging" | PetPoseId;
 
 export type PetVisualFrame = {

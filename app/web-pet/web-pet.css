@@ -172,7 +172,7 @@
 }
 
 @media(hover:hover){
-  .web-pet-root:hover .web-pet-frame.is-current .web-pet-sprite{
+  .web-pet-root:not(.is-dragging):hover .web-pet-frame.is-current .web-pet-sprite{
     animation:none;
     transform:translate3d(var(--look-x),var(--look-y),0) rotate(var(--look-rotate));
     filter:drop-shadow(0 10px 16px rgba(60,198,255,.28));

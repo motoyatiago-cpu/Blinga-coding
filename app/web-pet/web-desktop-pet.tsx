@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { PetAvatar } from "./components/pet-avatar";
 import { WEB_PET_CONFIG } from "./config/default-config";
 import { BehaviorDirector } from "./core/behavior-director";
+import { DragMotionLoop } from "./core/drag-motion-loop";
 import { ExpressionLoop } from "./core/expression-loop";
 import { PetStateMachine } from "./core/pet-state-machine";
 import { usePetDrag } from "./hooks/use-pet-drag";
@@ -13,8 +14,10 @@ import { usePetSize } from "./hooks/use-pet-size";
 import { useVisualTransition } from "./hooks/use-visual-transition";
 import {
   PET_ACTION_POSES,
+  PET_DRAG_POSES,
   PET_EXPRESSIONS,
   PET_POSES,
+  type PetDragPose,
   type PetExpression,
   type PetPose,
   type PetState,
@@ -55,6 +58,7 @@ export default function WebDesktopPet() {
     WEB_PET_CONFIG.frameTransitionMs,
   );
   const behaviorRef = useRef<BehaviorDirector | null>(null);
+  const dragMotionRef = useRef<DragMotionLoop | null>(null);
   const expressionRef = useRef<ExpressionLoop | null>(null);
   const hoveringRef = useRef(false);
 
@@ -80,6 +84,16 @@ export default function WebDesktopPet() {
     machine.transition("idle");
   }, [machine, transitionTo]);
 
+  const showDragPose = useCallback((pose: PetDragPose) => {
+    if (document.hidden || !draggingRef.current) return;
+    transitionTo({
+      key: `drag-${pose.id}`,
+      poseId: pose.id,
+      asset: `${WEB_PET_CONFIG.poseBasePath}/${pose.id}.webp`,
+    });
+    machine.transition("dragging");
+  }, [machine, transitionTo]);
+
   useEffect(() => {
     const behavior = new BehaviorDirector(
       PET_ACTION_POSES,
@@ -94,15 +108,24 @@ export default function WebDesktopPet() {
       WEB_PET_CONFIG.expressionFirstDelayMs,
       showExpression,
     );
+    const dragMotion = new DragMotionLoop(PET_DRAG_POSES, showDragPose);
     behaviorRef.current = behavior;
+    dragMotionRef.current = dragMotion;
     expressionRef.current = expressions;
 
     const syncVisibility = () => {
       const hidden = document.hidden;
       setPageHidden(hidden);
       behavior.stop();
+      dragMotion.stop();
       expressions.stop();
-      if (hidden || draggingRef.current) return;
+      if (hidden) return;
+
+      if (draggingRef.current) {
+        machine.transition("dragging");
+        dragMotion.start();
+        return;
+      }
 
       if (hoveringRef.current) {
         showExpression(PET_EXPRESSIONS[0]);
@@ -119,17 +142,21 @@ export default function WebDesktopPet() {
     return () => {
       document.removeEventListener("visibilitychange", syncVisibility);
       behavior.stop();
+      dragMotion.stop();
       expressions.stop();
       behaviorRef.current = null;
+      dragMotionRef.current = null;
       expressionRef.current = null;
     };
-  }, [showExpression, showPose]);
+  }, [machine, showDragPose, showExpression, showPose]);
 
   useEffect(() => {
     behaviorRef.current?.stop();
+    dragMotionRef.current?.stop();
     expressionRef.current?.stop();
     if (dragging) {
       machine.transition("dragging");
+      dragMotionRef.current?.start();
       return;
     }
     if (document.hidden) return;

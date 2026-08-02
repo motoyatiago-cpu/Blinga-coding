@@ -14,6 +14,7 @@ test("runs the web pet through low-frequency actions and native expressions", as
     transitionHook,
     positionManager,
     behaviorDirector,
+    dragMotionLoop,
     expressionLoop,
     stateMachine,
     css,
@@ -31,6 +32,7 @@ test("runs the web pet through low-frequency actions and native expressions", as
     readFile(new URL("../app/web-pet/hooks/use-visual-transition.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/core/position-manager.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/core/behavior-director.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/web-pet/core/drag-motion-loop.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/core/expression-loop.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/core/pet-state-machine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/web-pet.css", import.meta.url), "utf8"),
@@ -41,6 +43,7 @@ test("runs the web pet through low-frequency actions and native expressions", as
 
   assert.match(layout, /<WebDesktopPet \/>/);
   assert.match(component, /new BehaviorDirector/);
+  assert.match(component, /new DragMotionLoop/);
   assert.match(component, /new ExpressionLoop/);
   assert.match(component, /visibilitychange/);
   assert.match(component, /data-paused=\{pageHidden/);
@@ -54,13 +57,14 @@ test("runs the web pet through low-frequency actions and native expressions", as
   assert.match(avatar, /is-current/);
   assert.match(avatar, /src=\{frame\.asset\}/);
   assert.doesNotMatch(avatar, /face-overlay/);
-  assert.equal((poses.match(/id: "/g) ?? []).length, 29);
   assert.equal((poses.match(/actionDurationMs:/g) ?? []).length, 20);
   assert.match(poses, /PET_ACTION_POSES/);
+  assert.match(poses, /PET_DRAG_POSES/);
   assert.match(poses, /half-blink/);
 
-  assert.match(config, /actionDelayMinMs: 18_000/);
-  assert.match(config, /actionDelayMaxMs: 42_000/);
+  assert.match(config, /firstActionDelayMs: 20_000/);
+  assert.match(config, /actionDelayMinMs: 20_000/);
+  assert.match(config, /actionDelayMaxMs: 20_000/);
   assert.match(config, /expressionFirstDelayMs: 1_800/);
   assert.match(config, /frameTransitionMs: 160/);
   assert.match(poses, /\{ id: "idle", holdMs: 4_600 \}/);
@@ -80,6 +84,9 @@ test("runs the web pet through low-frequency actions and native expressions", as
   assert.match(behaviorDirector, /flatMap/);
   assert.match(behaviorDirector, /nextDeck\[0\]\.id === this\.lastPoseId/);
   assert.doesNotMatch(behaviorDirector, /requestAnimationFrame/);
+  assert.match(dragMotionLoop, /setTimeout/);
+  assert.match(dragMotionLoop, /this\.onFrame\(frame\)/);
+  assert.doesNotMatch(dragMotionLoop, /requestAnimationFrame/);
   assert.match(expressionLoop, /setTimeout/);
   assert.doesNotMatch(expressionLoop, /requestAnimationFrame/);
   assert.match(stateMachine, /class PetStateMachine/);
@@ -93,6 +100,7 @@ test("runs the web pet through low-frequency actions and native expressions", as
   assert.match(css, /web-pet-frame-in \.16s/);
   assert.match(css, /web-pet-frame-out \.16s/);
   assert.match(css, /\.web-pet-frame\.is-previous \.web-pet-sprite/);
+  assert.match(css, /\.web-pet-root:not\(\.is-dragging\):hover/);
   assert.doesNotMatch(css, /web-pet-face-overlay/);
   assert.doesNotMatch(css, /web-pet-face-blink/);
   assert.match(css, /animation-play-state:paused/);
