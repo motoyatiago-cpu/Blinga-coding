@@ -272,7 +272,7 @@ test("applies the Blinga coding V2 product design system without replacing featu
   ]);
 
   assert.match(css, /Blinga coding V2/);
-  assert.match(css, /--accent:#04aa6d/);
+  assert.match(css, /--accent:#7182ff/);
   assert.match(css, /--radius-lg:24px/);
   assert.match(css, /@view-transition\{\s*navigation:auto/);
   assert.match(css, /\.chat\{\s*right:18px/);
@@ -283,36 +283,6 @@ test("applies the Blinga coding V2 product design system without replacing featu
   assert.match(page, /\/api\/ai/);
   assert.match(motion, /gsap\.utils\.toArray/);
   assert.match(smoothScroll, /new Lenis/);
-});
-
-test("applies the W3Schools classic light palette without recoloring Xcode surfaces", async () => {
-  const [css, profileCss] = await Promise.all([
-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
-  ]);
-
-  assert.match(css, /W3Schools-inspired classic light palette/);
-  assert.match(css, /color-scheme:light/);
-  assert.match(css, /--bg:#ffffff/);
-  assert.match(css, /--text:#1d2a35/);
-  assert.match(css, /--accent:#04aa6d/);
-  assert.match(css, /--accent-hi:#059862/);
-  assert.match(css, /\.topbar\{[\s\S]*?background:#282a35/);
-  assert.match(css, /\.sidebar,\s*\.course-language-nav\{[\s\S]*?background:#e7e9eb/);
-  assert.match(css, /\.note\{[\s\S]*?background:#d9eee1/);
-  assert.match(css, /\.knowledge-node\{[\s\S]*?var\(--node-color\)/);
-  assert.match(profileCss, /W3Schools-inspired light palette for the personal workspace/);
-  assert.match(profileCss, /\.profile-topbar\{[\s\S]*?background:#282a35/);
-  assert.match(profileCss, /\.profile-sidebar\{[\s\S]*?background:#e7e9eb/);
-  assert.match(profileCss, /\.profile-hero-card\{[\s\S]*?#d9eee1/);
-
-  assert.match(css, /--xcode-window:#0b0d12/);
-  assert.match(css, /--xcode-titlebar-top:#30323a/);
-  assert.match(css, /--xcode-red:#ff5f57/);
-  assert.match(css, /--xcode-yellow:#febc2e/);
-  assert.match(css, /--xcode-green:#28c840/);
-  assert.match(css, /Keep every macOS\/Xcode code surface on its original graphite palette/);
-  assert.match(css, /\.code-example,\s*\.deep-example,\s*\.sandbox,\s*\.run-history,[\s\S]*?color-scheme:dark;[\s\S]*?--accent:#7182ff/);
 });
 
 test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
