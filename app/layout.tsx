@@ -4,6 +4,7 @@ import "./globals.css";
 import "lenis/dist/lenis.css";
 import HoverBounceMotion from "./hover-bounce";
 import SmoothScrollMotion from "./smooth-scroll";
+import { WebDesktopPet } from "./web-pet";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
         <SmoothScrollMotion />
         <HoverBounceMotion />
         {children}
+        <WebDesktopPet />
       </body>
     </html>
   );
