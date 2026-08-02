@@ -9,12 +9,21 @@ export class PoseLoop {
     private readonly poses: readonly PetPose[],
     private readonly firstDelayMs: number,
     private readonly onPose: (pose: PetPose, index: number) => void,
+    private readonly intervalOverrideMs?: number,
   ) {}
+
+  get index() {
+    return this.currentIndex;
+  }
+
+  get pose() {
+    return this.poses[this.currentIndex];
+  }
 
   start() {
     if (this.timer || this.poses.length < 2) return;
     const delay = this.hasAdvanced
-      ? this.poses[this.currentIndex].durationMs
+      ? this.intervalOverrideMs ?? this.poses[this.currentIndex].durationMs
       : this.firstDelayMs;
     this.schedule(delay);
   }
@@ -31,7 +40,7 @@ export class PoseLoop {
       this.hasAdvanced = true;
       const pose = this.poses[this.currentIndex];
       this.onPose(pose, this.currentIndex);
-      this.schedule(pose.durationMs);
+      this.schedule(this.intervalOverrideMs ?? pose.durationMs);
     }, delay);
   }
 }
