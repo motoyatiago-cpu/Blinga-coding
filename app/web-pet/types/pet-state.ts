@@ -1,33 +1,50 @@
 export const PET_POSES = [
-  { id: "idle", label: "待机", durationMs: 7_500 },
-  { id: "wave", label: "挥手", durationMs: 6_500 },
-  { id: "sit", label: "坐下", durationMs: 8_000 },
-  { id: "cheer", label: "欢呼", durationMs: 6_000 },
-  { id: "curious", label: "疑问", durationMs: 7_500 },
-  { id: "coding", label: "编程", durationMs: 10_000 },
-  { id: "thinking", label: "思考", durationMs: 9_000 },
-  { id: "sleep", label: "睡觉", durationMs: 12_000 },
-  { id: "snack", label: "吃点心", durationMs: 7_500 },
-  { id: "sparkle", label: "闪亮", durationMs: 6_500 },
-  { id: "sad", label: "难过", durationMs: 7_500 },
-  { id: "cry", label: "哭泣", durationMs: 6_500 },
-  { id: "angry", label: "生气", durationMs: 6_000 },
-  { id: "surprised", label: "惊讶", durationMs: 6_000 },
-  { id: "turn", label: "转身", durationMs: 7_000 },
-  { id: "love", label: "爱心", durationMs: 7_500 },
-  { id: "dance", label: "跳舞", durationMs: 6_500 },
-  { id: "celebrate", label: "庆祝", durationMs: 6_500 },
-  { id: "bored", label: "发呆", durationMs: 9_000 },
-  { id: "amazed", label: "星星眼", durationMs: 7_000 },
+  { id: "idle", label: "待机", actionDurationMs: 0, weight: 0 },
+  { id: "wave", label: "挥手", actionDurationMs: 2_200, weight: 2 },
+  { id: "sit", label: "坐下", actionDurationMs: 3_600, weight: 2 },
+  { id: "cheer", label: "欢呼", actionDurationMs: 2_100, weight: 1 },
+  { id: "curious", label: "疑问", actionDurationMs: 2_700, weight: 2 },
+  { id: "coding", label: "编程", actionDurationMs: 4_400, weight: 2 },
+  { id: "thinking", label: "思考", actionDurationMs: 3_500, weight: 2 },
+  { id: "sleep", label: "睡觉", actionDurationMs: 6_500, weight: 1 },
+  { id: "snack", label: "吃点心", actionDurationMs: 3_200, weight: 2 },
+  { id: "sparkle", label: "闪亮", actionDurationMs: 2_200, weight: 1 },
+  { id: "sad", label: "难过", actionDurationMs: 2_600, weight: 1 },
+  { id: "cry", label: "哭泣", actionDurationMs: 2_400, weight: 1 },
+  { id: "angry", label: "生气", actionDurationMs: 2_200, weight: 1 },
+  { id: "surprised", label: "惊讶", actionDurationMs: 2_000, weight: 1 },
+  { id: "turn", label: "转身", actionDurationMs: 2_200, weight: 1 },
+  { id: "love", label: "爱心", actionDurationMs: 2_600, weight: 1 },
+  { id: "dance", label: "跳舞", actionDurationMs: 3_000, weight: 1 },
+  { id: "celebrate", label: "庆祝", actionDurationMs: 2_400, weight: 1 },
+  { id: "bored", label: "发呆", actionDurationMs: 4_200, weight: 2 },
+  { id: "amazed", label: "星星眼", actionDurationMs: 2_200, weight: 1 },
 ] as const;
 
-export const PET_HOVER_POSES = PET_POSES.filter(({ id }) =>
-  ["idle", "curious", "surprised", "amazed"].includes(id),
-);
+export const PET_ACTION_POSES = PET_POSES.filter(({ id }) => id !== "idle");
+
+export const PET_EXPRESSIONS = [
+  { id: "idle", holdMs: 720 },
+  { id: "half-blink", holdMs: 130 },
+  { id: "closed", holdMs: 110 },
+  { id: "half-blink", holdMs: 130 },
+  { id: "idle", holdMs: 760 },
+  { id: "curious", holdMs: 620 },
+  { id: "idle", holdMs: 540 },
+  { id: "surprised", holdMs: 520 },
+  { id: "amazed", holdMs: 680 },
+] as const;
 
 export type PetPose = (typeof PET_POSES)[number];
 export type PetPoseId = PetPose["id"];
+export type PetExpression = (typeof PET_EXPRESSIONS)[number];
 export type PetState = "dragging" | PetPoseId;
+
+export type PetVisualFrame = {
+  key: string;
+  poseId: PetPoseId;
+  asset: string;
+};
 
 export type PetPosition = {
   x: number;

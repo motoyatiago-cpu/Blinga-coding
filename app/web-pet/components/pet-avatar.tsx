@@ -1,23 +1,33 @@
-import type { PetPose } from "../types/pet-state";
+import type { PetVisualFrame } from "../types/pet-state";
 
 type PetAvatarProps = {
-  basePath: string;
-  pose: PetPose;
+  current: PetVisualFrame;
+  previous: PetVisualFrame | null;
 };
 
-export function PetAvatar({ basePath, pose }: PetAvatarProps) {
+function PetFrame({ frame, previous = false }: { frame: PetVisualFrame; previous?: boolean }) {
+  return (
+    <span className={`web-pet-frame ${previous ? "is-previous" : "is-current"}`}>
+      <img
+        className="web-pet-sprite"
+        data-pose={previous ? undefined : frame.poseId}
+        src={frame.asset}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+      />
+    </span>
+  );
+}
+
+export function PetAvatar({ current, previous }: PetAvatarProps) {
   return (
     <span className="web-pet-visual-shell">
       <span className="web-pet-idle-motion">
-        <img
-          key={pose.id}
-          className="web-pet-sprite"
-          data-pose={pose.id}
-          src={`${basePath}/${pose.id}.webp`}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-        />
+        <span className="web-pet-stage">
+          {previous ? <PetFrame key={`previous-${previous.key}`} frame={previous} previous /> : null}
+          <PetFrame key={`current-${current.key}`} frame={current} />
+        </span>
       </span>
     </span>
   );

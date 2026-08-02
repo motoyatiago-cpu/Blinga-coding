@@ -4,63 +4,112 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { PetAvatar } from "./components/pet-avatar";
 import { WEB_PET_CONFIG } from "./config/default-config";
+import { BehaviorDirector } from "./core/behavior-director";
+import { ExpressionLoop } from "./core/expression-loop";
 import { PetStateMachine } from "./core/pet-state-machine";
-import { PoseLoop } from "./core/pose-loop";
 import { usePetDrag } from "./hooks/use-pet-drag";
 import { usePosePreload } from "./hooks/use-pose-preload";
 import { usePetSize } from "./hooks/use-pet-size";
-import { PET_HOVER_POSES, PET_POSES, type PetPose, type PetState } from "./types/pet-state";
+import { useVisualTransition } from "./hooks/use-visual-transition";
+import {
+  PET_ACTION_POSES,
+  PET_EXPRESSIONS,
+  PET_POSES,
+  type PetExpression,
+  type PetPose,
+  type PetState,
+  type PetVisualFrame,
+} from "./types/pet-state";
 import "./web-pet.css";
+
+const IDLE_POSE = PET_POSES[0];
+const INITIAL_FRAME: PetVisualFrame = {
+  key: "pose-idle",
+  poseId: "idle",
+  asset: `${WEB_PET_CONFIG.poseBasePath}/idle.webp`,
+};
+const PRIORITY_IMAGES = [
+  `${WEB_PET_CONFIG.poseBasePath}/idle.webp`,
+  ...Array.from(new Set(PET_EXPRESSIONS.map(({ id }) =>
+    `${WEB_PET_CONFIG.expressionBasePath}/${id}.webp`,
+  ))),
+];
+const DEFERRED_IMAGES = PET_ACTION_POSES.map(({ id }) =>
+  `${WEB_PET_CONFIG.poseBasePath}/${id}.webp`,
+);
 
 export default function WebDesktopPet() {
   const machineRef = useRef<PetStateMachine | null>(null);
   if (!machineRef.current) machineRef.current = new PetStateMachine();
 
   const machine = machineRef.current;
-  usePosePreload(WEB_PET_CONFIG.poseBasePath, PET_POSES);
+  usePosePreload(PRIORITY_IMAGES, DEFERRED_IMAGES);
   const size = usePetSize();
   const { dragging, style, dragBindings } = usePetDrag(size);
+  const draggingRef = useRef(dragging);
+  draggingRef.current = dragging;
   const [state, setState] = useState<PetState>(machine.state);
-  const [poseIndex, setPoseIndex] = useState(0);
   const [pageHidden, setPageHidden] = useState(false);
-  const poseLoopRef = useRef<PoseLoop | null>(null);
-  const hoverLoopRef = useRef<PoseLoop | null>(null);
+  const { current, previous, transitionTo } = useVisualTransition(
+    INITIAL_FRAME,
+    WEB_PET_CONFIG.frameTransitionMs,
+  );
+  const behaviorRef = useRef<BehaviorDirector | null>(null);
+  const expressionRef = useRef<ExpressionLoop | null>(null);
   const hoveringRef = useRef(false);
-  const currentPose = PET_POSES[poseIndex];
 
   useEffect(() => machine.subscribe((nextState) => setState(nextState)), [machine]);
 
+  const showPose = useCallback((pose: PetPose) => {
+    if (document.hidden || draggingRef.current) return;
+    transitionTo({
+      key: `pose-${pose.id}`,
+      poseId: pose.id,
+      asset: `${WEB_PET_CONFIG.poseBasePath}/${pose.id}.webp`,
+    });
+    machine.transition(pose.id);
+  }, [machine, transitionTo]);
+
+  const showExpression = useCallback((expression: PetExpression) => {
+    if (document.hidden || draggingRef.current) return;
+    transitionTo({
+      key: `expression-${expression.id}`,
+      poseId: "idle",
+      asset: `${WEB_PET_CONFIG.expressionBasePath}/${expression.id}.webp`,
+    });
+    machine.transition("idle");
+  }, [machine, transitionTo]);
+
   useEffect(() => {
-    const showPose = (pose: PetPose) => {
-      const index = PET_POSES.findIndex(({ id }) => id === pose.id);
-      if (index < 0 || document.hidden || machine.state === "dragging") return;
-      setPoseIndex(index);
-      machine.transition(pose.id);
-    };
-
-    const poseLoop = new PoseLoop(
-      PET_POSES,
-      WEB_PET_CONFIG.firstPoseDelayMs,
-      (pose) => showPose(pose),
+    const behavior = new BehaviorDirector(
+      PET_ACTION_POSES,
+      WEB_PET_CONFIG.firstActionDelayMs,
+      WEB_PET_CONFIG.actionDelayMinMs,
+      WEB_PET_CONFIG.actionDelayMaxMs,
+      showPose,
+      () => showPose(IDLE_POSE),
     );
-    const hoverLoop = new PoseLoop(
-      PET_HOVER_POSES,
-      WEB_PET_CONFIG.hoverPoseDelayMs,
-      (pose) => showPose(pose),
-      WEB_PET_CONFIG.hoverPoseIntervalMs,
+    const expressions = new ExpressionLoop(
+      PET_EXPRESSIONS,
+      WEB_PET_CONFIG.expressionFirstDelayMs,
+      showExpression,
     );
+    behaviorRef.current = behavior;
+    expressionRef.current = expressions;
 
-    poseLoopRef.current = poseLoop;
-    hoverLoopRef.current = hoverLoop;
     const syncVisibility = () => {
-      setPageHidden(document.hidden);
-      if (document.hidden) {
-        poseLoop.stop();
-        hoverLoop.stop();
-      } else if (machine.state !== "dragging" && hoveringRef.current) {
-        hoverLoop.start();
-      } else if (machine.state !== "dragging") {
-        poseLoop.start();
+      const hidden = document.hidden;
+      setPageHidden(hidden);
+      behavior.stop();
+      expressions.stop();
+      if (hidden || draggingRef.current) return;
+
+      if (hoveringRef.current) {
+        showExpression(PET_EXPRESSIONS[0]);
+        expressions.start();
+      } else {
+        showPose(IDLE_POSE);
+        behavior.start();
       }
     };
 
@@ -69,68 +118,71 @@ export default function WebDesktopPet() {
 
     return () => {
       document.removeEventListener("visibilitychange", syncVisibility);
-      poseLoop.stop();
-      hoverLoop.stop();
-      poseLoopRef.current = null;
-      hoverLoopRef.current = null;
+      behavior.stop();
+      expressions.stop();
+      behaviorRef.current = null;
+      expressionRef.current = null;
     };
-  }, [machine]);
+  }, [showExpression, showPose]);
 
   useEffect(() => {
+    behaviorRef.current?.stop();
+    expressionRef.current?.stop();
     if (dragging) {
-      poseLoopRef.current?.stop();
-      hoverLoopRef.current?.stop();
       machine.transition("dragging");
       return;
     }
-
-    machine.transition(currentPose.id);
     if (document.hidden) return;
-    if (hoveringRef.current) hoverLoopRef.current?.start();
-    else poseLoopRef.current?.start();
-  }, [currentPose.id, dragging, machine]);
+
+    if (hoveringRef.current) {
+      showExpression(PET_EXPRESSIONS[0]);
+      expressionRef.current?.start();
+    } else {
+      showPose(IDLE_POSE);
+      behaviorRef.current?.start();
+    }
+  }, [dragging, machine, showExpression, showPose]);
 
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     dragBindings.onPointerMove(event);
-    if (dragging) return;
+    if (dragging || event.pointerType !== "mouse" || !hoveringRef.current) return;
 
     const bounds = event.currentTarget.getBoundingClientRect();
-    const normalizedX = Math.max(-1, Math.min(1, (event.clientX - bounds.left - bounds.width / 2) / (bounds.width / 2)));
-    const normalizedY = Math.max(-1, Math.min(1, (event.clientY - bounds.top - bounds.height / 2) / (bounds.height / 2)));
+    const normalizedX = Math.max(-1, Math.min(1,
+      (event.clientX - bounds.left - bounds.width / 2) / (bounds.width / 2),
+    ));
+    const normalizedY = Math.max(-1, Math.min(1,
+      (event.clientY - bounds.top - bounds.height / 2) / (bounds.height / 2),
+    ));
     event.currentTarget.style.setProperty("--look-x", `${normalizedX * 3}px`);
     event.currentTarget.style.setProperty("--look-y", `${normalizedY * 2}px`);
     event.currentTarget.style.setProperty("--look-rotate", `${normalizedX * 2.2}deg`);
   }, [dragBindings, dragging]);
 
-  const onPointerEnter = useCallback(() => {
+  const onPointerEnter = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || !window.matchMedia("(hover: hover)").matches) return;
     hoveringRef.current = true;
-    poseLoopRef.current?.stop();
-    setPoseIndex(0);
-    machine.transition("idle");
-    hoverLoopRef.current?.start();
-  }, [machine]);
+    behaviorRef.current?.stop();
+    showExpression(PET_EXPRESSIONS[0]);
+    expressionRef.current?.start();
+  }, [showExpression]);
 
   const onPointerLeave = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!hoveringRef.current) return;
     hoveringRef.current = false;
     event.currentTarget.style.setProperty("--look-x", "0px");
     event.currentTarget.style.setProperty("--look-y", "0px");
     event.currentTarget.style.setProperty("--look-rotate", "0deg");
-    hoverLoopRef.current?.stop();
-
-    const normalPose = poseLoopRef.current?.pose;
-    if (normalPose) {
-      const normalIndex = PET_POSES.findIndex(({ id }) => id === normalPose.id);
-      setPoseIndex(normalIndex);
-      machine.transition(normalPose.id);
-    }
-    if (!dragging && !document.hidden) poseLoopRef.current?.start();
-  }, [dragging, machine]);
+    expressionRef.current?.stop();
+    showPose(IDLE_POSE);
+    if (!dragging && !document.hidden) behaviorRef.current?.start();
+  }, [dragging, showPose]);
 
   return (
     <div
       className={`web-pet-root ${dragging ? "is-dragging" : ""}`}
       data-state={state}
-      data-pose={currentPose.id}
+      data-pose={current.poseId}
       data-paused={pageHidden ? "true" : "false"}
       style={style}
       role="img"
@@ -143,7 +195,7 @@ export default function WebDesktopPet() {
       onPointerCancel={dragBindings.onPointerCancel}
       onPointerLeave={onPointerLeave}
     >
-      <PetAvatar basePath={WEB_PET_CONFIG.poseBasePath} pose={currentPose} />
+      <PetAvatar current={current} previous={previous} />
     </div>
   );
 }
