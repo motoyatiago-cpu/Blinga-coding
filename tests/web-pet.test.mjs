@@ -61,7 +61,12 @@ test("runs the web pet through low-frequency actions and native expressions", as
 
   assert.match(config, /actionDelayMinMs: 18_000/);
   assert.match(config, /actionDelayMaxMs: 42_000/);
+  assert.match(config, /expressionFirstDelayMs: 1_800/);
   assert.match(config, /frameTransitionMs: 160/);
+  assert.match(poses, /\{ id: "idle", holdMs: 4_600 \}/);
+  assert.match(poses, /\{ id: "curious", holdMs: 2_000 \}/);
+  assert.match(poses, /\{ id: "surprised", holdMs: 1_500 \}/);
+  assert.match(poses, /\{ id: "amazed", holdMs: 1_900 \}/);
   assert.match(dragHook, /setPointerCapture/);
   assert.match(dragHook, /releasePointerCapture/);
   assert.match(preloadHook, /requestIdleCallback/);

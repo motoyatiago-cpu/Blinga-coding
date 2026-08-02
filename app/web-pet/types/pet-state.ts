@@ -24,15 +24,15 @@ export const PET_POSES = [
 export const PET_ACTION_POSES = PET_POSES.filter(({ id }) => id !== "idle");
 
 export const PET_EXPRESSIONS = [
-  { id: "idle", holdMs: 720 },
-  { id: "half-blink", holdMs: 130 },
-  { id: "closed", holdMs: 110 },
-  { id: "half-blink", holdMs: 130 },
-  { id: "idle", holdMs: 760 },
-  { id: "curious", holdMs: 620 },
-  { id: "idle", holdMs: 540 },
-  { id: "surprised", holdMs: 520 },
-  { id: "amazed", holdMs: 680 },
+  { id: "idle", holdMs: 2_800 },
+  { id: "half-blink", holdMs: 260 },
+  { id: "closed", holdMs: 220 },
+  { id: "idle", holdMs: 4_200 },
+  { id: "curious", holdMs: 2_000 },
+  { id: "idle", holdMs: 4_600 },
+  { id: "surprised", holdMs: 1_500 },
+  { id: "idle", holdMs: 4_200 },
+  { id: "amazed", holdMs: 1_900 },
 ] as const;
 
 export type PetPose = (typeof PET_POSES)[number];

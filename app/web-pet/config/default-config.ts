@@ -10,7 +10,7 @@ export const WEB_PET_CONFIG = {
   firstActionDelayMs: 10_000,
   actionDelayMinMs: 18_000,
   actionDelayMaxMs: 42_000,
-  expressionFirstDelayMs: 260,
+  expressionFirstDelayMs: 1_800,
   frameTransitionMs: 160,
   positionStorageKey: "blinga:web-pet-position:v1",
 } as const;
