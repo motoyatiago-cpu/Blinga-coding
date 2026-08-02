@@ -2136,3 +2136,658 @@ button.hover-bounce:focus-visible{
     min-height:58px;
   }
 }
+
+/* W3Schools-inspired classic light palette.
+   Geometry, typography, motion and all feature behavior remain unchanged. */
+:root{
+  color-scheme:light;
+  --bg:#ffffff;
+  --panel:rgba(255,255,255,.92);
+  --panel-solid:#ffffff;
+  --surface-1:rgba(29,42,53,.035);
+  --surface-2:rgba(29,42,53,.06);
+  --surface-3:rgba(29,42,53,.085);
+  --line:rgba(29,42,53,.15);
+  --line-hi:rgba(29,42,53,.24);
+  --text:#1d2a35;
+  --muted:#5f6b72;
+  --muted-2:#7b858b;
+  --accent:#04aa6d;
+  --accent-hi:#059862;
+  --accent-soft:rgba(4,170,109,.1);
+  --accent-line:rgba(4,170,109,.34);
+  --purple:#04aa6d;
+  --success:#04aa6d;
+  --warning:#b77900;
+  --danger:#c83c32;
+  --shadow-1:0 1px 2px rgba(29,42,53,.1),0 12px 28px rgba(29,42,53,.08);
+  --shadow-2:0 1px 2px rgba(29,42,53,.12),0 28px 80px rgba(29,42,53,.14);
+}
+
+html,
+body{
+  background:#ffffff;
+  color:var(--text);
+}
+
+body{
+  background:
+    radial-gradient(ellipse 68% 46% at 14% -2%,rgba(217,238,225,.82),transparent 58%),
+    radial-gradient(ellipse 58% 48% at 96% 35%,rgba(255,244,163,.36),transparent 60%),
+    #ffffff;
+}
+
+body:before{
+  background-image:
+    linear-gradient(rgba(29,42,53,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(29,42,53,.035) 1px,transparent 1px);
+}
+
+::selection{
+  color:#ffffff;
+  background:rgba(4,170,109,.72);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button.hover-bounce:focus-visible{
+  outline-color:rgba(4,170,109,.82);
+}
+
+.ambient.one{
+  background:#d9eee1;
+}
+
+.ambient.two{
+  background:#fff4a3;
+}
+
+.glass:not(.code-example):not(.deep-example):not(.sandbox):not(.run-history):not(.code-viewer-dialog){
+  border-color:var(--line);
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.94),rgba(247,248,249,.9)),
+    radial-gradient(circle at 12% 0,rgba(255,255,255,.9),transparent 40%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.95),
+    inset 0 0 0 1px rgba(29,42,53,.02),
+    var(--shadow-1);
+}
+
+.topbar{
+  border-color:#1f2028;
+  background:#282a35;
+  color:#f1f1f1;
+  box-shadow:0 12px 40px rgba(29,42,53,.15),inset 0 1px rgba(255,255,255,.08);
+}
+
+.brand,
+.topbar nav a:hover,
+.topbar nav a.active{
+  color:#ffffff;
+}
+
+.brand>span:last-child>span{
+  color:#7de3b9;
+}
+
+.brandmark,
+.avatar,
+.account-popover-avatar{
+  background:linear-gradient(135deg,#08bd7b,#049660);
+  color:#ffffff;
+}
+
+.brandmark{
+  box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 25px rgba(4,170,109,.26);
+}
+
+.avatar{
+  box-shadow:inset 0 1px rgba(255,255,255,.24),0 8px 24px rgba(4,170,109,.24);
+}
+
+.topbar nav a{
+  color:#d8dadd;
+}
+
+.topbar nav a:hover,
+.topbar nav a.active{
+  border-color:#04aa6d;
+}
+
+.search-trigger{
+  border-color:#454752;
+  background:#1f2028;
+  color:#d4d6da;
+}
+
+.search-trigger kbd{
+  border-color:#555864;
+  background:#373944;
+  color:#d8dadd;
+}
+
+.sidebar,
+.course-language-nav{
+  border-color:#d4d8dc;
+  background:#e7e9eb;
+  box-shadow:inset -1px 0 rgba(29,42,53,.06);
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.course-language-nav::-webkit-scrollbar-thumb{
+  background:#b7bec3;
+}
+
+*{
+  scrollbar-color:#b7bec3 #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#b7bec3;
+}
+
+.sidebar-brandline,
+.sidebar-brandline i,
+.course-switcher>span,
+.progress-sync{
+  color:#68747b;
+}
+
+.language{
+  color:#33434d;
+}
+
+.language:hover{
+  background:rgba(255,255,255,.72);
+}
+
+.language.selected{
+  border-color:#04aa6d;
+  background:#04aa6d;
+  color:#ffffff;
+}
+
+.language b,
+.course-topic-nav a>span{
+  color:#6f7b82;
+}
+
+.topic,
+.course-topic-nav{
+  border-color:#c6ccd0;
+}
+
+.topic,
+.course-topic-nav a,
+.course-nav-back{
+  color:#46545d;
+}
+
+.topic span{
+  color:#7a858b;
+}
+
+.topic:hover,
+.topic.active,
+.course-topic-nav a:hover,
+.course-topic-nav a.active{
+  border-color:#04aa6d;
+  background:linear-gradient(90deg,rgba(4,170,109,.13),rgba(217,238,225,.32));
+  color:#1d2a35;
+}
+
+.topic.active span,
+.course-topic-nav a.active>span,
+.course-topic-nav a.active>i,
+.course-nav-back:hover{
+  color:#04764c;
+}
+
+.course-root-link small{
+  color:#5f6b72;
+}
+
+.course-switcher{
+  border-color:#cbd0d4;
+}
+
+.course-switcher a{
+  border-color:#c6ccd0;
+  background:#ffffff;
+  color:#33434d;
+}
+
+.course-switcher a:hover{
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.breadcrumb,
+.catalog-breadcrumb,
+.catalog-breadcrumb a,
+.meta,
+.section-heading p,
+.course-hero p,
+.course-entry p,
+.catalog-topic>p,
+.catalog-topic footer span,
+.course-level-summary p,
+.course-level-summary article>b{
+  color:#5f6b72;
+}
+
+.breadcrumb span,
+.catalog-breadcrumb b{
+  color:#8a949a;
+}
+
+.lesson-head>div>p,
+.course-hero>div:nth-child(2)>span,
+.course-entry>div:nth-child(2)>span,
+.level-heading>div>span,
+.catalog-topic-top span,
+.catalog-topic footer b,
+.course-level-summary article>span,
+.document-export>div:first-child span,
+.lesson-notes-head>div:first-child>span,
+.search-answer span,
+.course-search-results>header span{
+  color:#04764c;
+}
+
+.level,
+.eyebrow,
+.level-heading>div>span,
+.catalog-topic-top span,
+.course-level-summary article>span{
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.eyebrow.purple{
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.pager button,
+.toolbar button,
+.section-heading select,
+.document-export select,
+.document-export button:not(.primary),
+.focus-mode-toggle{
+  border-color:#c8cdd1;
+  background:#ffffff;
+  color:#33434d;
+}
+
+.pager button:hover,
+.toolbar button:hover,
+.focus-mode-toggle:hover{
+  border-color:#04aa6d;
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.primary,
+.toolbar button.primary,
+.run,
+.course-entry>a,
+.document-export button,
+.search-box button,
+.chat-fab,
+.chat-input button{
+  border-color:#04aa6d;
+  background:#04aa6d;
+  color:#ffffff;
+}
+
+.primary:hover,
+.toolbar button.primary:hover,
+.run:hover,
+.course-entry>a:hover,
+.document-export button:hover,
+.search-box button:hover,
+.chat-fab:hover,
+.chat-input button:hover{
+  border-color:#059862;
+  background:#059862;
+  color:#ffffff;
+}
+
+.lesson-card,
+.course-hero,
+.course-entry,
+.catalog-topic,
+.course-level-summary article,
+.concept-flow article,
+.pitfall-grid article,
+.document-export,
+.lesson-notes,
+.course-search-results{
+  border-color:#d4d8dc;
+  background:#ffffff;
+  color:#1d2a35;
+}
+
+.lesson-card>p,
+.deep-intro p,
+.concept-flow p,
+.pitfall-grid p,
+.course-entry p,
+.course-hero p{
+  color:#52616a;
+}
+
+.note{
+  border-color:#04aa6d;
+  background:#d9eee1;
+}
+
+.note b{
+  color:#075c3e;
+}
+
+.note span{
+  color:#36594c;
+}
+
+.concept-flow article,
+.pitfall-grid article{
+  background:#f1f1f1;
+}
+
+.concept-flow article>div,
+.concept-flow p,
+.pitfall-grid p{
+  color:#5f6b72;
+}
+
+.concept-flow article>div span,
+.pitfall-grid .right{
+  color:#04764c;
+}
+
+.pitfall-grid .wrong{
+  color:#b8322a;
+}
+
+.course-hero:after{
+  background:#04aa6d;
+}
+
+.course-stats>div{
+  border-color:#cdd2d6;
+  background:#f1f1f1;
+}
+
+.course-stats b{
+  color:#04764c;
+}
+
+.course-stats span,
+.level-heading p,
+.level-heading>b,
+.catalog-topic-top i{
+  color:#68747b;
+}
+
+.catalog-topic:hover{
+  border-color:#04aa6d;
+  box-shadow:inset 0 1px #ffffff,0 24px 55px rgba(29,42,53,.13);
+}
+
+.graph-shell{
+  border-color:#d4d8dc;
+  background:#ffffff;
+}
+
+.graph-shell.is-loading:after{
+  background:rgba(255,255,255,.9);
+  color:#04764c;
+}
+
+.react-flow__controls,
+.react-flow__minimap{
+  border-color:#d4d8dc!important;
+  background:#ffffff!important;
+}
+
+.react-flow__controls-button{
+  border-color:#d4d8dc!important;
+  background:#ffffff!important;
+  color:#33434d!important;
+}
+
+.knowledge-node{
+  background:linear-gradient(145deg,#ffffff,#f1f1f1);
+  box-shadow:inset 0 1px #ffffff,0 18px 42px rgba(29,42,53,.12);
+}
+
+.knowledge-node.selected{
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--node-color) 18%,transparent),0 18px 42px rgba(29,42,53,.15);
+}
+
+.node-description,
+.node-delete,
+.node-color{
+  color:#5f6b72;
+}
+
+.react-flow__handle{
+  border-color:#ffffff!important;
+}
+
+.document-export{
+  background:#d9eee1;
+}
+
+.document-export>div:first-child b,
+.lesson-notes-head h2{
+  color:#1d2a35;
+}
+
+.document-export>div:first-child small,
+.document-export label,
+.lesson-notes-status,
+.lesson-notes>footer{
+  color:#5f6b72;
+}
+
+.lesson-notes-head{
+  border-color:#cfd5d1;
+  background:linear-gradient(100deg,#d9eee1,#ffffff);
+}
+
+.lesson-notes>textarea{
+  background:#ffffff;
+  color:#1d2a35;
+}
+
+.lesson-notes>textarea:focus{
+  box-shadow:inset 0 0 0 1px rgba(4,170,109,.5);
+}
+
+.lesson-notes>textarea::placeholder{
+  color:#8a949a;
+}
+
+.lesson-notes>footer{
+  border-color:#d4d8dc;
+  background:#f1f1f1;
+}
+
+.search-overlay{
+  background:rgba(40,42,53,.55);
+}
+
+.search-dialog,
+.chat,
+.account-popover{
+  border-color:#d4d8dc;
+  background:#ffffff;
+  color:#1d2a35;
+}
+
+.search-dialog-head button,
+.chat-head button{
+  color:#5f6b72;
+}
+
+.search-box input,
+.chat-input textarea{
+  border-color:#c8cdd1;
+  background:#ffffff;
+  color:#1d2a35;
+}
+
+.search-box input:focus,
+.chat-input textarea:focus{
+  border-color:#04aa6d;
+}
+
+.search-answer,
+.course-search-results{
+  border-color:#d4d8dc;
+  background:#f1f1f1;
+}
+
+.search-answer p,
+.course-search-results>p,
+.course-search-results button em,
+.course-search-results button small{
+  color:#5f6b72;
+}
+
+.course-search-results>header,
+.course-search-results>div>button{
+  border-color:#d4d8dc;
+  color:#1d2a35;
+}
+
+.course-search-results>div>button:hover,
+.course-search-results>div>button:focus-visible{
+  background:#d9eee1;
+}
+
+.course-search-results button strong{
+  color:#04764c;
+}
+
+.course-search-results button>i{
+  background:#d9eee1!important;
+  color:#04764c!important;
+}
+
+.chat-head,
+.chat-input{
+  border-color:#d4d8dc;
+}
+
+.chat-head>div>span{
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.chat-head small,
+.chat-head-actions .chat-clear{
+  color:#5f6b72;
+}
+
+.message.ai{
+  background:#f1f1f1;
+  color:#33434d;
+}
+
+.message.user{
+  background:#04aa6d;
+  color:#ffffff;
+}
+
+.chips button{
+  border-color:#c8cdd1;
+  background:#ffffff;
+  color:#46545d;
+}
+
+.chips button:hover{
+  border-color:#04aa6d;
+  background:#d9eee1;
+  color:#04764c;
+}
+
+.chat-fab.open{
+  background:#282a35;
+  color:#ffffff;
+}
+
+.account-avatar>span{
+  border-color:#282a35;
+  background:#04aa6d;
+}
+
+.account-popover>header{
+  border-color:#d4d8dc;
+}
+
+.account-popover header b{
+  color:#1d2a35;
+}
+
+.account-popover header small,
+.account-popover>a,
+.account-popover>button,
+.account-provider-list>a,
+.account-provider-list>p{
+  color:#5f6b72;
+}
+
+.account-popover>a:hover,
+.account-popover>button:hover,
+.account-provider-list>a:hover{
+  background:#d9eee1;
+  color:#075c3e;
+}
+
+.account-popover i,
+.account-provider-list i{
+  color:#04764c;
+}
+
+.account-menu-feedback{
+  border-color:rgba(4,170,109,.24);
+  background:#d9eee1;
+  color:#075c3e;
+}
+
+/* Keep every macOS/Xcode code surface on its original graphite palette. */
+.code-example,
+.deep-example,
+.sandbox,
+.run-history,
+.sandbox-focus-mode,
+.code-viewer-backdrop,
+.code-viewer-dialog{
+  color-scheme:dark;
+  color:#f4f6fb;
+  --bg:#07080c;
+  --panel:rgba(19,21,29,.72);
+  --panel-solid:#11131a;
+  --surface-1:rgba(255,255,255,.035);
+  --surface-2:rgba(255,255,255,.055);
+  --surface-3:rgba(255,255,255,.075);
+  --line:rgba(255,255,255,.075);
+  --line-hi:rgba(255,255,255,.14);
+  --text:#f4f6fb;
+  --muted:#8c94a5;
+  --muted-2:#5f6675;
+  --accent:#7182ff;
+  --accent-hi:#96a2ff;
+  --accent-soft:rgba(113,130,255,.12);
+  --accent-line:rgba(113,130,255,.34);
+  --success:#5de0ae;
+  --warning:#f2c66d;
+  --danger:#ff837a;
+}
