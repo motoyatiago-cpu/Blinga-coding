@@ -1,22 +1,32 @@
-import type { PetState } from "../types/pet-state";
+import type { CSSProperties } from "react";
+import type { PetPose } from "../types/pet-state";
 
 type PetAvatarProps = {
-  asset: string;
-  state: PetState;
+  atlas: string;
+  pose: PetPose;
 };
 
-export function PetAvatar({ asset, state }: PetAvatarProps) {
+export function PetAvatar({ atlas, pose }: PetAvatarProps) {
+  const spriteStyle: CSSProperties = {
+    backgroundImage: `url(${atlas})`,
+    backgroundPosition: `${pose.column * 25}% ${pose.row * (100 / 3)}%`,
+  };
+
   return (
     <span className="web-pet-visual-shell">
       <span className="web-pet-idle-motion">
-        <img
-          className="web-pet-avatar"
-          data-state={state}
-          src={asset}
-          alt=""
+        <span
+          key={pose.id}
+          className="web-pet-sprite"
+          data-pose={pose.id}
+          style={spriteStyle}
           aria-hidden="true"
-          draggable={false}
         />
+      </span>
+      <span className="web-pet-face-overlay" aria-hidden="true">
+        <span className="web-pet-eye web-pet-eye-left"><i /></span>
+        <span className="web-pet-eye web-pet-eye-right"><i /></span>
+        <span className="web-pet-mouth" />
       </span>
     </span>
   );
