@@ -68,6 +68,11 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(component, /data-paused=\{pageHidden/);
   assert.match(component, /aria-grabbed=\{dragging\}/);
   assert.match(component, /aria-controls=\{PET_MENU_ID\}/);
+  assert.match(component, /data-overlay-horizontal=\{overlayPlacement\.horizontal\}/);
+  assert.match(component, /data-overlay-vertical=\{overlayPlacement\.vertical\}/);
+  assert.match(component, /bounds\.left < 180/);
+  assert.match(component, /bounds\.top < 120/);
+  assert.doesNotMatch(component, /setBubbleMessage\("需要我做什么？"\)/);
   assert.match(component, /role="button"/);
   assert.match(component, /requestExistingAiAssistant/);
   assert.match(component, /window\.location\.assign\("\/\?assistant=open"\)/);
@@ -132,6 +137,11 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(css, /width:88px/);
   assert.match(css, /cursor:grabbing/);
   assert.match(css, /\.web-pet-menu\.is-open/);
+  assert.match(css, /@keyframes web-pet-menu-pop/);
+  assert.match(css, /animation:web-pet-menu-pop \.42s/);
+  assert.match(css, /\.web-pet-root\[data-menu-open="true"\] \.web-pet-bubble/);
+  assert.match(css, /data-overlay-horizontal="right"/);
+  assert.match(css, /data-overlay-vertical="down"/);
   assert.match(css, /\.web-pet-bubble\.is-visible/);
   assert.match(css, /\.web-pet-root:not\(\.is-dragging\):hover/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);

@@ -53,6 +53,11 @@ const PRIORITY_ASSETS = [
 ];
 const DEFERRED_ASSETS = PET_ACTION_POSES.map(({ id }) => getPetPoseAsset(id));
 
+type PetOverlayPlacement = {
+  horizontal: "left" | "right";
+  vertical: "up" | "down";
+};
+
 export default function WebDesktopPet() {
   const machineRef = useRef<PetStateMachine | null>(null);
   if (!machineRef.current) machineRef.current = new PetStateMachine();
@@ -69,6 +74,10 @@ export default function WebDesktopPet() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuOpenRef = useRef(menuOpen);
   menuOpenRef.current = menuOpen;
+  const [overlayPlacement, setOverlayPlacement] = useState<PetOverlayPlacement>({
+    horizontal: "left",
+    vertical: "up",
+  });
   const [bubbleMessage, setBubbleMessage] = useState<string | null>(null);
   const { current, previous, transitionTo } = useVisualTransition(
     INITIAL_FRAME,
@@ -79,6 +88,22 @@ export default function WebDesktopPet() {
   const dragMotionRef = useRef<DragMotionLoop | null>(null);
   const expressionRef = useRef<ExpressionLoop | null>(null);
   const hoveringRef = useRef(false);
+
+  const syncOverlayPlacement = useCallback(() => {
+    const bounds = rootRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+
+    const nextPlacement: PetOverlayPlacement = {
+      horizontal: bounds.left < 180 ? "right" : "left",
+      vertical: bounds.top < 120 ? "down" : "up",
+    };
+    setOverlayPlacement((currentPlacement) => (
+      currentPlacement.horizontal === nextPlacement.horizontal
+      && currentPlacement.vertical === nextPlacement.vertical
+        ? currentPlacement
+        : nextPlacement
+    ));
+  }, []);
 
   useEffect(() => machine.subscribe((nextState) => setState(nextState)), [machine]);
 
@@ -164,7 +189,7 @@ export default function WebDesktopPet() {
       if (hidden) return;
 
       if (menuOpenRef.current) {
-        setBubbleMessage("需要我做什么？");
+        setBubbleMessage(null);
         showMenuPose();
         return;
       }
@@ -203,7 +228,7 @@ export default function WebDesktopPet() {
     if (document.hidden) return;
 
     if (menuOpen) {
-      setBubbleMessage("需要我做什么？");
+      setBubbleMessage(null);
       showMenuPose();
       return;
     }
@@ -221,6 +246,15 @@ export default function WebDesktopPet() {
       behaviorRef.current?.start();
     }
   }, [dragging, machine, menuOpen, showExpression, showMenuPose, showPose]);
+
+  useEffect(() => {
+    if (!dragging) syncOverlayPlacement();
+  }, [dragging, size, style?.left, style?.top, syncOverlayPlacement]);
+
+  useEffect(() => {
+    window.addEventListener("resize", syncOverlayPlacement, { passive: true });
+    return () => window.removeEventListener("resize", syncOverlayPlacement);
+  }, [syncOverlayPlacement]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -273,7 +307,10 @@ export default function WebDesktopPet() {
     if (!dragging && !document.hidden) behaviorRef.current?.start();
   }, [dragging, showPose]);
 
-  const toggleMenu = useCallback(() => setMenuOpen((open) => !open), []);
+  const toggleMenu = useCallback(() => {
+    syncOverlayPlacement();
+    setMenuOpen((open) => !open);
+  }, [syncOverlayPlacement]);
 
   const onClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (dragBindings.consumeClickSuppression()) {
@@ -307,6 +344,8 @@ export default function WebDesktopPet() {
       data-state={state}
       data-pose={current.poseId}
       data-menu-open={menuOpen ? "true" : "false"}
+      data-overlay-horizontal={overlayPlacement.horizontal}
+      data-overlay-vertical={overlayPlacement.vertical}
       data-paused={pageHidden ? "true" : "false"}
       style={style}
       role="button"
