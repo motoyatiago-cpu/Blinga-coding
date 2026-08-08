@@ -33,6 +33,7 @@ import CodeViewerDialog, {
   consumeCodeImport,
   type CodeRecordRequest,
 } from "./code-viewer-dialog";
+import { useDraggableAiPanel } from "./use-draggable-ai-panel";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
 type LearningProgress = {
@@ -1954,6 +1955,13 @@ export default function Home() {
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatRequestRef = useRef(0);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const {
+    panelRef: chatPanelRef,
+    interaction: chatPanelInteraction,
+    resetLayout: resetChatPanelLayout,
+    dragHandleProps: chatDragHandleProps,
+    resizeHandleProps: chatResizeHandleProps,
+  } = useDraggableAiPanel(chatOpen);
   const syncSandboxContext = useCallback((context: SandboxContext) => {
     setSandboxContext(context);
   }, []);
@@ -2419,11 +2427,29 @@ export default function Home() {
           </section>
         </div>
 
-        <aside id="ai-programming-assistant" className={`chat glass ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
-          <div className="chat-head"><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
+        <aside
+          ref={chatPanelRef}
+          id="ai-programming-assistant"
+          className={`chat glass ai-floating-panel ${chatOpen ? "open" : ""} ${chatPanelInteraction ? `is-${chatPanelInteraction}` : ""}`}
+          aria-hidden={!chatOpen}
+          data-lenis-prevent
+        >
+          <div
+            className="chat-head ai-panel-drag-handle"
+            tabIndex={chatOpen ? 0 : -1}
+            aria-label="拖动 AI 助教窗口，使用方向键可以微调位置"
+            {...chatDragHandleProps}
+          ><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
           <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
           <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
           <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的编程问题…"} /><button className={aiBusy ? "stop" : ""} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? "■" : "↑"}</button></div>
+          <button
+            className="chat-resize-handle"
+            type="button"
+            tabIndex={chatOpen ? 0 : -1}
+            aria-label="调整 AI 助教窗口大小，使用方向键可以微调"
+            {...chatResizeHandleProps}
+          />
         </aside>
       </main>
     </ReactFlowProvider>

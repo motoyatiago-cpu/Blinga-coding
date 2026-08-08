@@ -2136,3 +2136,110 @@ button.hover-bounce:focus-visible{
     min-height:58px;
   }
 }
+
+/* Movable AI assistant panel */
+.chat.ai-floating-panel{
+  min-width:min(280px,calc(100vw - 24px));
+  min-height:min(330px,calc(100dvh - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:calc(100dvh - 24px);
+}
+
+.chat.ai-floating-panel.is-dragging,
+.chat.ai-floating-panel.is-resizing{
+  transition:none!important;
+  will-change:left,top,width,height;
+  user-select:none;
+}
+
+.ai-panel-drag-handle{
+  cursor:grab;
+  touch-action:none;
+}
+
+.ai-panel-drag-handle:active,
+.chat.ai-floating-panel.is-dragging .ai-panel-drag-handle{
+  cursor:grabbing;
+}
+
+.ai-panel-drag-handle:focus-visible{
+  outline:1px solid rgba(129,137,255,.72);
+  outline-offset:-2px;
+}
+
+.chat-head-actions{
+  cursor:default;
+  touch-action:auto;
+}
+
+.chat-head-actions .chat-reset-layout{
+  padding:0 7px;
+  border:1px solid var(--line);
+  color:#8790a2;
+  font-size:8px;
+}
+
+.chat-head-actions .chat-reset-layout:hover,
+.chat-head-actions .chat-reset-layout:focus-visible{
+  border-color:rgba(129,137,255,.34);
+  color:#cbd0ff;
+  outline:none;
+}
+
+.chat-resize-handle{
+  position:absolute;
+  right:3px;
+  bottom:3px;
+  z-index:8;
+  width:24px;
+  height:24px;
+  padding:0;
+  border:0;
+  border-radius:0 0 16px 0;
+  background:
+    linear-gradient(135deg,
+      transparent 0 48%,
+      rgba(137,147,176,.28) 49% 54%,
+      transparent 55% 65%,
+      rgba(137,147,176,.5) 66% 71%,
+      transparent 72%);
+  cursor:nwse-resize;
+  touch-action:none;
+}
+
+.chat-resize-handle:hover,
+.chat-resize-handle:focus-visible{
+  background:
+    linear-gradient(135deg,
+      transparent 0 48%,
+      rgba(145,154,255,.45) 49% 54%,
+      transparent 55% 65%,
+      rgba(145,154,255,.85) 66% 71%,
+      transparent 72%);
+  outline:none;
+}
+
+.chat:not(.open) .chat-resize-handle{
+  pointer-events:none;
+}
+
+@media(max-width:650px){
+  .chat.ai-floating-panel{
+    max-width:calc(100vw - 16px);
+    max-height:calc(100dvh - 16px);
+  }
+
+  .chat-head-actions{
+    gap:3px!important;
+  }
+
+  .chat-head-actions button{
+    min-width:26px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .chat.ai-floating-panel{
+    transition:none!important;
+  }
+}

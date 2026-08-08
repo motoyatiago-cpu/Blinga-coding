@@ -179,6 +179,31 @@ test("uses the desktop pet as the only floating AI entry", async () => {
   assert.doesNotMatch(css, /button\.hover-bounce\{\s*position:relative/);
 });
 
+test("moves, resizes, and restores the existing AI assistant panel", async () => {
+  const [page, hook, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/use-draggable-ai-panel.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /useDraggableAiPanel\(chatOpen\)/);
+  assert.match(page, /ref=\{chatPanelRef\}/);
+  assert.match(page, /\.\.\.chatDragHandleProps/);
+  assert.match(page, /\.\.\.chatResizeHandleProps/);
+  assert.match(page, /resetChatPanelLayout/);
+  assert.match(page, /data-lenis-prevent/);
+  assert.match(hook, /setPointerCapture/);
+  assert.match(hook, /releasePointerCapture/);
+  assert.match(hook, /window\.localStorage\.setItem/);
+  assert.match(hook, /window\.addEventListener\("resize"/);
+  assert.match(hook, /clampLayout/);
+  assert.match(hook, /ArrowLeft/);
+  assert.doesNotMatch(hook, /requestAnimationFrame/);
+  assert.match(css, /\.chat\.ai-floating-panel\.is-dragging/);
+  assert.match(css, /\.chat-resize-handle/);
+  assert.match(css, /touch-action:none/);
+});
+
 test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
   const [smoothScroll, layout, css, packageJson, page] = await Promise.all([
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
