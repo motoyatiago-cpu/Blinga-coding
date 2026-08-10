@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "lenis/dist/lenis.css";
-import "./product-theme.css";
 import HoverBounceMotion from "./hover-bounce";
 import SmoothScrollMotion from "./smooth-scroll";
 import { WebDesktopPet } from "./web-pet";
@@ -34,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased production-ui`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SmoothScrollMotion />
         <HoverBounceMotion />
