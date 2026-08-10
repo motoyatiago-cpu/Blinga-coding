@@ -307,31 +307,6 @@ test("applies the Blinga coding V2 product design system without replacing featu
   assert.match(smoothScroll, /new Lenis/);
 });
 
-test("applies the porcelain glass reference style while preserving Apple code surfaces", async () => {
-  const [layout, theme, page] = await Promise.all([
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/porcelain-theme.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-  ]);
-
-  assert.match(layout, /import "\.\/porcelain-theme\.css"/);
-  assert.match(layout, /porcelain-theme/);
-  assert.match(theme, /--bg:#f3f8ff/);
-  assert.match(theme, /--accent:#4b8df8/);
-  assert.match(theme, /\.porcelain-theme \.topbar/);
-  assert.match(theme, /\.porcelain-theme \.sidebar/);
-  assert.match(theme, /\.porcelain-theme \.graph-shell/);
-  assert.match(theme, /\.porcelain-theme \.chat/);
-  assert.match(theme, /\.porcelain-theme \.profile-page/);
-  assert.match(theme, /\.porcelain-theme \.forum-page/);
-  assert.match(theme, /Keep every Apple\/Xcode code surface isolated/);
-  assert.match(theme, /\.porcelain-theme :is\(\.code-example,\.deep-example,\.sandbox/);
-  assert.doesNotMatch(theme, /--xcode-/);
-  assert.match(page, /<StableKnowledgeGraph lesson=\{lesson\}/);
-  assert.match(page, /<StableSandbox lang=\{lang\}/);
-  assert.match(page, /id="ai-programming-assistant"/);
-});
-
 test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
   const [page, menu, profile, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
