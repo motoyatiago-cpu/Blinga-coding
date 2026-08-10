@@ -33,6 +33,7 @@ import CodeViewerDialog, {
   consumeCodeImport,
   type CodeRecordRequest,
 } from "./code-viewer-dialog";
+import { buildCourseUrl, courseTopicIndex, courseTopicNumber } from "./course-links";
 import { useDraggableAiPanel } from "./use-draggable-ai-panel";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
@@ -2005,9 +2006,9 @@ export default function Home() {
       setSearchResult("");
     }
     if (!isSameCourse) {
-      const nextUrl = `/?lang=${encodeURIComponent(nextLanguage)}&topic=${safeTopicIndex}#learn`;
+      const nextUrl = buildCourseUrl(nextLanguage, safeTopicIndex);
       window.history.pushState(
-        { lang: nextLanguage, topic: safeTopicIndex },
+        { lang: nextLanguage, topic: courseTopicNumber(safeTopicIndex) },
         "",
         nextUrl,
       );
@@ -2089,7 +2090,7 @@ export default function Home() {
     const readCourseFromUrl = (progress?: LearningProgress | null) => {
       const params = new URLSearchParams(window.location.search);
       const requestedLanguage = params.get("lang") as Lang | null;
-      const requestedTopic = Number(params.get("topic"));
+      const requestedTopicNumber = params.get("topic");
       const hasRequestedLanguage = Boolean(requestedLanguage && requestedLanguage in lessons);
       const nextLanguage = hasRequestedLanguage
         ? requestedLanguage as Lang
@@ -2098,9 +2099,24 @@ export default function Home() {
       if (progress) setTopicByLang(progress.topics);
       if (nextLanguage) {
         setLang(nextLanguage);
-        if (hasRequestedLanguage && Number.isInteger(requestedTopic)) {
-          const safeTopic = Math.max(0, Math.min(lessons[nextLanguage].topics.length - 1, requestedTopic));
+        if (hasRequestedLanguage) {
+          const safeTopic = courseTopicIndex(
+            requestedTopicNumber,
+            lessons[nextLanguage].topics.length,
+          );
+          if (safeTopic === null) return;
           setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopic }));
+
+          const canonicalTopicNumber = String(courseTopicNumber(safeTopic));
+          if (requestedTopicNumber !== canonicalTopicNumber) {
+            const canonicalUrl = new URL(window.location.href);
+            canonicalUrl.searchParams.set("topic", canonicalTopicNumber);
+            window.history.replaceState(
+              window.history.state,
+              "",
+              `${canonicalUrl.pathname}${canonicalUrl.search}${canonicalUrl.hash}`,
+            );
+          }
         }
       }
     };
@@ -2360,7 +2376,7 @@ export default function Home() {
                     selectedTopicIndex === index ? "active" : "",
                     completedForCurrentLanguage.includes(index) ? "completed" : "",
                   ].filter(Boolean).join(" ")}
-                  href={`/?lang=${encodeURIComponent(lang)}&topic=${index}#learn`}
+                  href={buildCourseUrl(lang, index)}
                   key={topic}
                   onClick={(event) => {
                     event.preventDefault();

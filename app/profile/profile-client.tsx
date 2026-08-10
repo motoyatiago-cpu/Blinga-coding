@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import CodeViewerDialog, { type CodeRecordRequest } from "../code-viewer-dialog";
+import { buildCourseUrl } from "../course-links";
 
 type Provider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
 type Tab = "overview" | "history" | "content" | "settings" | "security" | "data";
@@ -406,7 +407,7 @@ export default function ProfileClient() {
             <section className="profile-hero-card glass">
               <div><span>欢迎回来</span><h2>{profile.user.displayName}</h2><p>从上次停下的位置继续，学习记录会自动同步到你的账号。</p></div>
               {overview.continueLearning
-                ? <a href={`/?lang=${encodeURIComponent(overview.continueLearning.language)}&topic=${overview.continueLearning.topicIndex}#learn`}>继续 {overview.continueLearning.language}</a>
+                ? <a href={buildCourseUrl(overview.continueLearning.language, overview.continueLearning.topicIndex)}>继续 {overview.continueLearning.language}</a>
                 : <a href="/#learn">开始第一节课</a>}
             </section>
             <div className="profile-stats">
@@ -468,7 +469,7 @@ export default function ProfileClient() {
 
           {tab === "content" && <div className="profile-content-columns">
             <section className="profile-panel glass"><header><div><h2>代码草稿</h2></div><b>{profile.drafts.length}</b></header><div className="profile-content-list">{profile.drafts.map((item, index) => <button type="button" className="code-record-trigger" onClick={() => setCodeViewerRequest({ kind: "draft", language: item.language, topicIndex: item.topicIndex })} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><pre>{item.preview || "// 空草稿"}</pre><time>{formatDate(item.updatedAt)}</time><b>查看完整代码 →</b></button>)}{!profile.drafts.length && <p className="profile-empty">还没有云端代码草稿。</p>}</div></section>
-            <section className="profile-panel glass"><header><div><h2>学习笔记</h2></div><b>{profile.notes.length}</b></header><div className="profile-content-list notes">{profile.notes.map((item, index) => <a href={`/?lang=${encodeURIComponent(item.language)}&topic=${item.topicIndex}#notes`} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><p>{item.preview || "空笔记"}</p><time>{formatDate(item.updatedAt)}</time></a>)}{!profile.notes.length && <p className="profile-empty">还没有云端学习笔记。</p>}</div></section>
+            <section className="profile-panel glass"><header><div><h2>学习笔记</h2></div><b>{profile.notes.length}</b></header><div className="profile-content-list notes">{profile.notes.map((item, index) => <a href={buildCourseUrl(item.language, item.topicIndex, "notes")} key={`${item.language}-${item.topicIndex}-${index}`}><small>{item.language} · 第 {item.topicIndex + 1} 节</small><p>{item.preview || "空笔记"}</p><time>{formatDate(item.updatedAt)}</time></a>)}{!profile.notes.length && <p className="profile-empty">还没有云端学习笔记。</p>}</div></section>
           </div>}
 
           {tab === "settings" && <form className="profile-settings" onSubmit={saveSettings}>

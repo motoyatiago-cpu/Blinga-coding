@@ -329,6 +329,28 @@ test("applies the restrained production desktop theme without replacing feature 
   assert.match(page, /id="ai-programming-assistant"/);
 });
 
+test("uses one-based lesson numbers in every public course URL", async () => {
+  const [links, page, catalog, viewer, profile] = await Promise.all([
+    readFile(new URL("../app/course-links.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/code-viewer-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(links, /topicIndex\)\) \+ FIRST_TOPIC_NUMBER/);
+  assert.match(links, /topicNumber <= 0 \? 0 : topicNumber - FIRST_TOPIC_NUMBER/);
+  assert.match(links, /&topic=\$\{courseTopicNumber\(topicIndex\)\}/);
+  assert.match(page, /courseTopicIndex\(\s*requestedTopicNumber/);
+  assert.match(page, /canonicalUrl\.searchParams\.set\("topic", canonicalTopicNumber\)/);
+  assert.match(page, /href=\{buildCourseUrl\(lang, index\)\}/);
+  assert.match(catalog, /buildCourseUrl\(course\.queryName, index\)/);
+  assert.match(catalog, /buildCourseUrl\(course\.queryName, 0\)/);
+  assert.match(viewer, /buildCourseUrl\(record\.language, record\.topicIndex, "lab"\)/);
+  assert.match(profile, /buildCourseUrl\(item\.language, item\.topicIndex, "notes"\)/);
+  assert.doesNotMatch(`${page}\n${catalog}\n${viewer}\n${profile}`, /&topic=\$\{(?:index|[^}]*topicIndex)\}/);
+});
+
 test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
   const [page, menu, profile, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

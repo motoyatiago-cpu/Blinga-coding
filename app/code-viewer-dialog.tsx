@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { buildCourseUrl } from "./course-links";
 
 export type CodeRecordRequest =
   | { kind: "draft"; language: string; topicIndex: number }
@@ -216,7 +217,7 @@ export default function CodeViewerDialog({
       createdAt: Date.now(),
     };
     window.sessionStorage.setItem(CODE_IMPORT_STORAGE_KEY, JSON.stringify(transfer));
-    window.location.assign(`/?lang=${encodeURIComponent(record.language)}&topic=${record.topicIndex}#lab`);
+    window.location.assign(buildCourseUrl(record.language, record.topicIndex, "lab"));
   }
 
   const title = record?.kind === "run" ? "运行代码快照" : "已保存代码草稿";
