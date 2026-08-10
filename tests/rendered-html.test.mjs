@@ -307,6 +307,28 @@ test("applies the Blinga coding V2 product design system without replacing featu
   assert.match(smoothScroll, /new Lenis/);
 });
 
+test("applies the restrained production desktop theme without replacing feature modules", async () => {
+  const [layout, theme, page] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/product-theme.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(layout, /import "\.\/product-theme\.css"/);
+  assert.match(layout, /production-ui/);
+  assert.match(theme, /--bg: #0d0f12/);
+  assert.match(theme, /--accent: #7c9cf5/);
+  assert.match(theme, /border-radius: 10px/);
+  assert.match(theme, /\.production-ui \.graph-shell/);
+  assert.match(theme, /\.production-ui \.sandbox/);
+  assert.match(theme, /\.production-ui \.profile-panel/);
+  assert.match(theme, /\.production-ui \.forum-categories article/);
+  assert.doesNotMatch(theme, /(?:linear|radial|conic)-gradient\(/);
+  assert.match(page, /<StableKnowledgeGraph lesson=\{lesson\} code=\{lesson\.code\}/);
+  assert.match(page, /<StableSandbox lang=\{lang\}/);
+  assert.match(page, /id="ai-programming-assistant"/);
+});
+
 test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
   const [page, menu, profile, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
