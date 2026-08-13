@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
+import "./light-ui.css";
 import "lenis/dist/lenis.css";
 import HoverBounceMotion from "./hover-bounce";
 import SmoothScrollMotion from "./smooth-scroll";
 import { WebDesktopPet } from "./web-pet";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -33,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${geistMono.variable} antialiased light-ui`}
       >
         <SmoothScrollMotion />
         <HoverBounceMotion />
