@@ -412,7 +412,6 @@ body {
 
 .search-trigger,
 .course-back,
-.account-popover,
 .search-answer,
 .message,
 .chips button {
@@ -420,6 +419,88 @@ body {
   border-radius: 8px;
   background-image: none;
   box-shadow: none;
+}
+
+/* Compact account menu: solid black, readable white type, no decorative glyphs. */
+.account-popover.glass {
+  top: 44px;
+  width: 232px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: #07080a;
+  background-image: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.account-popover > header {
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 8px 10px;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.account-popover-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #181a20;
+  color: #fff;
+  font-size: 12px;
+}
+
+.account-popover header b {
+  color: #fff;
+  font-size: 13px;
+}
+
+.account-popover header small {
+  margin-top: 3px;
+  color: #8b929d;
+  font-size: 11px;
+}
+
+.account-popover > a,
+.account-popover > button,
+.account-provider-list > a {
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 6px;
+  color: #f1f3f5;
+  font-size: 12px;
+}
+
+.account-popover > a:hover,
+.account-popover > button:hover,
+.account-provider-list > a:hover {
+  background: #181a20;
+  color: #fff;
+}
+
+.account-popover i,
+.account-provider-list i {
+  display: none;
+}
+
+.account-menu-feedback {
+  margin: 6px;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #181a20;
+  color: #f1f3f5;
+  font-size: 11px;
+}
+
+@media (max-width: 650px) {
+  .account-popover.glass {
+    top: 58px;
+    right: 10px;
+    left: auto;
+    width: min(232px, calc(100vw - 20px));
+  }
 }
 
 .status-dot,

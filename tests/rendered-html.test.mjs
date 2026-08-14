@@ -499,6 +499,24 @@ test("applies the restrained dark reading hierarchy without touching the desktop
   assert.match(pet, /requestExistingAiAssistant/);
 });
 
+test("keeps the account menu compact and exports mind maps as PDF only", async () => {
+  const [page, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /function GraphDocumentExport\(\)/);
+  assert.match(page, /function exportPdf\(\)/);
+  assert.match(page, />⇩ 导出 PDF<\/button>/);
+  assert.doesNotMatch(page, /application\/msword|\.doc`|value="word"|导出 Word/);
+  assert.match(css, /\.account-popover\.glass\s*\{[\s\S]*?width:\s*232px/);
+  assert.match(css, /\.account-popover\.glass\s*\{[\s\S]*?background:\s*#07080a/);
+  assert.match(css, /\.account-popover header b\s*\{[\s\S]*?color:\s*#fff/);
+  assert.match(css, /\.account-popover > a,[\s\S]*?height:\s*34px/);
+  assert.match(css, /\.account-popover i,[\s\S]*?display:\s*none/);
+  assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

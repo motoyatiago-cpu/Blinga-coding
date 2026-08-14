@@ -1903,32 +1903,15 @@ function LessonNotes({
   );
 }
 
-function GraphDocumentExport({ lesson }: { lesson: Course }) {
-  const [format, setFormat] = useState<"pdf" | "word">("pdf");
-
-  function exportDocument() {
-    if (format === "pdf") {
-      document.body.classList.add("print-mindmap");
-      const cleanup = () => document.body.classList.remove("print-mindmap");
-      window.addEventListener("afterprint", cleanup, { once: true });
-      window.setTimeout(() => window.print(), 40);
-      return;
-    }
-    const section = document.querySelector("#map");
-    if (!section) return;
-    const clone = section.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("button,select,.react-flow__controls,.react-flow__minimap").forEach((element) => element.remove());
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${lesson.title}知识图谱</title><style>body{font-family:Arial,'Microsoft YaHei';padding:32px;color:#162033}h1,h2{color:#102a43}.graph-shell{height:720px;border:1px solid #ccd5e0;position:relative;overflow:hidden}.react-flow{width:100%;height:100%}.knowledge-node{border:1px solid #789;padding:10px;border-radius:8px;background:#fff}.node-title,.node-description{border:0;width:100%}</style></head><body><h1>Blinga coding · ${lesson.title}</h1>${clone.outerHTML}</body></html>`;
-    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${lesson.title}-知识图谱.doc`;
-    link.click();
-    URL.revokeObjectURL(url);
+function GraphDocumentExport() {
+  function exportPdf() {
+    document.body.classList.add("print-mindmap");
+    const cleanup = () => document.body.classList.remove("print-mindmap");
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.setTimeout(() => window.print(), 40);
   }
 
-  return <div className="document-export glass"><div><b>导出当前知识图谱</b></div><label><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as "pdf" | "word")}><option value="pdf">PDF</option><option value="word">Word</option></select></label><button onClick={exportDocument}>⇩ 导出{format === "pdf" ? " PDF" : " Word"}</button></div>;
+  return <div className="document-export glass"><div><b>导出当前知识图谱</b></div><button onClick={exportPdf}>⇩ 导出 PDF</button></div>;
 }
 
 export default function Home() {
@@ -2438,7 +2421,7 @@ export default function Home() {
               lessonTitle={lesson.title}
             />
             <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
-            <GraphDocumentExport lesson={lesson} />
+            <GraphDocumentExport />
             <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />
           </section>
         </div>
