@@ -27,25 +27,24 @@ type Props = {
 const languageExtensions = { Python: python(), "C/C++": cpp(), JavaScript: javascript(), Java: java() } as const;
 
 const syntaxTheme = HighlightStyle.define([
-  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword], color: "#ff7ab2" },
-  { tag: [tags.string, tags.special(tags.string)], color: "#fc6a5d" },
-  { tag: [tags.number, tags.bool, tags.null], color: "#d0bf69" },
-  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#7f8c98", fontStyle: "italic" },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "#67b7ff" },
-  { tag: [tags.className, tags.typeName], color: "#dabaff" },
-  { tag: [tags.operator, tags.punctuation], color: "#a1a1a6" },
-  { tag: [tags.variableName, tags.propertyName], color: "#f2f2f7" },
+  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword], color: "#c4b5fd" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#a6e3a1" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#fab387" },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#6c7086", fontStyle: "italic" },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "#89b4fa" },
+  { tag: [tags.className, tags.typeName], color: "#f9e2af" },
+  { tag: [tags.operator, tags.punctuation, tags.variableName, tags.propertyName], color: "#cdd6f4" },
 ]);
 
 const editorTheme = EditorView.theme({
-  "&": { height: "100%", color: "#f2f2f7", backgroundColor: "#1c1c1e", fontFamily: "var(--font-geist-mono), SFMono-Regular, Consolas, monospace", fontSize: "13px" },
+  "&": { height: "100%", color: "#cdd6f4", backgroundColor: "#1e1e2e", fontFamily: "var(--font-geist-mono), SFMono-Regular, Consolas, monospace", fontSize: "13px" },
   ".cm-scroller": { overflow: "auto", lineHeight: "1.75" },
   ".cm-content": { padding: "24px 0 28px", caretColor: "#f5f7ff" },
   ".cm-line": { padding: "0 24px" },
-  ".cm-gutters": { color: "#636366", backgroundColor: "#1c1c1e", border: "0", paddingTop: "24px" },
+  ".cm-gutters": { color: "#6c7086", backgroundColor: "#1e1e2e", border: "0", paddingTop: "24px" },
   ".cm-gutterElement": { padding: "0 12px 0 16px" },
-  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "#2c2c2e" },
-  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { backgroundColor: "#264f78" },
+  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "#29293d" },
+  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { backgroundColor: "#45475a" },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#f5f7ff" },
   ".cm-focused": { outline: "none" },
 }, { dark: true });

@@ -173,36 +173,20 @@
 .light-ui .code-example, .light-ui .deep-example, .light-ui .sandbox, .light-ui .run-history, .light-ui .code-viewer-dialog {
   border: 0 !important;
   border-radius: var(--ui-radius) !important;
-  background: #1c1c1e !important;
+  background: #1e1e2e !important;
   box-shadow: none !important;
   overflow: hidden;
 }
 .light-ui .pane-head, .light-ui .editor-foot, .light-ui .judge-row, .light-ui .run-history-head, .light-ui .code-viewer-titlebar {
   border: 0 !important;
-  color: #aeaeb2 !important;
-  background: #2c2c2e !important;
+  color: #cdd6f4 !important;
+  background: #29293d !important;
 }
 .light-ui .code-example pre, .light-ui .deep-example pre, .light-ui .terminal-pane > pre, .light-ui .stdin-panel textarea,
-.light-ui .code-viewer-source, .light-ui .code-viewer-lines { background: #1c1c1e !important; color: #f2f2f7 !important; }
-.light-ui .code-editor { height: 370px; background: #1c1c1e; }
-.light-ui .editor-pane, .light-ui .terminal-pane, .light-ui .stdin-panel, .light-ui .example-explain { border: 0 !important; background: #1c1c1e !important; }
-.light-ui .terminal-pane > pre { color: #30d158 !important; }
-.light-ui .pane-head button,
-.light-ui .editor-file-actions button,
-.light-ui .editor-actions button,
-.light-ui .judge-row button {
-  color: #f2f2f7 !important;
-  background: #3a3a3c !important;
-}
-.light-ui .editor-actions .run,
-.light-ui .editor-actions .judge-submit {
-  color: #ffffff !important;
-  background: #0a84ff !important;
-}
-.light-ui .editor-actions .stop-run {
-  color: #ff6961 !important;
-  background: #3a2a2a !important;
-}
+.light-ui .code-viewer-source, .light-ui .code-viewer-lines { background: #1e1e2e !important; color: #cdd6f4 !important; }
+.light-ui .code-editor { height: 370px; background: #1e1e2e; }
+.light-ui .editor-pane, .light-ui .terminal-pane, .light-ui .stdin-panel, .light-ui .example-explain { border: 0 !important; background: #1e1e2e !important; }
+.light-ui .terminal-pane > pre { color: #a6e3a1 !important; }
 .light-ui .status-dot, .light-ui .judge-row b.passed, .light-ui .accepted, .light-ui .success { color: var(--ui-brand) !important; background: var(--ui-brand) !important; }
 .light-ui .failed, .light-ui .error, .light-ui .wrong { color: #fb7185 !important; }
 

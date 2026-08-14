@@ -1415,22 +1415,22 @@ button.hover-bounce:focus-visible{
 
 /* Xcode code surfaces — visual-only layer */
 :root{
-  --xcode-window:#1c1c1e;
-  --xcode-editor:#1c1c1e;
-  --xcode-gutter:#1c1c1e;
-  --xcode-titlebar-top:#323234;
-  --xcode-titlebar-bottom:#2c2c2e;
-  --xcode-statusbar-top:#2c2c2e;
-  --xcode-statusbar-bottom:#242426;
-  --xcode-border:rgba(255,255,255,.09);
-  --xcode-divider:rgba(255,255,255,.07);
-  --xcode-text:#f2f2f7;
-  --xcode-secondary:#aeaeb2;
-  --xcode-tertiary:#636366;
-  --xcode-blue:#0a84ff;
-  --xcode-console:#30d158;
-  --xcode-warning:#ffd60a;
-  --xcode-error:#ff453a;
+  --xcode-window:#0b0d12;
+  --xcode-editor:#080a0f;
+  --xcode-gutter:#0d1016;
+  --xcode-titlebar-top:#30323a;
+  --xcode-titlebar-bottom:#22242b;
+  --xcode-statusbar-top:#25272e;
+  --xcode-statusbar-bottom:#1a1c22;
+  --xcode-border:rgba(255,255,255,.105);
+  --xcode-divider:rgba(255,255,255,.075);
+  --xcode-text:#d9dee8;
+  --xcode-secondary:#9299a6;
+  --xcode-tertiary:#5d6573;
+  --xcode-blue:#7f8fff;
+  --xcode-console:#62d69f;
+  --xcode-warning:#f2c66d;
+  --xcode-error:#ff837a;
   --xcode-red:#ff5f57;
   --xcode-yellow:#febc2e;
   --xcode-green:#28c840;

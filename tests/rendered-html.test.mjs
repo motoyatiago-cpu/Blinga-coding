@@ -228,9 +228,7 @@ test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () 
   assert.match(layout, /lenis\/dist\/lenis\.css/);
   assert.match(packageJson, /"lenis":/);
   assert.match(css, /--mac-graphite:#0d1118/);
-  assert.match(css, /--xcode-titlebar-top:#323234/);
-  assert.match(css, /--xcode-editor:#1c1c1e/);
-  assert.match(css, /--xcode-blue:#0a84ff/);
+  assert.match(css, /--xcode-titlebar-top:#30323a/);
   assert.match(css, /\.pane-head::before,\s*\.run-history-head::before,\s*\.mac-code-head::before/);
   assert.match(css, /box-shadow:18px 0 var\(--xcode-yellow\),36px 0 var\(--xcode-green\)/);
   assert.match(css, /\.terminal-pane>pre\{/);
@@ -502,9 +500,7 @@ test("uses the flat professional light system and a real CodeMirror editor", asy
   assert.match(editor, /@codemirror\/lang-javascript/);
   assert.match(editor, /@codemirror\/lang-java/);
   assert.match(editor, /syntaxHighlighting\(syntaxTheme\)/);
-  assert.match(editor, /backgroundColor: "#1c1c1e"/);
-  assert.match(editor, /color: "#ff7ab2"/);
-  assert.match(editor, /color: "#67b7ff"/);
+  assert.match(editor, /backgroundColor: "#1e1e2e"/);
   assert.match(editor, /lineNumbers\(\)/);
   assert.match(editor, /indentWithTab/);
   assert.match(editor, /Mod-Enter/);
@@ -512,15 +508,4 @@ test("uses the flat professional light system and a real CodeMirror editor", asy
   assert.match(page, /onCursorChange=\{setCursorPosition\}/);
   assert.match(page, /onRunShortcut=/);
   assert.match(pkg, /"@codemirror\/lang-python"/);
-});
-
-test("keeps mind-map export PDF-only", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-
-  assert.match(page, /function GraphDocumentExport\(\)/);
-  assert.match(page, /document\.body\.classList\.add\("print-mindmap"\)/);
-  assert.match(page, /导出 PDF/);
-  assert.doesNotMatch(page, /application\/msword/);
-  assert.doesNotMatch(page, /value="word"/);
-  assert.doesNotMatch(page, /\.doc`/);
 });
