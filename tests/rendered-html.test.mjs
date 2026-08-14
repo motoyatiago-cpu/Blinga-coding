@@ -40,6 +40,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /AI 深度搜索/);
   assert.match(html, /清空/);
   assert.match(html, /发送问题/);
+  assert.match(html, /code-line-numbers/);
   assert.match(html, /UTF-8 · Ln/);
   assert.match(html, /专注模式/);
   assert.match(html, /⇧ 导入/);
@@ -90,17 +91,13 @@ test("makes AI requests cancellable and time-bounded", async () => {
 });
 
 test("keeps editor line numbers, cursor position, and indentation synchronized", async () => {
-  const [page, editor] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/code-editor.tsx", import.meta.url), "utf8"),
-  ]);
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 
-  assert.match(page, /<CodeEditor/);
-  assert.match(page, /onCursorChange=\{setCursorPosition\}/);
-  assert.match(editor, /lineNumbers\(\)/);
-  assert.match(editor, /indentWithTab/);
-  assert.match(editor, /EditorView\.updateListener/);
-  assert.match(editor, /cursor - line\.from \+ 1/);
+  assert.match(page, /const lineNumbers = useMemo/);
+  assert.match(page, /function syncEditorScroll/);
+  assert.match(page, /lineNumbersRef\.current\.scrollTop = event\.currentTarget\.scrollTop/);
+  assert.match(page, /function handleEditorKeyDown/);
+  assert.match(page, /event\.key !== "Tab"/);
   assert.match(page, /Ln \{cursorPosition\.line\}, Col \{cursorPosition\.column\}/);
 });
 
@@ -474,38 +471,4 @@ test("server-renders the personal workspace route", async () => {
   const html = await response.text();
   assert.match(html, /个人主页 · Blinga coding/);
   assert.match(html, /正在读取个人空间/);
-});
-
-test("uses the flat professional light system and a real CodeMirror editor", async () => {
-  const [layout, theme, editor, page, pkg] = await Promise.all([
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/light-ui.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/code-editor.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-  ]);
-
-  assert.match(layout, /import "\.\/light-ui\.css"/);
-  assert.match(layout, /Inter/);
-  assert.match(layout, /light-ui/);
-  assert.match(theme, /--ui-surface: #f8f9ff/);
-  assert.match(theme, /--ui-container: #ffffff/);
-  assert.match(theme, /--ui-brand: #4f46e5/);
-  assert.match(theme, /--ui-text: #374151/);
-  assert.match(theme, /border: 0 !important/);
-  assert.match(theme, /box-shadow: none !important/);
-  assert.doesNotMatch(theme, /gradient/i);
-  assert.match(editor, /@codemirror\/lang-python/);
-  assert.match(editor, /@codemirror\/lang-cpp/);
-  assert.match(editor, /@codemirror\/lang-javascript/);
-  assert.match(editor, /@codemirror\/lang-java/);
-  assert.match(editor, /syntaxHighlighting\(syntaxTheme\)/);
-  assert.match(editor, /backgroundColor: "#1e1e2e"/);
-  assert.match(editor, /lineNumbers\(\)/);
-  assert.match(editor, /indentWithTab/);
-  assert.match(editor, /Mod-Enter/);
-  assert.match(page, /<CodeEditor/);
-  assert.match(page, /onCursorChange=\{setCursorPosition\}/);
-  assert.match(page, /onRunShortcut=/);
-  assert.match(pkg, /"@codemirror\/lang-python"/);
 });

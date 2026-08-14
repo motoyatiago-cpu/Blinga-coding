@@ -33,7 +33,6 @@ import CodeViewerDialog, {
   consumeCodeImport,
   type CodeRecordRequest,
 } from "./code-viewer-dialog";
-import CodeEditor, { type CodeEditorHandle } from "./code-editor";
 import { buildCourseUrl, courseTopicIndex, courseTopicNumber } from "./course-links";
 import { useDraggableAiPanel } from "./use-draggable-ai-panel";
 
@@ -1158,9 +1157,14 @@ function Sandbox({
   const runAbortRef = useRef<AbortController | null>(null);
   const stdinRef = useRef(stdin);
   const outputRef = useRef(output);
-  const editorRef = useRef<CodeEditorHandle>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const lineNumbersRef = useRef<HTMLPreElement>(null);
   const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const draftKey = `${lang}:${topicIndex}`;
+  const lineNumbers = useMemo(
+    () => Array.from({ length: Math.max(1, code.split("\n").length) }, (_, index) => index + 1).join("\n"),
+    [code],
+  );
 
   const loadRunHistory = useCallback(async () => {
     const revision = ++historyRevisionRef.current;
@@ -1372,10 +1376,11 @@ function Sandbox({
     };
   }, [code, lang, updateOutput]);
 
-  function handleCodeInput(nextCode: string) {
+  function handleCodeInput(event: React.ChangeEvent<HTMLTextAreaElement>) {
     cancelResetAction();
-    // 数据流第 1 步：CodeMirror 的 updateListener 在每次键入后同步最新源码。
-    updateCode(nextCode);
+    // 数据流第 1 步：React onChange 对应文本框原生 input 事件，每次键入都同步最新代码。
+    updateCode(event.target.value);
+    updateCursorPosition(event.target);
   }
 
   function resetCode() {
@@ -1386,7 +1391,13 @@ function Sandbox({
       updateCode(snapshot.code);
       setSourceFileName(snapshot.fileName);
       setDraftStatus("已撤销重置，正在恢复原草稿…");
-      window.requestAnimationFrame(() => editorRef.current?.resetViewport());
+      window.requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.setSelectionRange(0, 0);
+        updateCursorPosition(editor);
+        editor.focus();
+      });
       return;
     }
 
@@ -1419,7 +1430,15 @@ function Sandbox({
       resetSnapshotRef.current = null;
       resetActionTimerRef.current = null;
     }, 10_000);
-    window.requestAnimationFrame(() => editorRef.current?.resetViewport());
+    window.requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.scrollTop = 0;
+      editor.setSelectionRange(0, 0);
+      if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0;
+      updateCursorPosition(editor);
+      editor.focus();
+    });
   }
 
   async function importSourceFile(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1449,7 +1468,15 @@ function Sandbox({
       updateCode(importedCode);
       setSourceFileName(file.name.slice(0, 80));
       setDraftStatus(`已导入 ${file.name}，等待自动保存…`);
-      window.requestAnimationFrame(() => editorRef.current?.resetViewport());
+      window.requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.scrollTop = 0;
+        editor.setSelectionRange(0, 0);
+        if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0;
+        updateCursorPosition(editor);
+        editor.focus();
+      });
     } catch (error) {
       setDraftStatus(error instanceof Error ? error.message : "源码文件导入失败");
     } finally {
@@ -1472,6 +1499,22 @@ function Sandbox({
     setDraftStatus(`已下载 ${normalizedName}`);
   }
 
+  function updateCursorPosition(target = editorRef.current) {
+    if (!target) return;
+    const beforeCursor = target.value.slice(0, target.selectionStart);
+    const linesBeforeCursor = beforeCursor.split("\n");
+    setCursorPosition({
+      line: linesBeforeCursor.length,
+      column: (linesBeforeCursor.at(-1)?.length || 0) + 1,
+    });
+  }
+
+  function syncEditorScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = event.currentTarget.scrollTop;
+    }
+  }
+
   function stopRun() {
     const activeController = runAbortRef.current;
     if (!activeController) return;
@@ -1489,6 +1532,43 @@ function Sandbox({
       return;
     }
     void runCode(event.shiftKey ? "judge" : "run");
+  }
+
+  function handleEditorKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Tab") {
+      handleRunShortcut(event);
+      return;
+    }
+
+    event.preventDefault();
+    cancelResetAction();
+    const target = event.currentTarget;
+    const selectionStart = target.selectionStart;
+    const selectionEnd = target.selectionEnd;
+
+    if (!event.shiftKey) {
+      const indentation = "  ";
+      const nextCode = `${code.slice(0, selectionStart)}${indentation}${code.slice(selectionEnd)}`;
+      updateCode(nextCode);
+      window.requestAnimationFrame(() => {
+        const nextCursor = selectionStart + indentation.length;
+        target.setSelectionRange(nextCursor, nextCursor);
+        updateCursorPosition(target);
+      });
+      return;
+    }
+
+    const lineStart = code.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+    const leadingWhitespace = code.slice(lineStart).match(/^(?: {1,2}|\t)/)?.[0] || "";
+    if (!leadingWhitespace) return;
+
+    const nextCode = `${code.slice(0, lineStart)}${code.slice(lineStart + leadingWhitespace.length)}`;
+    updateCode(nextCode);
+    window.requestAnimationFrame(() => {
+      const nextCursor = Math.max(lineStart, selectionStart - leadingWhitespace.length);
+      target.setSelectionRange(nextCursor, nextCursor);
+      updateCursorPosition(target);
+    });
   }
 
   async function runCode(mode: "run" | "judge" = "run") {
@@ -1577,18 +1657,20 @@ function Sandbox({
               </button>
             </div>
           </div>
-          <CodeEditor
-            ref={editorRef}
-            language={lang}
-            value={code}
-            onChange={handleCodeInput}
-            onCursorChange={setCursorPosition}
-            onRunShortcut={(judge) => {
-              if (runningMode) stopRun();
-              else void runCode(judge ? "judge" : "run");
-            }}
-            ariaLabel="代码编辑器"
-          />
+          <div className="code-editor-body">
+            <pre ref={lineNumbersRef} className="code-line-numbers" aria-hidden="true">{lineNumbers}</pre>
+            <textarea
+              ref={editorRef}
+              spellCheck={false}
+              value={code}
+              onChange={handleCodeInput}
+              onKeyDown={handleEditorKeyDown}
+              onScroll={syncEditorScroll}
+              onSelect={(event) => updateCursorPosition(event.currentTarget)}
+              aria-label="代码编辑器"
+              aria-keyshortcuts="Tab Shift+Tab Control+Enter Meta+Enter Control+Shift+Enter Meta+Shift+Enter"
+            />
+          </div>
           <div className="editor-foot">
             <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行 · {draftStatus}</span>
             <div className="editor-actions">
