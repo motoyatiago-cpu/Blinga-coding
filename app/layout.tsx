@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "lenis/dist/lenis.css";
+import "./refined-dark-ui.css";
 import HoverBounceMotion from "./hover-bounce";
 import SmoothScrollMotion from "./smooth-scroll";
 import { WebDesktopPet } from "./web-pet";

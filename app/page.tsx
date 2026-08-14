@@ -2422,13 +2422,13 @@ export default function Home() {
               </div>
             </div>
 
-            <article className="lesson-card glass"><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>💡 学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
+            <article className="lesson-card"><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
             <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
 
             <div className="code-example glass">
               <div className="pane-head"><span><i /> lesson-example</span><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
               <pre><code>{lesson.code}</code></pre>
-              <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">打开实训沙盒 →</a></div>
+              <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">进入练习</a></div>
             </div>
 
             <LessonNotes
@@ -2455,7 +2455,7 @@ export default function Home() {
             tabIndex={chatOpen ? 0 : -1}
             aria-label="拖动 AI 助教窗口，使用方向键可以微调位置"
             {...chatDragHandleProps}
-          ><div><span>✦</span><div><b>AI 编程助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
+          ><div><div><b>AI 助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
           <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
           <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
           <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的编程问题…"} /><button className={aiBusy ? "stop" : ""} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? "■" : "↑"}</button></div>

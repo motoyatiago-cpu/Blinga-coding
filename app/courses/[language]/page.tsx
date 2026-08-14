@@ -126,7 +126,7 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
 
         <div className="course-entry glass">
           <div><h2>从左侧选择一个知识点开始学习</h2><p>语言名称与全部知识点会始终固定在左侧。选择知识点后，右侧进入对应讲解页，左侧目录不会消失或移动到中间。</p></div>
-          <a href={buildCourseUrl(course.queryName, 0)}>开始第一节 →</a>
+          <a href={buildCourseUrl(course.queryName, 0)}>开始第一节</a>
         </div>
         <div className="course-level-summary">
           {levels.map((level, index) => <article className="glass" key={level.name}>

@@ -465,6 +465,40 @@ test("removes redundant sidebar glyphs and balances the learning and profile typ
   assert.match(profileCss, /\.profile-orb\.one\{\s*display:none/);
 });
 
+test("applies the restrained dark reading hierarchy without touching the desktop pet", async () => {
+  const [layout, page, catalog, css, pet] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/web-pet/web-desktop-pet.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(layout, /import "\.\/refined-dark-ui\.css"/);
+  assert.match(layout, /<WebDesktopPet \/>/);
+  assert.match(css, /--bg:\s*#0d0f12/);
+  assert.match(css, /--surface:\s*#15181d/);
+  assert.match(css, /--surface-hover:\s*#1a1e24/);
+  assert.match(css, /--text:\s*#f1f3f5/);
+  assert.match(css, /--text-muted:\s*#8b929d/);
+  assert.match(css, /--accent:\s*#818cf8/);
+  assert.match(css, /\.topbar\.glass[\s\S]*?border:\s*0/);
+  assert.match(css, /\.course-topic-nav a\.active,[\s\S]*?box-shadow:\s*inset 2px 0 0 var\(--accent\)/);
+  assert.match(css, /\.lesson-card,[\s\S]*?background:\s*transparent/);
+  assert.match(css, /\.code-example,[\s\S]*?border:\s*1px solid var\(--line\)/);
+  assert.match(css, /\.mac-traffic-lights[\s\S]*?display:\s*none/);
+  assert.doesNotMatch(css, /(?:^|\})\s*\*\s*\{[^}]*border\s*:\s*(?:0|none)/s);
+  assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
+  assert.match(page, /className="lesson-card"/);
+  assert.doesNotMatch(page, /className="lesson-card glass"/);
+  assert.match(page, /<b>学习方式<\/b>/);
+  assert.match(page, />进入练习<\/a>/);
+  assert.match(page, /<b>AI 助教<\/b>/);
+  assert.doesNotMatch(page, /AI 编程助教/);
+  assert.match(catalog, />开始第一节<\/a>/);
+  assert.match(pet, /requestExistingAiAssistant/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);
