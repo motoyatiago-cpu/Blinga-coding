@@ -517,6 +517,26 @@ test("keeps the account menu compact and exports mind maps as PDF only", async (
   assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
 });
 
+test("removes decorative microcopy while preserving functional status text", async () => {
+  const [page, catalog, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /lesson-example/);
+  assert.doesNotMatch(page, /已完成 \{completedCount\}/);
+  assert.doesNotMatch(page, /progressStatus|学习进度已同步|学习进度自动同步/);
+  assert.doesNotMatch(page, /01 准备数据|02 逐个遍历|03 处理结果/);
+  assert.doesNotMatch(catalog, /个核心知识点<\/small>/);
+  assert.match(page, /<div className="pane-head code-example-actions"><button/);
+  assert.match(page, /<div className="example-foot"><a href="#lab">进入练习<\/a><\/div>/);
+  assert.match(page, /\{draftStatus\}/);
+  assert.match(page, /lesson-notes-status/);
+  assert.match(css, /\.pane-head\.code-example-actions\s*\{[\s\S]*?justify-content:\s*flex-end/);
+  assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

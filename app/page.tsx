@@ -1918,7 +1918,6 @@ export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
   const [progressReady, setProgressReady] = useState(false);
-  const [progressStatus, setProgressStatus] = useState("正在恢复学习进度…");
   const [completedTopics, setCompletedTopics] = useState<Record<string, number[]>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1968,10 +1967,6 @@ export default function Home() {
     [lang, selectedTopicIndex],
   );
   const completedForCurrentLanguage = completedTopics[lang] || [];
-  const completedCount = completedForCurrentLanguage.filter(
-    (topicIndex) => topicIndex >= 0 && topicIndex < lesson.topics.length,
-  ).length;
-  const completionPercent = Math.round((completedCount / lesson.topics.length) * 100);
   const currentTopicCompleted = completedForCurrentLanguage.includes(selectedTopicIndex);
   const courseMatches = useMemo(() => findCourseMatches(searchQuery), [searchQuery]);
 
@@ -2114,11 +2109,9 @@ export default function Home() {
         if (!response.ok) throw new Error(data.error || "学习进度恢复失败");
         if (!active) return;
         readCourseFromUrl(data.progress as LearningProgress | null);
-        setProgressStatus(data.progress ? "学习进度已恢复" : "学习进度自动同步");
-      } catch (error) {
+      } catch {
         if (!active) return;
         readCourseFromUrl();
-        setProgressStatus(error instanceof Error ? error.message : "学习进度暂未同步");
       } finally {
         if (active) setProgressReady(true);
       }
@@ -2136,7 +2129,6 @@ export default function Home() {
   useEffect(() => {
     if (!progressReady) return;
 
-    setProgressStatus("正在同步学习进度…");
     const timer = window.setTimeout(async () => {
       try {
         const response = await fetch("/api/progress", {
@@ -2146,10 +2138,7 @@ export default function Home() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "学习进度同步失败");
-        setProgressStatus("学习进度已同步");
-      } catch (error) {
-        setProgressStatus(error instanceof Error ? error.message : "学习进度暂未同步");
-      }
+      } catch {}
     }, 500);
 
     return () => window.clearTimeout(timer);
@@ -2350,7 +2339,7 @@ export default function Home() {
           <aside className="sidebar glass" aria-label="课程导航">
             <a className="course-nav-back" href="/">← 全部编程语言</a>
             <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
-              <span>{lang}<small>已完成 {completedCount}/{lesson.topics.length} · {completionPercent}%</small></span>
+              <span>{lang}</span>
             </a>
             <nav className="course-topic-nav" aria-label={`${lang} 知识点`}>
               {lesson.topics.map((topic, index) =>
@@ -2376,9 +2365,6 @@ export default function Home() {
               <div>{(Object.keys(lessons) as Lang[]).filter((key) => key !== lang).map((key) =>
                 <a href={`/courses/${languageSlugs[key]}`} aria-label={`进入 ${key} 课程`} key={key}>{key}</a>
               )}</div>
-            </div>
-            <div className="progress-sync" role="status">
-              {progressStatus}
             </div>
           </aside>
 
@@ -2409,9 +2395,9 @@ export default function Home() {
             <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
 
             <div className="code-example glass">
-              <div className="pane-head"><span><i /> lesson-example</span><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
+              <div className="pane-head code-example-actions"><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
               <pre><code>{lesson.code}</code></pre>
-              <div className="example-foot"><span>01 准备数据</span><span>02 逐个遍历</span><span>03 处理结果</span><a href="#lab">进入练习</a></div>
+              <div className="example-foot"><a href="#lab">进入练习</a></div>
             </div>
 
             <LessonNotes

@@ -100,7 +100,7 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
       <aside className="course-language-nav glass">
         <a className="course-nav-back" href="/">← 全部编程语言</a>
         <div className="language selected course-root-link">
-          <span>{course.name}<small>{course.topics.length} 个核心知识点</small></span>
+          <span>{course.name}</span>
         </div>
         <nav className="course-topic-nav" aria-label={`${course.name} 知识点`}>
           {course.topics.map((topic, index) =>

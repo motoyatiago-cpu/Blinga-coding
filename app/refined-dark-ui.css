@@ -368,6 +368,10 @@ body {
   padding-left: 16px;
 }
 
+.pane-head.code-example-actions {
+  justify-content: flex-end;
+}
+
 .pane-head > span i {
   display: none;
 }
