@@ -230,3 +230,240 @@
     grid-column:1;
   }
 }
+
+/*
+ * Quiet profile workspace
+ * Personal pages use spacing and restrained surface steps instead of framed
+ * glass cards. Form controls keep a functional boundary for usability.
+ */
+body:has(.profile-page)::before,
+body:has(.profile-page)::after{
+  display:none;
+}
+.profile-page{
+  background:#0d0f12;
+}
+.profile-page .profile-orb{
+  display:none;
+}
+.profile-page .glass,
+.profile-sidebar,
+.profile-hero-card,
+.profile-stats article,
+.profile-panel{
+  border:0;
+  box-shadow:none;
+  background-image:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+.profile-topbar{
+  background:#111419;
+}
+.profile-layout{
+  gap:48px;
+}
+.profile-sidebar{
+  border-radius:8px;
+  background:#111419;
+}
+.profile-identity{
+  border:0;
+  padding-bottom:28px;
+}
+.profile-avatar{
+  box-shadow:none;
+  background-image:none;
+}
+.profile-sidebar nav{
+  gap:4px;
+  padding:10px 0 18px;
+}
+.profile-sidebar nav button,
+.profile-sidebar nav button:hover,
+.profile-sidebar nav button.active{
+  border:0;
+  border-radius:6px;
+  background-image:none;
+  box-shadow:none;
+}
+.profile-sidebar nav button:hover{
+  background:#1a1e24;
+}
+.profile-sidebar nav button.active{
+  background:rgba(129,140,248,.1);
+  box-shadow:inset 2px 0 0 #818cf8;
+}
+.profile-signout,
+.profile-signout:hover{
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  box-shadow:none;
+}
+.profile-signout:hover{
+  background:#1a1e24;
+}
+.profile-section-head{
+  margin-bottom:28px;
+}
+.profile-hero-card{
+  min-height:174px;
+  padding:28px 0 34px;
+  border-radius:0;
+  background:transparent;
+}
+.profile-hero-card>a,
+.profile-primary,
+.profile-upload,
+.profile-panel header>button,
+.profile-history-head button,
+.profile-link-list article>button,
+.profile-link-list article>a,
+.profile-data-grid .danger>button{
+  border:0;
+  box-shadow:none;
+  background-image:none;
+}
+.profile-stats{
+  gap:28px;
+  margin:0 0 44px;
+}
+.profile-stats article{
+  min-height:96px;
+  padding:18px 0;
+  border-radius:0;
+  background:transparent;
+}
+.profile-panel{
+  margin-bottom:48px;
+  border-radius:0;
+  overflow:visible;
+  background:transparent;
+}
+.profile-panel>header{
+  min-height:auto;
+  padding:0 0 22px;
+  border:0;
+}
+.profile-panel header>button,
+.profile-history-head button{
+  background:#1a1e24;
+}
+.profile-recent-grid,
+.profile-history-list,
+.profile-content-list,
+.profile-link-list,
+.profile-session-list{
+  gap:6px;
+}
+.profile-recent-grid article,
+.profile-history-list article,
+.profile-content-list>a,
+.profile-content-list>button,
+.profile-link-list article,
+.profile-session-list article,
+.profile-password-list li{
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  box-shadow:none;
+}
+.profile-recent-grid article:hover,
+.profile-history-list article:hover,
+.profile-content-list>a:hover,
+.profile-content-list>button:hover,
+.profile-link-list article:hover,
+.profile-session-list article:hover{
+  background:#15181d;
+}
+.profile-recent-grid article,
+.profile-history-list article{
+  padding-left:12px;
+  padding-right:12px;
+}
+.profile-history-list>article>i,
+.profile-recent-grid article>i,
+.profile-link-list article>i{
+  box-shadow:none;
+}
+.profile-content-columns,
+.profile-data-grid{
+  gap:48px;
+}
+.profile-settings .profile-panel,
+.profile-data-grid .profile-panel{
+  padding-bottom:0;
+}
+.profile-avatar-settings{
+  padding:8px 0 24px;
+}
+.profile-field,
+.profile-toggle{
+  padding-left:0;
+  padding-right:0;
+}
+.profile-form-grid{
+  column-gap:32px;
+}
+.profile-upload{
+  background:#1a1e24;
+}
+.profile-preset-list button{
+  border:0;
+  box-shadow:none;
+}
+.profile-primary{
+  margin-left:0;
+  margin-right:0;
+}
+.profile-password-form{
+  padding:8px 0 0;
+}
+.profile-password-summary,
+.profile-password-list li,
+.profile-session-list article{
+  border:0;
+}
+.profile-password-summary{
+  padding:8px 0 20px;
+}
+.profile-link-list article,
+.profile-session-list article{
+  padding-left:12px;
+  padding-right:12px;
+}
+.profile-data-grid .profile-panel>p{
+  min-height:0;
+  padding:0 0 24px;
+}
+.profile-data-grid .danger,
+.profile-data-grid .danger>button{
+  border:0;
+}
+.profile-data-grid .danger>button{
+  margin-left:0;
+  background:rgba(255,139,118,.1);
+}
+.profile-message,
+.profile-message.error{
+  border:0;
+  box-shadow:none;
+}
+@media(max-width:900px){
+  .profile-layout{
+    gap:28px;
+  }
+  .profile-sidebar{
+    border-radius:8px;
+  }
+}
+@media(max-width:650px){
+  .profile-stats{
+    gap:16px;
+  }
+  .profile-content-columns,
+  .profile-data-grid{
+    gap:32px;
+  }
+}

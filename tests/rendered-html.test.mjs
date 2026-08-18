@@ -502,6 +502,26 @@ test("removes redundant sidebar glyphs and balances the learning and profile typ
   assert.match(profileCss, /\.profile-orb\.one\{\s*display:none/);
 });
 
+test("uses a borderless quiet hierarchy across every profile workspace tab", async () => {
+  const [profile, profileCss, pet] = await Promise.all([
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/web-pet/web-desktop-pet.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(profile, /tab === "overview"/);
+  assert.match(profile, /tab === "history"/);
+  assert.match(profile, /tab === "settings"/);
+  assert.match(profile, /tab === "security"/);
+  assert.match(profile, /tab === "data"/);
+  assert.match(profileCss, /body:has\(\.profile-page\)::before,[\s\S]*?display:none/);
+  assert.match(profileCss, /\.profile-page \.glass,[\s\S]*?border:0;[\s\S]*?box-shadow:none;/);
+  assert.match(profileCss, /\.profile-panel>header\{[\s\S]*?border:0;/);
+  assert.match(profileCss, /\.profile-history-list article,[\s\S]*?\.profile-session-list article,[\s\S]*?border:0;/);
+  assert.match(profileCss, /\.profile-data-grid \.danger,[\s\S]*?border:0;/);
+  assert.match(pet, /WebDesktopPet/);
+});
+
 test("applies the restrained dark reading hierarchy without touching the desktop pet", async () => {
   const [layout, page, catalog, css, pet] = await Promise.all([
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
