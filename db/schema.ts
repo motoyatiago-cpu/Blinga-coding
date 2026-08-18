@@ -101,6 +101,27 @@ export const authSessions = sqliteTable("auth_sessions", {
   index("auth_sessions_user_idx").on(table.userId, table.expiresAt),
 ]);
 
+export const passwordCredentials = sqliteTable("password_credentials", {
+  userId: text("user_id").primaryKey(),
+  loginIdentifier: text("login_identifier").notNull(),
+  passwordSalt: text("password_salt").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  iterations: integer("iterations").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  passwordChangedAt: text("password_changed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("password_credentials_login_identifier_idx").on(table.loginIdentifier),
+]);
+
+export const passwordLoginAttempts = sqliteTable("password_login_attempts", {
+  bucketKey: text("bucket_key").primaryKey(),
+  failedCount: integer("failed_count").notNull().default(0),
+  firstFailedAt: text("first_failed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lockedUntil: text("locked_until"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const oauthTransactions = sqliteTable("oauth_transactions", {
   id: text("id").primaryKey(),
   stateHash: text("state_hash").notNull(),

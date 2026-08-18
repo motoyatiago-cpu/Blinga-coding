@@ -57,6 +57,13 @@
       "when": 1785554033058,
       "tag": "0007_living_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787056920816,
+      "tag": "0008_lame_manta",
+      "breakpoints": true
     }
   ]
 }

@@ -275,9 +275,10 @@ export default function AccountMenu() {
             <button type="button" role="menuitem" onClick={signOut}><span>退出当前会话</span><i>↗</i></button>
             {feedback && <p className="account-menu-feedback" role="status">{feedback}</p>}
           </>
-        ) : configured.length ? (
+        ) : (
           <section className="account-provider-list" aria-label="可用登录方式">
-            <p>{session?.transition ? "绑定外部账号以迁移现有学习数据" : "选择登录方式"}</p>
+            <p>{session?.transition ? "登录后迁移现有学习数据" : "登录后同步学习数据"}</p>
+            <a href="/login" role="menuitem"><span>邮箱和密码</span><i>→</i></a>
             {configured.map(([provider]) => (
               <a
                 key={provider}
@@ -288,7 +289,7 @@ export default function AccountMenu() {
               </a>
             ))}
           </section>
-        ) : null}
+        )}
       </div>
     </div>
   );

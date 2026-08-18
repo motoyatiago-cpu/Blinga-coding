@@ -176,3 +176,57 @@
     font-size:25px;
   }
 }
+
+.profile-password-login{
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:9px;
+  padding:0 14px;
+  border:1px solid #818cf84a;
+  border-radius:10px;
+  background:#818cf817;
+  color:#f1f3f5;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:700;
+}
+.profile-password-login:hover{
+  background:#818cf825;
+}
+.profile-password-login b{
+  color:#818cf8;
+}
+.profile-password-form{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  padding:22px 21px 24px;
+}
+.profile-password-form>p,
+.profile-password-form>small{
+  grid-column:1/-1;
+  margin:0;
+  color:#8b929d;
+  font-size:11px;
+  line-height:1.65;
+}
+.profile-password-form .profile-field{
+  padding:0;
+}
+.profile-password-form .profile-primary{
+  grid-column:1/-1;
+  width:max-content;
+  margin:2px 0 0;
+}
+@media(max-width:650px){
+  .profile-password-form{
+    grid-template-columns:1fr;
+  }
+  .profile-password-form>p,
+  .profile-password-form>small,
+  .profile-password-form .profile-primary{
+    grid-column:1;
+  }
+}

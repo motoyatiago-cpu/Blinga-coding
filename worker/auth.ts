@@ -51,6 +51,9 @@ type OAuthTransaction = {
 const SESSION_COOKIE = "__Host-blinga_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const OAUTH_TRANSACTION_SECONDS = 10 * 60;
+const PASSWORD_ITERATIONS = 210_000;
+const PASSWORD_MAX_FAILURES = 5;
+const PASSWORD_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const PROVIDERS: AuthProvider[] = ["microsoft", "qq", "wechat-open", "wechat-oa"];
 
 function authJson(data: unknown, status = 200): Response {
@@ -153,6 +156,54 @@ function randomToken(size = 32): string {
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return bytesToBase64Url(new Uint8Array(digest));
+}
+
+function normalizeLoginIdentifier(value: unknown): string | null {
+  const identifier = String(value || "").trim().toLowerCase();
+  if (identifier.length < 3 || identifier.length > 320) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) return null;
+  return identifier;
+}
+
+function passwordValidationError(value: unknown): string | null {
+  const password = String(value || "");
+  if (password.length < 10) return "密码至少需要 10 个字符";
+  if (password.length > 128) return "密码不能超过 128 个字符";
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return "密码需要同时包含字母和数字";
+  }
+  return null;
+}
+
+async function derivePasswordHash(
+  password: string,
+  salt: Uint8Array,
+  iterations = PASSWORD_ITERATIONS,
+): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: Uint8Array.from(salt).buffer, iterations },
+    key,
+    256,
+  );
+  return bytesToBase64Url(new Uint8Array(bits));
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  let difference = leftBytes.length ^ rightBytes.length;
+  const length = Math.max(leftBytes.length, rightBytes.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (leftBytes[index] || 0) ^ (rightBytes[index] || 0);
+  }
+  return difference === 0;
 }
 
 async function sessionTokenHash(token: string, env: AuthEnv): Promise<string> {
@@ -274,6 +325,27 @@ export async function ensureAuthSchema(database: D1Database): Promise<void> {
       )
     `),
     database.prepare(`
+      CREATE TABLE IF NOT EXISTS password_credentials (
+        user_id TEXT PRIMARY KEY NOT NULL,
+        login_identifier TEXT NOT NULL,
+        password_salt TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        iterations INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        password_changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS password_login_attempts (
+        bucket_key TEXT PRIMARY KEY NOT NULL,
+        failed_count INTEGER NOT NULL DEFAULT 0,
+        first_failed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        locked_until TEXT,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    database.prepare(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         user_id TEXT PRIMARY KEY NOT NULL,
         default_language TEXT NOT NULL DEFAULT 'Python',
@@ -296,6 +368,7 @@ export async function ensureAuthSchema(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS oauth_identities_user_idx ON oauth_identities (user_id)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS users_legacy_email_idx ON users (legacy_email)"),
     database.prepare("CREATE INDEX IF NOT EXISTS auth_sessions_user_idx ON auth_sessions (user_id, expires_at)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS password_credentials_login_identifier_idx ON password_credentials (login_identifier)"),
     database.prepare("CREATE INDEX IF NOT EXISTS oauth_transactions_expiry_idx ON oauth_transactions (expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS learning_activity_user_idx ON learning_activity (user_id, id DESC)"),
   ]);
@@ -1014,6 +1087,193 @@ async function finishOAuth(provider: AuthProvider, request: Request, env: AuthEn
   }
 }
 
+type PasswordCredentialRecord = {
+  user_id: string;
+  login_identifier: string;
+  password_salt: string;
+  password_hash: string;
+  iterations: number;
+};
+
+async function passwordAttemptKey(identifier: string): Promise<string> {
+  return sha256(`password-login:${identifier}`);
+}
+
+async function passwordLoginLocked(identifier: string, env: AuthEnv): Promise<boolean> {
+  const bucketKey = await passwordAttemptKey(identifier);
+  const attempt = await env.DB
+    .prepare("SELECT locked_until FROM password_login_attempts WHERE bucket_key = ?")
+    .bind(bucketKey)
+    .first<{ locked_until: string | null }>();
+  return Boolean(attempt?.locked_until && Date.parse(attempt.locked_until) > Date.now());
+}
+
+async function recordPasswordFailure(identifier: string, env: AuthEnv): Promise<void> {
+  const bucketKey = await passwordAttemptKey(identifier);
+  const current = await env.DB
+    .prepare("SELECT failed_count, first_failed_at FROM password_login_attempts WHERE bucket_key = ?")
+    .bind(bucketKey)
+    .first<{ failed_count: number; first_failed_at: string }>();
+  const now = Date.now();
+  const firstFailure = current ? Date.parse(current.first_failed_at) : Number.NaN;
+  const withinWindow = Number.isFinite(firstFailure) && now - firstFailure < PASSWORD_FAILURE_WINDOW_MS;
+  const failedCount = withinWindow ? Number(current?.failed_count || 0) + 1 : 1;
+  const firstFailedAt = withinWindow ? current!.first_failed_at : new Date(now).toISOString();
+  const lockedUntil = failedCount >= PASSWORD_MAX_FAILURES
+    ? new Date(now + PASSWORD_FAILURE_WINDOW_MS).toISOString()
+    : null;
+  await env.DB
+    .prepare(`
+      INSERT INTO password_login_attempts (
+        bucket_key, failed_count, first_failed_at, locked_until, updated_at
+      ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(bucket_key) DO UPDATE SET
+        failed_count = excluded.failed_count,
+        first_failed_at = excluded.first_failed_at,
+        locked_until = excluded.locked_until,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(bucketKey, failedCount, firstFailedAt, lockedUntil)
+    .run();
+}
+
+async function passwordStatus(request: Request, env: AuthEnv): Promise<Response> {
+  if (request.method !== "GET") return authJson({ error: "仅支持 GET 请求" }, 405);
+  const user = await getSessionUser(request, env);
+  if (!user) return authJson({ error: "请先登录" }, 401);
+  const credential = await env.DB
+    .prepare("SELECT login_identifier, password_changed_at FROM password_credentials WHERE user_id = ?")
+    .bind(user.id)
+    .first<{ login_identifier: string; password_changed_at: string }>();
+  return authJson({
+    enabled: Boolean(credential),
+    loginIdentifier: credential?.login_identifier || user.email || "",
+    passwordChangedAt: credential?.password_changed_at || null,
+  });
+}
+
+async function managePassword(request: Request, env: AuthEnv): Promise<Response> {
+  if (request.method !== "POST") return authJson({ error: "仅支持 POST 请求" }, 405);
+  if (!sameOrigin(request)) return authJson({ error: "请求来源无效" }, 403);
+  const user = await getSessionUser(request, env);
+  if (!user) return authJson({ error: "请先登录" }, 401);
+
+  let body: {
+    loginIdentifier?: unknown;
+    currentPassword?: unknown;
+    newPassword?: unknown;
+    confirmPassword?: unknown;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return authJson({ error: "请求格式无效" }, 400);
+  }
+
+  const newPassword = String(body.newPassword || "");
+  const confirmPassword = String(body.confirmPassword || "");
+  const validationError = passwordValidationError(newPassword);
+  if (validationError) return authJson({ error: validationError }, 400);
+  if (newPassword !== confirmPassword) return authJson({ error: "两次输入的新密码不一致" }, 400);
+
+  const existing = await env.DB
+    .prepare(`
+      SELECT user_id, login_identifier, password_salt, password_hash, iterations
+      FROM password_credentials WHERE user_id = ?
+    `)
+    .bind(user.id)
+    .first<PasswordCredentialRecord>();
+
+  if (existing) {
+    const currentPassword = String(body.currentPassword || "");
+    const currentHash = await derivePasswordHash(
+      currentPassword,
+      base64UrlToBytes(existing.password_salt),
+      existing.iterations,
+    );
+    if (!constantTimeEqual(currentHash, existing.password_hash)) {
+      return authJson({ error: "当前密码不正确" }, 403);
+    }
+  }
+
+  const loginIdentifier = existing?.login_identifier
+    || normalizeLoginIdentifier(body.loginIdentifier || user.email);
+  if (!loginIdentifier) return authJson({ error: "请输入有效的登录邮箱" }, 400);
+  const duplicate = await env.DB
+    .prepare("SELECT user_id FROM password_credentials WHERE login_identifier = ? AND user_id <> ?")
+    .bind(loginIdentifier, user.id)
+    .first<{ user_id: string }>();
+  if (duplicate) return authJson({ error: "该邮箱已用于其他账号登录" }, 409);
+
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  const passwordHash = await derivePasswordHash(newPassword, salt);
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT INTO password_credentials (
+        user_id, login_identifier, password_salt, password_hash, iterations,
+        updated_at, password_changed_at
+      ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        login_identifier = excluded.login_identifier,
+        password_salt = excluded.password_salt,
+        password_hash = excluded.password_hash,
+        iterations = excluded.iterations,
+        updated_at = CURRENT_TIMESTAMP,
+        password_changed_at = CURRENT_TIMESTAMP
+    `).bind(user.id, loginIdentifier, bytesToBase64Url(salt), passwordHash, PASSWORD_ITERATIONS),
+    env.DB.prepare("UPDATE users SET email = COALESCE(email, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(loginIdentifier, user.id),
+    env.DB.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND id <> ?")
+      .bind(user.id, user.sessionId),
+  ]);
+  return authJson({ enabled: true, loginIdentifier, sessionsRevoked: true });
+}
+
+async function passwordLogin(request: Request, env: AuthEnv): Promise<Response> {
+  if (request.method !== "POST") return authJson({ error: "仅支持 POST 请求" }, 405);
+  if (!sameOrigin(request)) return authJson({ error: "请求来源无效" }, 403);
+  let body: { loginIdentifier?: unknown; password?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return authJson({ error: "请求格式无效" }, 400);
+  }
+  const identifier = normalizeLoginIdentifier(body.loginIdentifier);
+  const password = String(body.password || "");
+  if (!identifier || !password) return authJson({ error: "请输入邮箱和密码" }, 400);
+  await ensureAuthSchema(env.DB);
+  if (await passwordLoginLocked(identifier, env)) {
+    return authJson({ error: "尝试次数过多，请 15 分钟后再试" }, 429);
+  }
+
+  const credential = await env.DB
+    .prepare(`
+      SELECT user_id, login_identifier, password_salt, password_hash, iterations
+      FROM password_credentials WHERE login_identifier = ?
+    `)
+    .bind(identifier)
+    .first<PasswordCredentialRecord>();
+  const candidateHash = credential
+    ? await derivePasswordHash(password, base64UrlToBytes(credential.password_salt), credential.iterations)
+    : await derivePasswordHash(password, new Uint8Array(16));
+  if (!credential || !constantTimeEqual(candidateHash, credential.password_hash)) {
+    await recordPasswordFailure(identifier, env);
+    return authJson({ error: "账号或密码不正确" }, 401);
+  }
+
+  const bucketKey = await passwordAttemptKey(identifier);
+  const token = await createSession(credential.user_id, request, env);
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM password_login_attempts WHERE bucket_key = ?").bind(bucketKey),
+    env.DB.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(credential.user_id),
+  ]);
+  const response = authJson({ authenticated: true });
+  response.headers.append("Set-Cookie", sessionCookie(token));
+  return response;
+}
+
 async function sessionPayload(request: Request, env: AuthEnv): Promise<Response> {
   const user = await getSessionUser(request, env);
   const providers = configuredProviders(env);
@@ -1100,7 +1360,11 @@ async function removeLink(request: Request, env: AuthEnv): Promise<Response> {
     .prepare("SELECT COUNT(*) AS count FROM oauth_identities WHERE user_id = ?")
     .bind(user.id)
     .first<{ count: number }>();
-  if (Number(count?.count || 0) <= 1) {
+  const password = await env.DB
+    .prepare("SELECT user_id FROM password_credentials WHERE user_id = ?")
+    .bind(user.id)
+    .first<{ user_id: string }>();
+  if (Number(count?.count || 0) <= 1 && !password) {
     return authJson({ error: "必须至少保留一种登录方式" }, 409);
   }
   await env.DB
@@ -1125,6 +1389,12 @@ export async function handleAuthRequest(
   if (url.pathname === "/api/auth/logout") return logout(request, env, false);
   if (url.pathname === "/api/auth/logout-all") return logout(request, env, true);
   if (url.pathname === "/api/auth/links") return removeLink(request, env);
+  if (url.pathname === "/api/auth/password/login") return passwordLogin(request, env);
+  if (url.pathname === "/api/auth/password") {
+    return request.method === "GET"
+      ? passwordStatus(request, env)
+      : managePassword(request, env);
+  }
 
   const match = url.pathname.match(
     /^\/api\/auth\/(microsoft|qq|wechat-open|wechat-oa)\/(start|callback)$/,

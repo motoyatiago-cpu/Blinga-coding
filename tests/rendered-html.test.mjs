@@ -352,8 +352,10 @@ test("adds an accessible avatar menu and a dedicated personal workspace", async 
   assert.doesNotMatch(menu, /旧学习数据已安全保留/);
   assert.match(profile, /学习与运行记录/);
   assert.match(profile, /密码与安全/);
-  assert.match(profile, /密码由登录平台管理/);
-  assert.match(profile, /Blinga coding 不保存独立密码/);
+  assert.match(profile, /独立密码/);
+  assert.match(profile, /启用密码登录/);
+  assert.doesNotMatch(profile, /密码由登录平台管理/);
+  assert.doesNotMatch(profile, /Blinga coding 不保存独立密码/);
   assert.match(profile, /清除我的学习数据/);
   assert.match(profile, /accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(profile, /contentType\.includes\("application\/json"\)/);
@@ -396,12 +398,47 @@ test("implements external OAuth sessions, account linking, private avatars, and 
   assert.match(worker, /请先登录后使用 AI 助教/);
   assert.match(schema, /sqliteTable\("oauth_identities"/);
   assert.match(schema, /sqliteTable\("auth_sessions"/);
+  assert.match(schema, /sqliteTable\("password_credentials"/);
+  assert.match(schema, /sqliteTable\("password_login_attempts"/);
   assert.match(schema, /sqliteTable\("learning_activity"/);
   assert.match(schema, /uniqueIndex\("users_legacy_email_idx"\)/);
   assert.match(hosting, /"r2": "AVATARS"/);
   assert.match(envExample, /MICROSOFT_CLIENT_SECRET=/);
   assert.match(envExample, /WECHAT_OPEN_APP_SECRET=/);
   assert.match(envExample, /QQ_CLIENT_SECRET=/);
+});
+
+test("adds independent password management and a guest-capable login page", async () => {
+  const [auth, profile, login, loginCss, menu, migration] = await Promise.all([
+    readFile(new URL("../worker/auth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/login/login-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/login/login.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/account-menu.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0008_lame_manta.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(auth, /PBKDF2/);
+  assert.match(auth, /PASSWORD_ITERATIONS = 210_000/);
+  assert.match(auth, /constantTimeEqual/);
+  assert.match(auth, /PASSWORD_MAX_FAILURES = 5/);
+  assert.match(auth, /尝试次数过多，请 15 分钟后再试/);
+  assert.match(auth, /\/api\/auth\/password\/login/);
+  assert.match(auth, /\/api\/auth\/password/);
+  assert.match(auth, /DELETE FROM auth_sessions WHERE user_id = \? AND id <> \?/);
+  assert.match(profile, /className="profile-password-form"/);
+  assert.match(profile, /autoComplete="current-password"/);
+  assert.match(profile, /autoComplete="new-password"/);
+  assert.match(profile, /至少 10 个字符，同时包含字母和数字/);
+  assert.match(login, /访客模式/);
+  assert.match(login, /无需登录，仅浏览公开课程/);
+  assert.match(login, /fetch\("\/api\/auth\/password\/login"/);
+  assert.match(login, /safeReturnTo/);
+  assert.match(loginCss, /\.login-panel/);
+  assert.match(menu, /href="\/login"/);
+  assert.match(migration, /CREATE TABLE `password_credentials`/);
+  assert.match(migration, /CREATE TABLE `password_login_attempts`/);
+  assert.doesNotMatch(`${profile}\n${login}`, /localStorage|sessionStorage/);
 });
 
 test("stores authenticated run snapshots and opens saved code in an accessible viewer", async () => {
@@ -543,4 +580,14 @@ test("server-renders the personal workspace route", async () => {
   const html = await response.text();
   assert.match(html, /个人主页 · Blinga coding/);
   assert.match(html, /正在读取个人空间/);
+});
+
+test("server-renders the password and guest login route", async () => {
+  const response = await render("/login");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /登录 · Blinga coding/);
+  assert.match(html, /访客模式/);
+  assert.match(html, /邮箱/);
+  assert.match(html, /密码/);
 });

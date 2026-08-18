@@ -68,6 +68,12 @@ type HistoryPayload = {
   }>;
 };
 
+type PasswordStatus = {
+  enabled: boolean;
+  loginIdentifier: string;
+  passwordChangedAt: string | null;
+};
+
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "overview", label: "概览" },
   { id: "history", label: "历史" },
@@ -126,11 +132,18 @@ export default function ProfileClient() {
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
   const [overview, setOverview] = useState<OverviewPayload | null>(null);
   const [history, setHistory] = useState<HistoryPayload | null>(null);
+  const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null);
   const [historyLanguage, setHistoryLanguage] = useState("");
   const [historyStatus, setHistoryStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [passwordForm, setPasswordForm] = useState({
+    loginIdentifier: "",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const [codeViewerRequest, setCodeViewerRequest] = useState<CodeRecordRequest | null>(null);
   const [form, setForm] = useState({
     displayName: "",
@@ -181,14 +194,23 @@ export default function ProfileClient() {
   }
 
   async function loadPrivateData() {
-    const [nextProfile, nextOverview, nextHistory] = await Promise.all([
+    const [nextProfile, nextOverview, nextHistory, nextPasswordStatus] = await Promise.all([
       readJson<ProfilePayload>(await fetch("/api/profile", { credentials: "same-origin" })),
       readJson<OverviewPayload>(await fetch("/api/profile/overview", { credentials: "same-origin" })),
       readJson<HistoryPayload>(await fetch("/api/profile/history", { credentials: "same-origin" })),
+      readJson<PasswordStatus>(await fetch("/api/auth/password", { credentials: "same-origin" })),
     ]);
     setProfile(nextProfile);
     setOverview(nextOverview);
     setHistory(nextHistory);
+    setPasswordStatus(nextPasswordStatus);
+    setPasswordForm((current) => ({
+      ...current,
+      loginIdentifier: nextPasswordStatus.loginIdentifier || nextProfile.user.email || "",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    }));
     setForm({
       displayName: nextProfile.user.displayName,
       defaultLanguage: nextProfile.preferences.defaultLanguage,
@@ -314,6 +336,37 @@ export default function ProfileClient() {
     }
   }
 
+  async function savePassword(event: FormEvent) {
+    event.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage("两次输入的新密码不一致");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const nextStatus = await readJson<PasswordStatus>(await fetch("/api/auth/password", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(passwordForm),
+      }));
+      setPasswordStatus(nextStatus);
+      setPasswordForm({
+        loginIdentifier: nextStatus.loginIdentifier,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setMessage(passwordStatus?.enabled ? "密码已更新，其他设备已退出" : "独立登录密码已启用");
+      await loadPrivateData();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "密码保存失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function clearLearningData() {
     setBusy(true);
     try {
@@ -346,6 +399,9 @@ export default function ProfileClient() {
           <h1>你的学习，归于一个账号</h1>
           <p>登录后可同步课程进度、运行历史、代码草稿、学习笔记和个人偏好。</p>
           {message && <div className="profile-message error" role="status">{message}</div>}
+          <a className="profile-password-login" href={`/login?returnTo=${encodeURIComponent("/profile")}`}>
+            <span>使用邮箱和密码登录</span><b>→</b>
+          </a>
           {configuredProviders.length ? (
             <div className="profile-login-list">
               {configuredProviders.map(([provider]) => (
@@ -478,17 +534,18 @@ export default function ProfileClient() {
           </form>}
 
           {tab === "security" && <div className="profile-security">
-            <section className="profile-panel glass"><header><div><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || profile.links.length <= 1} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
+            <section className="profile-panel glass"><header><div><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || (profile.links.length <= 1 && !passwordStatus?.enabled)} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
             <section className="profile-panel profile-password-card glass">
-              <header><div><h2>密码与账号恢复</h2></div></header>
-              <div className="profile-password-summary"><div><b>密码由登录平台管理</b><p>Blinga coding 不保存独立密码。修改密码、找回账号和多因素认证请在对应登录平台完成。</p></div></div>
-              <ul className="profile-password-list">
-                {profile.links.length ? profile.links.map((link) => (
-                  <li key={link.provider}><b>{providerLabels[link.provider]}</b><span>请前往该平台的“账号与安全”完成密码或恢复设置</span></li>
-                )) : (
-                  <li><b>当前受保护账号</b><span>目前由站点访问保护；绑定微信、QQ 或 Microsoft 后由对应平台管理密码</span></li>
-                )}
-              </ul>
+              <header><div><h2>独立密码</h2></div><b>{passwordStatus?.enabled ? "已启用" : "未设置"}</b></header>
+              <form className="profile-password-form" onSubmit={savePassword}>
+                <p>{passwordStatus?.enabled ? "修改后，除当前设备外的登录会话将自动退出。" : "设置后，可直接使用邮箱和密码登录 Blinga coding。"}</p>
+                <label className="profile-field"><span>登录邮箱</span><input type="email" autoComplete="username" value={passwordForm.loginIdentifier} disabled={Boolean(passwordStatus?.enabled)} onChange={(event) => setPasswordForm({ ...passwordForm, loginIdentifier: event.target.value })} /></label>
+                {passwordStatus?.enabled && <label className="profile-field"><span>当前密码</span><input type="password" autoComplete="current-password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })} /></label>}
+                <label className="profile-field"><span>{passwordStatus?.enabled ? "新密码" : "设置密码"}</span><input type="password" minLength={10} maxLength={128} autoComplete="new-password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} /></label>
+                <label className="profile-field"><span>确认新密码</span><input type="password" minLength={10} maxLength={128} autoComplete="new-password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm({ ...passwordForm, confirmPassword: event.target.value })} /></label>
+                <small>至少 10 个字符，同时包含字母和数字。</small>
+                <button className="profile-primary" disabled={busy || !passwordForm.newPassword || !passwordForm.confirmPassword || (Boolean(passwordStatus?.enabled) && !passwordForm.currentPassword)} type="submit">{busy ? "保存中" : passwordStatus?.enabled ? "更新密码" : "启用密码登录"}</button>
+              </form>
             </section>
             <section className="profile-panel glass"><header><div><h2>活跃设备</h2></div><button onClick={() => signOut(true)}>退出全部设备</button></header><div className="profile-session-list">{profile.sessions.map((item) => <article key={item.id}><div><b>{item.current ? "当前设备" : "其他设备"}</b><p>{item.device}</p><small>{item.ipHint || "未知网络"} · {formatDate(item.lastSeenAt)}</small></div></article>)}</div></section>
           </div>}

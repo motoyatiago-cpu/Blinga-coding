@@ -1,0 +1,109 @@
+.login-page{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:88px 20px 48px;
+  background:#0d0f12;
+  color:#f1f3f5;
+}
+.login-brand{
+  position:absolute;
+  top:24px;
+  left:28px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#f1f3f5;
+  text-decoration:none;
+  font-size:18px;
+  font-weight:800;
+}
+.login-brand i{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  background:#1a1e24;
+  color:#818cf8;
+  font:700 12px var(--font-geist-mono);
+  font-style:normal;
+}
+.login-brand b{color:#818cf8}
+.login-panel{
+  width:min(400px,100%);
+  padding:32px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  background:#15181d;
+}
+.login-panel header h1{margin:0;font-size:28px}
+.login-panel header p{margin:9px 0 24px;color:#8b929d;font-size:13px;line-height:1.6}
+.login-message{
+  margin-bottom:14px;
+  padding:10px 12px;
+  border-radius:8px;
+  background:#2b1b1d;
+  color:#ffaaa2;
+  font-size:12px;
+}
+.password-login-form{display:grid;gap:14px}
+.password-login-form label{display:grid;gap:7px;color:#aeb4bd;font-size:12px}
+.password-login-form input{
+  height:44px;
+  padding:0 12px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;
+  outline:0;
+  background:#0d0f12;
+  color:#fff;
+}
+.password-login-form input:focus{border-color:#818cf8}
+.password-login-form button{
+  height:44px;
+  margin-top:3px;
+  border:0;
+  border-radius:8px;
+  background:#818cf8;
+  color:#0d0f12;
+  font-weight:800;
+  cursor:pointer;
+}
+.password-login-form button:disabled{opacity:.55;cursor:wait}
+.login-providers{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:22px;
+}
+.login-providers>span{
+  grid-column:1/-1;
+  color:#737a85;
+  font-size:11px;
+}
+.login-providers>a{
+  min-height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  background:#1a1e24;
+  color:#d9dde3;
+  text-decoration:none;
+  font-size:12px;
+}
+.guest-entry{
+  display:grid;
+  gap:3px;
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px solid rgba(255,255,255,.07);
+  color:#f1f3f5;
+  text-decoration:none;
+}
+.guest-entry span{font-size:13px;font-weight:700}
+.guest-entry small{color:#737a85;font-size:11px}
+@media(max-width:520px){
+  .login-page{padding:78px 14px 28px}
+  .login-brand{top:20px;left:18px}
+  .login-panel{padding:24px 20px}
+}
