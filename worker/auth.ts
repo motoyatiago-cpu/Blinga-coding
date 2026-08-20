@@ -18,6 +18,7 @@ export interface AuthEnv {
 export type SessionUser = {
   id: string;
   displayName: string;
+  username: string | null;
   email: string | null;
   avatarType: string;
   avatarValue: string | null;
@@ -50,6 +51,7 @@ type OAuthTransaction = {
 
 const SESSION_COOKIE = "__Host-blinga_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_SHORT_AGE_SECONDS = 60 * 60 * 24;
 const OAUTH_TRANSACTION_SECONDS = 10 * 60;
 const PASSWORD_ITERATIONS = 210_000;
 const PASSWORD_MAX_FAILURES = 5;
@@ -131,8 +133,9 @@ function parseCookies(request: Request): Map<string, string> {
   return result;
 }
 
-function sessionCookie(token: string, maxAge = SESSION_MAX_AGE_SECONDS): string {
-  return `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+function sessionCookie(token: string, maxAge: number | null = SESSION_MAX_AGE_SECONDS): string {
+  const lifetime = maxAge === null ? "" : ` Max-Age=${maxAge};`;
+  return `${SESSION_COOKIE}=${token}; Path=/;${lifetime} HttpOnly; Secure; SameSite=Lax`;
 }
 
 function bytesToBase64Url(bytes: Uint8Array): string {
@@ -158,11 +161,19 @@ async function sha256(value: string): Promise<string> {
   return bytesToBase64Url(new Uint8Array(digest));
 }
 
+function normalizeEmail(value: unknown): string | null {
+  const email = String(value || "").trim().toLowerCase();
+  if (email.length < 3 || email.length > 320) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+function normalizeUsername(value: unknown): string | null {
+  const username = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9_]{4,20}$/.test(username) ? username : null;
+}
+
 function normalizeLoginIdentifier(value: unknown): string | null {
-  const identifier = String(value || "").trim().toLowerCase();
-  if (identifier.length < 3 || identifier.length > 320) return null;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) return null;
-  return identifier;
+  return normalizeEmail(value) || normalizeUsername(value);
 }
 
 function passwordValidationError(value: unknown): string | null {
@@ -278,6 +289,7 @@ export async function ensureAuthSchema(database: D1Database): Promise<void> {
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY NOT NULL,
         display_name TEXT NOT NULL,
+        username TEXT,
         email TEXT,
         avatar_type TEXT NOT NULL DEFAULT 'preset',
         avatar_value TEXT,
@@ -372,6 +384,11 @@ export async function ensureAuthSchema(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS oauth_transactions_expiry_idx ON oauth_transactions (expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS learning_activity_user_idx ON learning_activity (user_id, id DESC)"),
   ]);
+  await ensureColumn(database, "users", "username", "TEXT");
+  await database.batch([
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users (username)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (email)"),
+  ]);
   await ensureOwnershipColumns(database);
 }
 
@@ -383,7 +400,7 @@ export async function getSessionUser(request: Request, env: AuthEnv): Promise<Se
   const record = await env.DB
     .prepare(`
       SELECT
-        u.id, u.display_name, u.email, u.avatar_type, u.avatar_value,
+        u.id, u.display_name, u.username, u.email, u.avatar_type, u.avatar_value,
         s.id AS session_id, s.created_at AS session_created_at, s.last_seen_at
       FROM auth_sessions s
       JOIN users u ON u.id = s.user_id
@@ -393,6 +410,7 @@ export async function getSessionUser(request: Request, env: AuthEnv): Promise<Se
     .first<{
       id: string;
       display_name: string;
+      username: string | null;
       email: string | null;
       avatar_type: string;
       avatar_value: string | null;
@@ -413,6 +431,7 @@ export async function getSessionUser(request: Request, env: AuthEnv): Promise<Se
   return {
     id: record.id,
     displayName: record.display_name,
+    username: record.username,
     email: record.email,
     avatarType: record.avatar_type,
     avatarValue: record.avatar_value,
@@ -442,10 +461,15 @@ export async function resolvePrincipal(request: Request, env: AuthEnv): Promise<
   };
 }
 
-async function createSession(userId: string, request: Request, env: AuthEnv): Promise<string> {
+async function createSession(
+  userId: string,
+  request: Request,
+  env: AuthEnv,
+  maxAge = SESSION_MAX_AGE_SECONDS,
+): Promise<string> {
   const token = randomToken(32);
   const tokenHash = await sessionTokenHash(token, env);
-  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + maxAge * 1000).toISOString();
   const userAgent = (request.headers.get("User-Agent") || "未知设备").slice(0, 240);
   const ip = request.headers.get("CF-Connecting-IP") || "";
   const ipHint = ip.includes(".") ? `${ip.split(".").slice(0, 2).join(".")}.*.*` : ip.slice(0, 18);
@@ -1148,6 +1172,8 @@ async function passwordStatus(request: Request, env: AuthEnv): Promise<Response>
   return authJson({
     enabled: Boolean(credential),
     loginIdentifier: credential?.login_identifier || user.email || "",
+    username: user.username,
+    email: user.email,
     passwordChangedAt: credential?.password_changed_at || null,
   });
 }
@@ -1197,13 +1223,13 @@ async function managePassword(request: Request, env: AuthEnv): Promise<Response>
   }
 
   const loginIdentifier = existing?.login_identifier
-    || normalizeLoginIdentifier(body.loginIdentifier || user.email);
-  if (!loginIdentifier) return authJson({ error: "请输入有效的登录邮箱" }, 400);
+    || normalizeLoginIdentifier(body.loginIdentifier || user.email || user.username);
+  if (!loginIdentifier) return authJson({ error: "请先设置有效的账号或邮箱" }, 400);
   const duplicate = await env.DB
     .prepare("SELECT user_id FROM password_credentials WHERE login_identifier = ? AND user_id <> ?")
     .bind(loginIdentifier, user.id)
     .first<{ user_id: string }>();
-  if (duplicate) return authJson({ error: "该邮箱已用于其他账号登录" }, 409);
+  if (duplicate) return authJson({ error: "该账号或邮箱已被使用" }, 409);
 
   const salt = new Uint8Array(16);
   crypto.getRandomValues(salt);
@@ -1223,7 +1249,7 @@ async function managePassword(request: Request, env: AuthEnv): Promise<Response>
         password_changed_at = CURRENT_TIMESTAMP
     `).bind(user.id, loginIdentifier, bytesToBase64Url(salt), passwordHash, PASSWORD_ITERATIONS),
     env.DB.prepare("UPDATE users SET email = COALESCE(email, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(loginIdentifier, user.id),
+      .bind(normalizeEmail(loginIdentifier), user.id),
     env.DB.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND id <> ?")
       .bind(user.id, user.sessionId),
   ]);
@@ -1233,7 +1259,7 @@ async function managePassword(request: Request, env: AuthEnv): Promise<Response>
 async function passwordLogin(request: Request, env: AuthEnv): Promise<Response> {
   if (request.method !== "POST") return authJson({ error: "仅支持 POST 请求" }, 405);
   if (!sameOrigin(request)) return authJson({ error: "请求来源无效" }, 403);
-  let body: { loginIdentifier?: unknown; password?: unknown };
+  let body: { loginIdentifier?: unknown; password?: unknown; remember?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -1241,7 +1267,7 @@ async function passwordLogin(request: Request, env: AuthEnv): Promise<Response> 
   }
   const identifier = normalizeLoginIdentifier(body.loginIdentifier);
   const password = String(body.password || "");
-  if (!identifier || !password) return authJson({ error: "请输入邮箱和密码" }, 400);
+  if (!identifier || !password) return authJson({ error: "请输入账号或邮箱和密码" }, 400);
   await ensureAuthSchema(env.DB);
   if (await passwordLoginLocked(identifier, env)) {
     return authJson({ error: "尝试次数过多，请 15 分钟后再试" }, 429);
@@ -1250,9 +1276,12 @@ async function passwordLogin(request: Request, env: AuthEnv): Promise<Response> 
   const credential = await env.DB
     .prepare(`
       SELECT user_id, login_identifier, password_salt, password_hash, iterations
-      FROM password_credentials WHERE login_identifier = ?
+      FROM password_credentials pc
+      JOIN users u ON u.id = pc.user_id
+      WHERE pc.login_identifier = ? OR u.username = ? OR u.email = ?
+      LIMIT 1
     `)
-    .bind(identifier)
+    .bind(identifier, identifier, identifier)
     .first<PasswordCredentialRecord>();
   const candidateHash = credential
     ? await derivePasswordHash(password, base64UrlToBytes(credential.password_salt), credential.iterations)
@@ -1263,13 +1292,79 @@ async function passwordLogin(request: Request, env: AuthEnv): Promise<Response> 
   }
 
   const bucketKey = await passwordAttemptKey(identifier);
-  const token = await createSession(credential.user_id, request, env);
+  const remember = Boolean(body.remember);
+  const sessionAge = remember ? SESSION_MAX_AGE_SECONDS : SESSION_SHORT_AGE_SECONDS;
+  const token = await createSession(credential.user_id, request, env, sessionAge);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM password_login_attempts WHERE bucket_key = ?").bind(bucketKey),
     env.DB.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .bind(credential.user_id),
   ]);
   const response = authJson({ authenticated: true });
+  response.headers.append("Set-Cookie", sessionCookie(token, remember ? sessionAge : null));
+  return response;
+}
+
+async function registerPasswordAccount(request: Request, env: AuthEnv): Promise<Response> {
+  if (request.method !== "POST") return authJson({ error: "仅支持 POST 请求" }, 405);
+  if (!sameOrigin(request)) return authJson({ error: "请求来源无效" }, 403);
+  let body: {
+    username?: unknown;
+    email?: unknown;
+    password?: unknown;
+    confirmPassword?: unknown;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return authJson({ error: "请求格式无效" }, 400);
+  }
+
+  const username = normalizeUsername(body.username);
+  if (!username) return authJson({ error: "账号需为 4–20 位字母、数字或下划线" }, 400);
+  const email = normalizeEmail(body.email);
+  if (!email) return authJson({ error: "请输入有效的邮箱" }, 400);
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
+  const validationError = passwordValidationError(password);
+  if (validationError) return authJson({ error: validationError }, 400);
+  if (password !== confirmPassword) return authJson({ error: "两次输入的密码不一致" }, 400);
+
+  await ensureAuthSchema(env.DB);
+  const conflict = await env.DB.prepare(`
+    SELECT id FROM users
+    WHERE username = ? OR email = ? OR username = ? OR email = ?
+    LIMIT 1
+  `).bind(username, email, email, username).first<{ id: string }>();
+  if (conflict) return authJson({ error: "账号或邮箱已被使用" }, 409);
+  const credentialConflict = await env.DB
+    .prepare("SELECT user_id FROM password_credentials WHERE login_identifier IN (?, ?) LIMIT 1")
+    .bind(username, email)
+    .first<{ user_id: string }>();
+  if (credentialConflict) return authJson({ error: "账号或邮箱已被使用" }, 409);
+
+  const userId = crypto.randomUUID();
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  const passwordHash = await derivePasswordHash(password, salt);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO users (id, display_name, username, email, avatar_type, avatar_value)
+        VALUES (?, ?, ?, ?, 'preset', '#7182ff')
+      `).bind(userId, username, username, email),
+      env.DB.prepare(`
+        INSERT INTO password_credentials (
+          user_id, login_identifier, password_salt, password_hash, iterations
+        ) VALUES (?, ?, ?, ?, ?)
+      `).bind(userId, email, bytesToBase64Url(salt), passwordHash, PASSWORD_ITERATIONS),
+    ]);
+  } catch {
+    return authJson({ error: "账号或邮箱已被使用" }, 409);
+  }
+
+  const token = await createSession(userId, request, env, SESSION_MAX_AGE_SECONDS);
+  const response = authJson({ authenticated: true, created: true });
   response.headers.append("Set-Cookie", sessionCookie(token));
   return response;
 }
@@ -1311,6 +1406,7 @@ async function sessionPayload(request: Request, env: AuthEnv): Promise<Response>
     user: {
       id: user.id,
       displayName: user.displayName,
+      username: user.username,
       email: user.email,
       avatarType: user.avatarType,
       avatarValue: user.avatarValue,
@@ -1390,6 +1486,7 @@ export async function handleAuthRequest(
   if (url.pathname === "/api/auth/logout-all") return logout(request, env, true);
   if (url.pathname === "/api/auth/links") return removeLink(request, env);
   if (url.pathname === "/api/auth/password/login") return passwordLogin(request, env);
+  if (url.pathname === "/api/auth/password/register") return registerPasswordAccount(request, env);
   if (url.pathname === "/api/auth/password") {
     return request.method === "GET"
       ? passwordStatus(request, env)

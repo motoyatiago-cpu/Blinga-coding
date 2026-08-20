@@ -204,6 +204,26 @@
   gap:16px;
   padding:22px 21px 24px;
 }
+.profile-account-form{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px 28px;
+}
+.profile-account-form>p{
+  grid-column:1/-1;
+  margin:0;
+  color:#8b929d;
+  font-size:11px;
+  line-height:1.65;
+}
+.profile-account-form .profile-primary{
+  grid-column:1/-1;
+  width:max-content;
+}
+.profile-account-form input[readonly]{
+  color:#737a85;
+  cursor:not-allowed;
+}
 .profile-password-form>p,
 .profile-password-form>small{
   grid-column:1/-1;
@@ -221,6 +241,13 @@
   margin:2px 0 0;
 }
 @media(max-width:650px){
+  .profile-account-form{
+    grid-template-columns:1fr;
+  }
+  .profile-account-form>p,
+  .profile-account-form .profile-primary{
+    grid-column:1;
+  }
   .profile-password-form{
     grid-template-columns:1fr;
   }

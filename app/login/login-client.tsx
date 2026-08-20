@@ -36,6 +36,8 @@ export default function LoginClient() {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const configuredProviders = useMemo(
@@ -76,7 +78,7 @@ export default function LoginClient() {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginIdentifier, password }),
+        body: JSON.stringify({ loginIdentifier, password, remember }),
       }));
       window.location.replace(safeReturnTo());
     } catch (error) {
@@ -90,18 +92,20 @@ export default function LoginClient() {
     <main className="login-page">
       <a className="login-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
       <section className="login-panel" aria-labelledby="login-title">
-        <header><h1 id="login-title">登录</h1><p>继续你的课程、代码草稿和学习记录。</p></header>
+        <header><h1 id="login-title">欢迎回来</h1><p>请输入你的账号信息。</p></header>
         {message && <div className="login-message" role="status">{message}</div>}
         <form className="password-login-form" onSubmit={login}>
-          <label><span>邮箱</span><input type="email" autoComplete="username" value={loginIdentifier} onChange={(event) => setLoginIdentifier(event.target.value)} required /></label>
-          <label><span>密码</span><input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          <label><span>账号或邮箱</span><input type="text" autoCapitalize="none" spellCheck={false} autoComplete="username" placeholder="请输入账号或邮箱" value={loginIdentifier} onChange={(event) => setLoginIdentifier(event.target.value)} required /></label>
+          <label><span>密码</span><div className="password-input"><input type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="请输入密码" value={password} onChange={(event) => setPassword(event.target.value)} required /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "隐藏" : "显示"}</button></div></label>
+          <div className="login-options"><label><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>30 天内保持登录</span></label><button type="button" onClick={() => setMessage(configuredProviders.length ? "请使用已绑定的第三方账号登录，再到密码与安全中重设密码。" : "请联系站点管理员核验账号后恢复密码。") }>忘记密码？</button></div>
           <button type="submit" disabled={busy}>{busy ? "登录中" : "登录"}</button>
         </form>
         {configuredProviders.length > 0 && <div className="login-providers">
           <span>其他登录方式</span>
           {configuredProviders.map(([provider]) => <a key={provider} href={`/api/auth/${provider}/start?returnTo=${encodeURIComponent(safeReturnTo())}`}>{providerLabels[provider]}</a>)}
         </div>}
-        <a className="guest-entry" href="/"><span>访客模式</span><small>无需登录，仅浏览公开课程</small></a>
+        <p className="register-entry">还没有账号？ <a href="/register">立即注册</a></p>
+        <a className="guest-entry" href="/"><span>访客浏览</span><small>无需登录，仅浏览公开课程</small></a>
       </section>
     </main>
   );

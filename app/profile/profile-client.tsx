@@ -17,6 +17,7 @@ type SessionPayload = {
 type ProfilePayload = {
   user: {
     displayName: string;
+    username: string | null;
     email: string | null;
     avatarType: string;
     avatarValue: string | null;
@@ -71,6 +72,8 @@ type HistoryPayload = {
 type PasswordStatus = {
   enabled: boolean;
   loginIdentifier: string;
+  username: string | null;
+  email: string | null;
   passwordChangedAt: string | null;
 };
 
@@ -144,6 +147,7 @@ export default function ProfileClient() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [accountUsername, setAccountUsername] = useState("");
   const [codeViewerRequest, setCodeViewerRequest] = useState<CodeRecordRequest | null>(null);
   const [form, setForm] = useState({
     displayName: "",
@@ -204,6 +208,7 @@ export default function ProfileClient() {
     setOverview(nextOverview);
     setHistory(nextHistory);
     setPasswordStatus(nextPasswordStatus);
+    setAccountUsername(nextProfile.user.username || "");
     setPasswordForm((current) => ({
       ...current,
       loginIdentifier: nextPasswordStatus.loginIdentifier || nextProfile.user.email || "",
@@ -362,6 +367,26 @@ export default function ProfileClient() {
       await loadPrivateData();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "密码保存失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveAccount(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      await readJson(await fetch("/api/profile", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: accountUsername }),
+      }));
+      await loadPrivateData();
+      setMessage("登录账号已更新");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "账号保存失败");
     } finally {
       setBusy(false);
     }
@@ -534,12 +559,13 @@ export default function ProfileClient() {
           </form>}
 
           {tab === "security" && <div className="profile-security">
+            <section className="profile-panel glass"><header><div><h2>登录账号</h2></div></header><form className="profile-account-form" onSubmit={saveAccount}><label className="profile-field"><span>账号</span><input autoCapitalize="none" spellCheck={false} autoComplete="username" minLength={4} maxLength={20} pattern="[A-Za-z0-9_]{4,20}" placeholder="4–20 位字母、数字或下划线" value={accountUsername} onChange={(event) => setAccountUsername(event.target.value)} /></label><label className="profile-field"><span>邮箱</span><input type="email" value={profile.user.email || "尚未绑定邮箱"} readOnly aria-readonly="true" /></label><p>账号和邮箱都可用于登录。邮箱与第三方身份绑定，为避免账号丢失，暂不在此直接修改。</p><button className="profile-primary" type="submit" disabled={busy || !accountUsername}>{busy ? "保存中" : "保存账号"}</button></form></section>
             <section className="profile-panel glass"><header><div><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || (profile.links.length <= 1 && !passwordStatus?.enabled)} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
             <section className="profile-panel profile-password-card glass">
               <header><div><h2>独立密码</h2></div><b>{passwordStatus?.enabled ? "已启用" : "未设置"}</b></header>
               <form className="profile-password-form" onSubmit={savePassword}>
-                <p>{passwordStatus?.enabled ? "修改后，除当前设备外的登录会话将自动退出。" : "设置后，可直接使用邮箱和密码登录 Blinga coding。"}</p>
-                <label className="profile-field"><span>登录邮箱</span><input type="email" autoComplete="username" value={passwordForm.loginIdentifier} disabled={Boolean(passwordStatus?.enabled)} onChange={(event) => setPasswordForm({ ...passwordForm, loginIdentifier: event.target.value })} /></label>
+                <p>{passwordStatus?.enabled ? "修改后，除当前设备外的登录会话将自动退出。" : "设置后，可使用账号或邮箱与密码登录 Blinga coding。"}</p>
+                <label className="profile-field"><span>登录标识</span><input type="text" autoComplete="username" value={passwordForm.loginIdentifier} disabled={Boolean(passwordStatus?.enabled)} onChange={(event) => setPasswordForm({ ...passwordForm, loginIdentifier: event.target.value })} /></label>
                 {passwordStatus?.enabled && <label className="profile-field"><span>当前密码</span><input type="password" autoComplete="current-password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })} /></label>}
                 <label className="profile-field"><span>{passwordStatus?.enabled ? "新密码" : "设置密码"}</span><input type="password" minLength={10} maxLength={128} autoComplete="new-password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} /></label>
                 <label className="profile-field"><span>确认新密码</span><input type="password" minLength={10} maxLength={128} autoComplete="new-password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm({ ...passwordForm, confirmPassword: event.target.value })} /></label>

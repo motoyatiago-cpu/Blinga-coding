@@ -408,14 +408,17 @@ test("implements external OAuth sessions, account linking, private avatars, and 
   assert.match(envExample, /QQ_CLIENT_SECRET=/);
 });
 
-test("adds independent password management and a guest-capable login page", async () => {
-  const [auth, profile, login, loginCss, menu, migration] = await Promise.all([
+test("adds username or email login, registration, password management, and guest browsing", async () => {
+  const [auth, profile, login, register, loginCss, menu, passwordMigration, usernameMigration, schema] = await Promise.all([
     readFile(new URL("../worker/auth.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/login/login-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/register/register-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/login/login.css", import.meta.url), "utf8"),
     readFile(new URL("../app/account-menu.tsx", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0008_lame_manta.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0009_clumsy_wendell_vaughn.sql", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(auth, /PBKDF2/);
@@ -424,21 +427,37 @@ test("adds independent password management and a guest-capable login page", asyn
   assert.match(auth, /PASSWORD_MAX_FAILURES = 5/);
   assert.match(auth, /尝试次数过多，请 15 分钟后再试/);
   assert.match(auth, /\/api\/auth\/password\/login/);
+  assert.match(auth, /\/api\/auth\/password\/register/);
+  assert.match(auth, /u\.username = \? OR u\.email = \?/);
+  assert.match(auth, /SESSION_SHORT_AGE_SECONDS/);
   assert.match(auth, /\/api\/auth\/password/);
   assert.match(auth, /DELETE FROM auth_sessions WHERE user_id = \? AND id <> \?/);
   assert.match(profile, /className="profile-password-form"/);
+  assert.match(profile, /className="profile-account-form"/);
+  assert.match(profile, /body: JSON\.stringify\(\{ username: accountUsername \}\)/);
   assert.match(profile, /autoComplete="current-password"/);
   assert.match(profile, /autoComplete="new-password"/);
   assert.match(profile, /至少 10 个字符，同时包含字母和数字/);
-  assert.match(login, /访客模式/);
+  assert.match(login, /账号或邮箱/);
+  assert.match(login, /30 天内保持登录/);
+  assert.match(login, /忘记密码？/);
+  assert.match(login, /href="\/register"/);
+  assert.match(login, /访客浏览/);
   assert.match(login, /无需登录，仅浏览公开课程/);
   assert.match(login, /fetch\("\/api\/auth\/password\/login"/);
   assert.match(login, /safeReturnTo/);
+  assert.match(register, /fetch\("\/api\/auth\/password\/register"/);
+  assert.match(register, /pattern="\[A-Za-z0-9_\]\{4,20\}"/);
+  assert.match(register, /已有账号？/);
   assert.match(loginCss, /\.login-panel/);
   assert.match(menu, /href="\/login"/);
-  assert.match(migration, /CREATE TABLE `password_credentials`/);
-  assert.match(migration, /CREATE TABLE `password_login_attempts`/);
-  assert.doesNotMatch(`${profile}\n${login}`, /localStorage|sessionStorage/);
+  assert.match(passwordMigration, /CREATE TABLE `password_credentials`/);
+  assert.match(passwordMigration, /CREATE TABLE `password_login_attempts`/);
+  assert.match(usernameMigration, /ALTER TABLE `users` ADD `username` text/);
+  assert.match(usernameMigration, /CREATE UNIQUE INDEX `users_username_idx`/);
+  assert.match(usernameMigration, /CREATE UNIQUE INDEX `users_email_idx`/);
+  assert.match(schema, /username: text\("username"\)/);
+  assert.doesNotMatch(`${profile}\n${login}\n${register}`, /localStorage|sessionStorage/);
 });
 
 test("stores authenticated run snapshots and opens saved code in an accessible viewer", async () => {
@@ -607,7 +626,13 @@ test("server-renders the password and guest login route", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /登录 · Blinga coding/);
-  assert.match(html, /访客模式/);
-  assert.match(html, /邮箱/);
+  assert.match(html, /访客浏览/);
+  assert.match(html, /账号或邮箱/);
   assert.match(html, /密码/);
+});
+
+test("server-renders the account registration route", async () => {
+  const response = await render("/register");
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /创建账号/);
 });

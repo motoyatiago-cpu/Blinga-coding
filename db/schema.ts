@@ -63,6 +63,7 @@ export const learningNotes = sqliteTable("learning_notes", {
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   displayName: text("display_name").notNull(),
+  username: text("username"),
   email: text("email"),
   avatarType: text("avatar_type").notNull().default("preset"),
   avatarValue: text("avatar_value"),
@@ -71,6 +72,8 @@ export const users = sqliteTable("users", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: text("last_login_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
+  uniqueIndex("users_username_idx").on(table.username),
+  uniqueIndex("users_email_idx").on(table.email),
   uniqueIndex("users_legacy_email_idx").on(table.legacyEmail),
 ]);
 

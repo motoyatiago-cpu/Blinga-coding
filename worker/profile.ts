@@ -152,6 +152,7 @@ async function readProfile(user: SessionUser, env: ProfileEnv): Promise<Response
     user: {
       id: user.id,
       displayName: user.displayName,
+      username: user.username,
       email: user.email,
       avatarType: user.avatarType,
       avatarValue: user.avatarValue,
@@ -193,6 +194,7 @@ async function updateProfile(
   if (!sameOrigin(request)) return profileJson({ error: "请求来源无效" }, 403);
   let body: {
     displayName?: unknown;
+    username?: unknown;
     avatarPreset?: unknown;
     preferences?: {
       defaultLanguage?: unknown;
@@ -217,6 +219,30 @@ async function updateProfile(
       env.DB
         .prepare("UPDATE users SET display_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
         .bind(displayName, user.id),
+    );
+  }
+  if (body.username !== undefined) {
+    const username = String(body.username || "").trim().toLowerCase();
+    if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+      return profileJson({ error: "账号需为 4–20 位字母、数字或下划线" }, 400);
+    }
+    const duplicate = await env.DB.prepare(`
+      SELECT id FROM users
+      WHERE id <> ? AND (username = ? OR email = ?)
+      LIMIT 1
+    `).bind(user.id, username, username).first<{ id: string }>();
+    const credentialDuplicate = await env.DB.prepare(`
+      SELECT user_id FROM password_credentials
+      WHERE user_id <> ? AND login_identifier = ?
+      LIMIT 1
+    `).bind(user.id, username).first<{ user_id: string }>();
+    if (duplicate || credentialDuplicate) {
+      return profileJson({ error: "该账号已被使用" }, 409);
+    }
+    statements.push(
+      env.DB
+        .prepare("UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(username, user.id),
     );
   }
   if (body.avatarPreset !== undefined) {
@@ -516,7 +542,7 @@ async function exportData(user: SessionUser, env: ProfileEnv): Promise<Response>
   const userKey = `user:${user.id}`;
   const result: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
-    user: { displayName: user.displayName, email: user.email },
+    user: { displayName: user.displayName, username: user.username, email: user.email },
   };
   const tableQueries: Array<[string, string, string]> = [
     ["progress", "learning_progress", "user_email"],

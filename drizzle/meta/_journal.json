@@ -64,6 +64,13 @@
       "when": 1787056920816,
       "tag": "0008_lame_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787195938918,
+      "tag": "0009_clumsy_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }
