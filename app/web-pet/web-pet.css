@@ -136,6 +136,11 @@
   bottom:78px;
 }
 
+.web-pet-menu-item.is-feeling{
+  right:16px;
+  bottom:112px;
+}
+
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
   --web-pet-menu-shift-x:-34px;
   right:auto;
@@ -147,6 +152,10 @@
   left:78px;
 }
 
+.web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
+  left:16px;
+}
+
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
   --web-pet-menu-shift-y:-24px;
   top:18px;
@@ -155,6 +164,10 @@
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
   top:78px;
+}
+
+.web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
+  top:112px;
 }
 
 .web-pet-menu-item span{
@@ -186,6 +199,131 @@
 
 .web-pet-menu.is-open .web-pet-menu-item.is-forum{
   animation-delay:.065s;
+}
+
+.web-pet-menu.is-open .web-pet-menu-item.is-feeling{
+  animation-delay:.13s;
+}
+
+.web-pet-menu.has-feeling .web-pet-menu-item{
+  opacity:0;
+  pointer-events:none;
+}
+
+.web-pet-feeling-panel{
+  position:absolute;
+  right:102px;
+  bottom:4px;
+  z-index:8;
+  width:228px;
+  padding:12px;
+  border:1px solid rgba(145,166,224,.22);
+  border-radius:18px;
+  background:rgba(15,20,33,.96);
+  box-shadow:0 16px 38px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.07);
+  color:#f1f6ff;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translate3d(14px,8px,0) scale(.94);
+  transform-origin:100% 100%;
+  transition:opacity .18s ease,transform .28s cubic-bezier(.2,.85,.2,1),visibility .18s;
+  backdrop-filter:blur(18px) saturate(140%);
+}
+
+.web-pet-root[data-overlay-horizontal="right"] .web-pet-feeling-panel{
+  right:auto;
+  left:102px;
+  transform-origin:0 100%;
+}
+
+.web-pet-root[data-overlay-vertical="down"] .web-pet-feeling-panel{
+  top:4px;
+  bottom:auto;
+  transform-origin:100% 0;
+}
+
+.web-pet-root[data-overlay-horizontal="right"][data-overlay-vertical="down"] .web-pet-feeling-panel{
+  transform-origin:0 0;
+}
+
+.web-pet-feeling-panel.is-open{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:translate3d(0,0,0) scale(1);
+}
+
+.web-pet-feeling-panel header{
+  display:grid;
+  grid-template-columns:28px 1fr 28px;
+  align-items:center;
+  gap:6px;
+}
+
+.web-pet-feeling-panel header b{
+  text-align:center;
+  font-size:13px;
+}
+
+.web-pet-feeling-panel header button{
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:9px;
+  background:rgba(255,255,255,.06);
+  color:#cbd5e7;
+  cursor:pointer;
+}
+
+.web-pet-feeling-panel>p{
+  margin:12px 2px 9px;
+  color:#9aa8bf;
+  font-size:12px;
+}
+
+.web-pet-feeling-options{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+}
+
+.web-pet-feeling-options button{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 9px;
+  border:0;
+  border-radius:10px;
+  background:rgba(255,255,255,.055);
+  color:#dbe4f2;
+  font-size:11px;
+  cursor:pointer;
+}
+
+.web-pet-feeling-options button:hover,
+.web-pet-feeling-options button:focus-visible,
+.web-pet-feeling-options button.is-selected{
+  outline:none;
+  background:rgba(111,129,255,.2);
+  color:#fff;
+}
+
+.web-pet-feeling-options span{
+  color:#8ee8ff;
+  font-size:13px;
+}
+
+.web-pet-feeling-response{
+  min-height:30px;
+  margin-top:9px;
+  padding:8px 9px;
+  border-radius:9px;
+  background:rgba(111,129,255,.09);
+  color:#aebad0;
+  font-size:10px;
+  line-height:1.45;
 }
 
 .web-pet-menu-item:hover,
@@ -498,6 +636,11 @@
     bottom:68px;
   }
 
+  .web-pet-menu-item.is-feeling{
+    right:4px;
+    bottom:100px;
+  }
+
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
     right:auto;
     left:82px;
@@ -507,6 +650,10 @@
     left:60px;
   }
 
+  .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
+    left:4px;
+  }
+
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
     top:12px;
     bottom:auto;
@@ -514,6 +661,21 @@
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
     top:68px;
+  }
+
+  .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
+    top:100px;
+  }
+
+  .web-pet-feeling-panel{
+    right:76px;
+    bottom:0;
+    width:min(220px,calc(100vw - 112px));
+  }
+
+  .web-pet-root[data-overlay-horizontal="right"] .web-pet-feeling-panel{
+    right:auto;
+    left:76px;
   }
 }
 
@@ -535,7 +697,8 @@
   }
 
   .web-pet-menu-item,
-  .web-pet-bubble{
+  .web-pet-bubble,
+  .web-pet-feeling-panel{
     transition:none;
   }
 

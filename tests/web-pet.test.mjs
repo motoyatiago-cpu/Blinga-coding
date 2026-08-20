@@ -11,6 +11,7 @@ test("runs the complete modular web pet assistant", async () => {
     avatar,
     assetMedia,
     actionMenu,
+    feelingPanel,
     poses,
     config,
     copy,
@@ -38,6 +39,7 @@ test("runs the complete modular web pet assistant", async () => {
     readFile(new URL("../app/web-pet/components/pet-avatar.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/components/pet-asset-media.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/components/pet-action-menu.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/web-pet/components/pet-feeling-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/types/pet-state.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/config/default-config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/config/pet-copy.ts", import.meta.url), "utf8"),
@@ -81,6 +83,14 @@ test("runs the complete modular web pet assistant", async () => {
 
   assert.match(actionMenu, /AI 问答/);
   assert.match(actionMenu, /用户论坛/);
+  assert.match(actionMenu, /Feeling/);
+  assert.match(actionMenu, /PET_FEELING_PANEL_ID/);
+  assert.match(feelingPanel, /此刻感觉怎么样/);
+  assert.match(feelingPanel, /开心/);
+  assert.match(feelingPanel, /平静/);
+  assert.match(feelingPanel, /疲惫/);
+  assert.match(feelingPanel, /需要帮助/);
+  assert.match(feelingPanel, /aria-live="polite"/);
   assert.match(actionMenu, /href="\/forum"/);
   assert.match(actionMenu, /target="_blank"/);
   assert.match(actionMenu, /rel="noopener noreferrer"/);
@@ -139,6 +149,8 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(css, /\.web-pet-menu\.is-open/);
   assert.match(css, /@keyframes web-pet-menu-pop/);
   assert.match(css, /animation:web-pet-menu-pop \.42s/);
+  assert.match(css, /\.web-pet-menu-item\.is-feeling/);
+  assert.match(css, /\.web-pet-feeling-panel\.is-open/);
   assert.match(css, /\.web-pet-root\[data-menu-open="true"\] \.web-pet-bubble/);
   assert.match(css, /data-overlay-horizontal="right"/);
   assert.match(css, /data-overlay-vertical="down"/);

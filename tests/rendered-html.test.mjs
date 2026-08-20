@@ -35,7 +35,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /动态知识图谱/);
   assert.match(html, /在线实训沙盒/);
   assert.match(html, /我的学习笔记/);
-  assert.match(html, /停止输入 500ms 后自动保存/);
+  assert.doesNotMatch(html, /停止输入 500ms 后自动保存/);
   assert.match(html, /全站课程与 AI 搜索/);
   assert.match(html, /AI 深度搜索/);
   assert.match(html, /清空/);
