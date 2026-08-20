@@ -486,7 +486,7 @@ export default function ProfileClient() {
 
           {tab === "overview" && <div className="profile-overview">
             <section className="profile-hero-card glass">
-              <div><span>欢迎回来</span><h2>{profile.user.displayName}</h2><p>从上次停下的位置继续，学习记录会自动同步到你的账号。</p></div>
+              <div><span>欢迎回来</span><h2>{profile.user.displayName}</h2></div>
               {overview.continueLearning
                 ? <a href={buildCourseUrl(overview.continueLearning.language, overview.continueLearning.topicIndex)}>继续 {overview.continueLearning.language}</a>
                 : <a href="/#learn">开始第一节课</a>}

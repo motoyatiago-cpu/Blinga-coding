@@ -277,7 +277,6 @@ export default function AccountMenu() {
           </>
         ) : (
           <section className="account-provider-list" aria-label="可用登录方式">
-            <p>{session?.transition ? "登录后迁移现有学习数据" : "登录后同步学习数据"}</p>
             <a href="/login" role="menuitem"><span>邮箱和密码</span><i>→</i></a>
             {configured.map(([provider]) => (
               <a

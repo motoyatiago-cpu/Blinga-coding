@@ -1672,7 +1672,8 @@ function Sandbox({
             />
           </div>
           <div className="editor-foot">
-            <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行 · {draftStatus}</span>
+            <span>UTF-8 · Ln {cursorPosition.line}, Col {cursorPosition.column} · {code.split("\n").length} 行</span>
+            {/(失败|错误|暂未|不可用)/.test(draftStatus) && <span className="editor-status-error" role="status">{draftStatus}</span>}
             <div className="editor-actions">
               <button className="stop-run" onClick={stopRun} disabled={runningMode === null}>
                 ■ 停止
@@ -1689,7 +1690,7 @@ function Sandbox({
         <div className="terminal-pane">
           <div className="pane-head"><span>TERMINAL / OUTPUT</span><button onClick={() => updateOutput("")}>清空</button></div>
           <div className="stdin-panel">
-            <div><span>STDIN · 程序标准输入</span><small>{runningMode === "judge" ? "判题时使用隐藏测试输入" : `${stdin.length} 个字符`}</small><button onClick={() => updateStdin("")} disabled={!stdin}>清空</button></div>
+            <div><span>STDIN</span><button onClick={() => updateStdin("")} disabled={!stdin}>清空</button></div>
             <textarea
               value={stdin}
               onChange={(event) => updateStdin(event.target.value)}
@@ -1701,7 +1702,6 @@ function Sandbox({
             />
           </div>
           <pre>{output}</pre>
-          <div className="judge-row"><div><span className="status-dot" /> 实时通道</div><b className={output.includes("3 / 3 通过") ? "passed" : ""}>{runningMode === "judge" ? "判题中" : runningMode === "run" ? "执行中" : output.includes("自动判题") ? "判题完成" : output.includes("✓ 运行成功") ? "执行完成" : output.startsWith("✕") ? "执行失败" : "监听中"}</b></div>
         </div>
       </div>
       <section className="run-history glass" aria-label="当前知识点运行历史">
@@ -1806,7 +1806,7 @@ function LessonNotes({
 }) {
   const [content, setContent] = useState("");
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState("正在读取笔记…");
+  const [status, setStatus] = useState("");
   const savedContentRef = useRef("");
 
   useEffect(() => {
@@ -1832,7 +1832,7 @@ function LessonNotes({
         const restoredContent = data.note?.content || "";
         savedContentRef.current = restoredContent;
         setContent(restoredContent);
-        setStatus(data.note ? "笔记已恢复" : "输入后自动保存");
+        setStatus("");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus(error instanceof Error ? error.message : "学习笔记暂未同步");
@@ -1848,10 +1848,9 @@ function LessonNotes({
   useEffect(() => {
     if (!ready || content === savedContentRef.current) return;
 
-    setStatus("等待自动保存…");
+    setStatus("");
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      setStatus("正在保存…");
       try {
         const response = await fetch("/api/notes", {
           method: "PUT",
@@ -1862,7 +1861,7 @@ function LessonNotes({
         const data = await response.json() as { saved?: boolean; error?: string };
         if (!response.ok) throw new Error(data.error || "学习笔记保存失败");
         savedContentRef.current = content;
-        setStatus("笔记已保存");
+        setStatus("");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus(error instanceof Error ? error.message : "学习笔记暂未同步");
@@ -1880,12 +1879,10 @@ function LessonNotes({
       <div className="lesson-notes-head">
         <div>
           <h2 id="lesson-notes-title">我的学习笔记</h2>
-          <p>{lang} · {lessonTitle}，仅保存到你的账号。</p>
         </div>
-        <div className="lesson-notes-status" role="status">
-          <i className={status.includes("已") || status.includes("自动") ? "synced" : ""} />
-          {status}
-        </div>
+        {/(失败|错误|暂未|不可用)/.test(status) && (
+          <div className="lesson-notes-error" role="status">{status}</div>
+        )}
       </div>
       <textarea
         value={content}
@@ -1895,10 +1892,6 @@ function LessonNotes({
         placeholder={"记录你对本节知识点的理解、易错点和复习结论…\n\n建议结构：\n1. 核心概念\n2. 容易犯的错误\n3. 我自己的代码示例"}
         aria-label={`${lessonTitle}学习笔记`}
       />
-      <footer>
-        <span>停止输入 500ms 后自动保存</span>
-        <b>{content.length} / 8000</b>
-      </footer>
     </section>
   );
 }
@@ -2424,7 +2417,7 @@ export default function Home() {
             tabIndex={chatOpen ? 0 : -1}
             aria-label="拖动 AI 助教窗口，使用方向键可以微调位置"
             {...chatDragHandleProps}
-          ><div><div><b>AI 助教</b><small>{aiBusy ? "正在分析当前代码…" : `已同步编辑器 · ${sandboxContext.code.split("\n").length} 行代码`}</small></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
+          ><div><div><b>AI 助教</b></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
           <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
           <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
           <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的编程问题…"} /><button className={aiBusy ? "stop" : ""} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? "■" : "↑"}</button></div>

@@ -513,6 +513,12 @@ body {
   box-shadow: none;
 }
 
+.editor-status-error,
+.lesson-notes-error {
+  color: #ff9b89;
+  font-size: 11px;
+}
+
 .gradient-text {
   color: var(--text);
   background: none;

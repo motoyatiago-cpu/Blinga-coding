@@ -246,7 +246,7 @@ test("removes decorative and redundant UI prompts while preserving status feedba
   assert.doesNotMatch(page, /图谱核心交互保持不变，导出由独立文档层完成/);
   assert.doesNotMatch(page, /Tab 缩进 · Ctrl↵ 运行/);
   assert.doesNotMatch(page, /⌘ K/);
-  assert.match(page, /\{draftStatus\}/);
+  assert.match(page, /editor-status-error/);
   assert.match(page, /statusDescription/);
   assert.match(page, /aria-live="polite"/);
 });
@@ -593,7 +593,7 @@ test("keeps the account menu compact and exports mind maps as PDF only", async (
   assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
 });
 
-test("removes decorative microcopy while preserving functional status text", async () => {
+test("removes passive microcopy while preserving functional error feedback", async () => {
   const [page, catalog, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
@@ -607,8 +607,11 @@ test("removes decorative microcopy while preserving functional status text", asy
   assert.doesNotMatch(catalog, /个核心知识点<\/small>/);
   assert.match(page, /<div className="pane-head code-example-actions"><button/);
   assert.match(page, /<div className="example-foot"><a href="#lab">进入练习<\/a><\/div>/);
-  assert.match(page, /\{draftStatus\}/);
-  assert.match(page, /lesson-notes-status/);
+  assert.doesNotMatch(page, /仅保存到你的账号|输入后自动保存|停止输入 500ms 后自动保存/);
+  assert.doesNotMatch(page, /实时通道|监听中|已同步编辑器/);
+  assert.doesNotMatch(page, /className="lesson-notes-status"/);
+  assert.match(page, /editor-status-error/);
+  assert.match(page, /lesson-notes-error/);
   assert.match(css, /\.pane-head\.code-example-actions\s*\{[\s\S]*?justify-content:\s*flex-end/);
   assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
 });
