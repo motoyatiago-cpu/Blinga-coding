@@ -127,47 +127,47 @@
 }
 
 .web-pet-menu-item.is-ai{
-  right:132px;
-  bottom:6px;
+  right:142px;
+  bottom:38px;
 }
 
 .web-pet-menu-item.is-forum{
-  right:132px;
-  bottom:58px;
+  right:130px;
+  bottom:98px;
 }
 
 .web-pet-menu-item.is-feeling{
-  right:132px;
-  bottom:110px;
+  right:32px;
+  bottom:150px;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
   --web-pet-menu-shift-x:-34px;
   right:auto;
-  left:132px;
+  left:142px;
   transform-origin:0 100%;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-forum{
-  left:132px;
+  left:130px;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
-  left:132px;
+  left:32px;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
   --web-pet-menu-shift-y:-24px;
-  top:6px;
+  top:38px;
   bottom:auto;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
-  top:58px;
+  top:98px;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
-  top:110px;
+  top:150px;
 }
 
 .web-pet-menu-item span{
@@ -627,23 +627,23 @@
   }
 
   .web-pet-menu-item.is-ai{
-    right:98px;
-    bottom:0;
+    right:110px;
+    bottom:23px;
   }
 
   .web-pet-menu-item.is-forum{
     right:98px;
-    bottom:48px;
+    bottom:73px;
   }
 
   .web-pet-menu-item.is-feeling{
-    right:98px;
-    bottom:96px;
+    right:25px;
+    bottom:120px;
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
     right:auto;
-    left:98px;
+    left:110px;
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-forum{
@@ -651,20 +651,20 @@
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
-    left:98px;
+    left:25px;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
-    top:0;
+    top:23px;
     bottom:auto;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
-    top:48px;
+    top:73px;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
-    top:96px;
+    top:120px;
   }
 
   .web-pet-feeling-panel{

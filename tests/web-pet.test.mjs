@@ -151,6 +151,9 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(css, /animation:web-pet-menu-pop \.42s/);
   assert.match(css, /\.web-pet-menu-item\.is-feeling/);
   assert.match(css, /\.web-pet-feeling-panel\.is-open/);
+  assert.match(css, /\.web-pet-menu-item\.is-ai\{[\s\S]*?right:142px;[\s\S]*?bottom:38px;/);
+  assert.match(css, /\.web-pet-menu-item\.is-forum\{[\s\S]*?right:130px;[\s\S]*?bottom:98px;/);
+  assert.match(css, /\.web-pet-menu-item\.is-feeling\{[\s\S]*?right:32px;[\s\S]*?bottom:150px;/);
   assert.match(css, /\.web-pet-root\[data-menu-open="true"\] \.web-pet-bubble/);
   assert.match(css, /data-overlay-horizontal="right"/);
   assert.match(css, /data-overlay-vertical="down"/);
