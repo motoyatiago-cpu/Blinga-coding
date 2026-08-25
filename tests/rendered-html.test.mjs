@@ -616,6 +616,33 @@ test("removes passive microcopy while preserving functional error feedback", asy
   assert.doesNotMatch(css, /web-pet|desktop-pet|pet-stage/);
 });
 
+test("adds a persistent light and dark theme without recoloring code tools", async () => {
+  const [layout, toggle, themeCss, page, coursePage, profile, forum, login, register] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/theme-toggle.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/theme.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/forum/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/login/login-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/register/register-client.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(layout, /import "\.\/theme\.css"/);
+  assert.match(layout, /suppressHydrationWarning/);
+  assert.match(layout, /blinga-color-theme/);
+  assert.match(toggle, /localStorage\.setItem\(STORAGE_KEY, theme\)/);
+  assert.match(toggle, /切换到深色模式/);
+  assert.match(toggle, /切换到浅色模式/);
+  assert.match(themeCss, /html\[data-theme="light"\]/);
+  assert.match(themeCss, /Code, terminal and source-viewer surfaces deliberately remain dark/);
+  assert.match(themeCss, /:is\(\.code-example,\.sandbox,\.run-history,\.code-viewer-dialog/);
+  for (const source of [page, coursePage, profile, forum, login, register]) {
+    assert.match(source, /<ThemeToggle/);
+  }
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

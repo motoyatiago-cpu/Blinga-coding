@@ -72,8 +72,8 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(component, /aria-controls=\{PET_MENU_ID\}/);
   assert.match(component, /data-overlay-horizontal=\{overlayPlacement\.horizontal\}/);
   assert.match(component, /data-overlay-vertical=\{overlayPlacement\.vertical\}/);
-  assert.match(component, /bounds\.left < 180/);
-  assert.match(component, /bounds\.top < 120/);
+  assert.match(component, /bounds\.left < 380/);
+  assert.match(component, /bounds\.top < 260/);
   assert.doesNotMatch(component, /setBubbleMessage\("需要我做什么？"\)/);
   assert.match(component, /role="button"/);
   assert.match(component, /requestExistingAiAssistant/);

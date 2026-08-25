@@ -127,47 +127,47 @@
 }
 
 .web-pet-menu-item.is-ai{
-  right:106px;
-  bottom:18px;
+  right:132px;
+  bottom:6px;
 }
 
 .web-pet-menu-item.is-forum{
-  right:78px;
-  bottom:78px;
+  right:132px;
+  bottom:58px;
 }
 
 .web-pet-menu-item.is-feeling{
-  right:16px;
-  bottom:112px;
+  right:132px;
+  bottom:110px;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
   --web-pet-menu-shift-x:-34px;
   right:auto;
-  left:106px;
+  left:132px;
   transform-origin:0 100%;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-forum{
-  left:78px;
+  left:132px;
 }
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
-  left:16px;
+  left:132px;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
   --web-pet-menu-shift-y:-24px;
-  top:18px;
+  top:6px;
   bottom:auto;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
-  top:78px;
+  top:58px;
 }
 
 .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
-  top:112px;
+  top:110px;
 }
 
 .web-pet-menu-item span{
@@ -212,7 +212,7 @@
 
 .web-pet-feeling-panel{
   position:absolute;
-  right:102px;
+  right:132px;
   bottom:4px;
   z-index:8;
   width:228px;
@@ -233,7 +233,7 @@
 
 .web-pet-root[data-overlay-horizontal="right"] .web-pet-feeling-panel{
   right:auto;
-  left:102px;
+  left:132px;
   transform-origin:0 100%;
 }
 
@@ -627,55 +627,55 @@
   }
 
   .web-pet-menu-item.is-ai{
-    right:82px;
-    bottom:12px;
+    right:98px;
+    bottom:0;
   }
 
   .web-pet-menu-item.is-forum{
-    right:60px;
-    bottom:68px;
+    right:98px;
+    bottom:48px;
   }
 
   .web-pet-menu-item.is-feeling{
-    right:4px;
-    bottom:100px;
+    right:98px;
+    bottom:96px;
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item{
     right:auto;
-    left:82px;
+    left:98px;
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-forum{
-    left:60px;
+    left:98px;
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-menu-item.is-feeling{
-    left:4px;
+    left:98px;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item{
-    top:12px;
+    top:0;
     bottom:auto;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-forum{
-    top:68px;
+    top:48px;
   }
 
   .web-pet-root[data-overlay-vertical="down"] .web-pet-menu-item.is-feeling{
-    top:100px;
+    top:96px;
   }
 
   .web-pet-feeling-panel{
-    right:76px;
+    right:98px;
     bottom:0;
     width:min(220px,calc(100vw - 112px));
   }
 
   .web-pet-root[data-overlay-horizontal="right"] .web-pet-feeling-panel{
     right:auto;
-    left:76px;
+    left:98px;
   }
 }
 

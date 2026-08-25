@@ -94,8 +94,8 @@ export default function WebDesktopPet() {
     if (!bounds) return;
 
     const nextPlacement: PetOverlayPlacement = {
-      horizontal: bounds.left < 180 ? "right" : "left",
-      vertical: bounds.top < 120 ? "down" : "up",
+      horizontal: bounds.left < 380 ? "right" : "left",
+      vertical: bounds.top < 260 ? "down" : "up",
     };
     setOverlayPlacement((currentPlacement) => (
       currentPlacement.horizontal === nextPlacement.horizontal

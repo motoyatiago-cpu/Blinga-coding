@@ -1,4 +1,5 @@
 import "./forum.css";
+import ThemeToggle from "../theme-toggle";
 
 const categories = [
   {
@@ -31,6 +32,7 @@ export default function ForumPage() {
         <nav aria-label="论坛导航">
           <a href="/">学习中心</a>
           <a href="/?assistant=open">AI 问答</a>
+          <ThemeToggle />
         </nav>
       </header>
 
