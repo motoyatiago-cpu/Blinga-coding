@@ -8,6 +8,7 @@ import {
   resolvePrincipal,
 } from "./auth";
 import { handleProfileRequest, type ProfileEnv } from "./profile";
+import { handleForumRequest } from "./forum";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -1027,6 +1028,9 @@ const worker = {
 
     const profileResponse = await handleProfileRequest(request, env);
     if (profileResponse) return profileResponse;
+
+    const forumResponse = await handleForumRequest(request, env);
+    if (forumResponse) return forumResponse;
 
     if (url.pathname === "/api/ai") {
       return handleAiRequest(request, env);
