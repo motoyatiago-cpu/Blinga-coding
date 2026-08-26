@@ -1,4 +1,5 @@
 import { buildCourseUrl } from "../../course-links";
+import ThemeToggle from "../../theme-toggle";
 
 type LanguageSlug = "python" | "c-cpp" | "javascript" | "java";
 
@@ -93,7 +94,7 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
     <header className="topbar glass">
       <a className="brand" href="/"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
       <nav><a href="/">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href="/#map">知识图谱</a><a href="/#lab">在线实训</a></nav>
-      <a className="course-back" href="/">返回学习台 →</a>
+      <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href="/">返回学习台 →</a></div>
     </header>
 
     <div className="course-layout">

@@ -1,5 +1,7 @@
 "use client";
 
+import ThemeToggle from "../theme-toggle";
+
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type Provider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
@@ -91,6 +93,7 @@ export default function LoginClient() {
   return (
     <main className="login-page">
       <a className="login-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
+      <ThemeToggle className="theme-toggle-float" />
       <section className="login-panel" aria-labelledby="login-title">
         <header><h1 id="login-title">欢迎回来</h1><p>请输入你的账号信息。</p></header>
         {message && <div className="login-message" role="status">{message}</div>}

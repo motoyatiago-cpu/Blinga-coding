@@ -159,3 +159,31 @@ export const learningActivity = sqliteTable("learning_activity", {
 }, (table) => [
   index("learning_activity_user_idx").on(table.userId, table.id),
 ]);
+
+export const forumPosts = sqliteTable("forum_posts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  requestId: text("request_id").notNull(),
+  content: text("content").notNull(),
+  status: text("status").notNull().default("published"),
+  isDeleted: integer("is_deleted").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("forum_posts_user_request_idx").on(table.userId, table.requestId),
+  index("forum_posts_public_feed_idx").on(
+    table.status,
+    table.isDeleted,
+    table.createdAt,
+    table.id,
+  ),
+  index("forum_posts_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const forumUserStats = sqliteTable("forum_user_stats", {
+  userId: text("user_id").primaryKey(),
+  postCount: integer("post_count").notNull().default(0),
+  firstPostAt: text("first_post_at"),
+  lastPostAt: text("last_post_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

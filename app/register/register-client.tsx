@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import ThemeToggle from "../theme-toggle";
 
 async function readJson(response: Response): Promise<{ authenticated?: boolean; error?: string }> {
   const contentType = response.headers.get("Content-Type") || "";
@@ -42,6 +43,7 @@ export default function RegisterClient() {
 
   return <main className="login-page">
     <a className="login-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
+    <ThemeToggle className="theme-toggle-float" />
     <section className="login-panel" aria-labelledby="register-title">
       <header><h1 id="register-title">创建账号</h1><p>注册后可以同步课程进度、代码草稿和学习记录。</p></header>
       {message && <div className="login-message" role="status">{message}</div>}

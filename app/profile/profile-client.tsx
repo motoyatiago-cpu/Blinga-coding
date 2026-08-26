@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import CodeViewerDialog, { type CodeRecordRequest } from "../code-viewer-dialog";
+import ThemeToggle from "../theme-toggle";
 import { buildCourseUrl } from "../course-links";
 
 type Provider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
@@ -452,7 +453,7 @@ export default function ProfileClient() {
       <div className="profile-orb one" /><div className="profile-orb two" />
       <header className="profile-topbar glass">
         <a className="profile-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
-        <a href="/">返回学习中心</a>
+        <div className="profile-topbar-actions"><ThemeToggle /><a href="/">返回学习中心</a></div>
       </header>
 
       <div className="profile-layout">
