@@ -521,7 +521,7 @@ test("removes redundant sidebar glyphs and balances the learning and profile typ
   assert.match(profileCss, /\.profile-orb\.one\{\s*display:none/);
 });
 
-test("uses a borderless quiet hierarchy across every profile workspace tab", async () => {
+test("uses rounded filled surfaces across every profile workspace tab", async () => {
   const [profile, profileCss, pet] = await Promise.all([
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
@@ -534,10 +534,11 @@ test("uses a borderless quiet hierarchy across every profile workspace tab", asy
   assert.match(profile, /tab === "security"/);
   assert.match(profile, /tab === "data"/);
   assert.match(profileCss, /body:has\(\.profile-page\)::before,[\s\S]*?display:none/);
-  assert.match(profileCss, /\.profile-page \.glass,[\s\S]*?border:0;[\s\S]*?box-shadow:none;/);
-  assert.match(profileCss, /\.profile-panel>header\{[\s\S]*?border:0;/);
-  assert.match(profileCss, /\.profile-history-list article,[\s\S]*?\.profile-session-list article,[\s\S]*?border:0;/);
-  assert.match(profileCss, /\.profile-data-grid \.danger,[\s\S]*?border:0;/);
+  assert.match(profileCss, /--profile-card-bg:#15181d;/);
+  assert.match(profileCss, /--profile-card-radius:20px;/);
+  assert.match(profileCss, /\.profile-sidebar,[\s\S]*?\.profile-panel\{[\s\S]*?border:1px solid var\(--profile-card-line\);[\s\S]*?background:var\(--profile-card-bg\);/);
+  assert.match(profileCss, /\.profile-panel\{[\s\S]*?border-radius:var\(--profile-card-radius\);[\s\S]*?overflow:hidden;/);
+  assert.match(profileCss, /html\[data-theme="light"\] \.profile-page\{[\s\S]*?--profile-card-bg:#ffffff;[\s\S]*?--profile-card-line:rgba\(24,33,49,\.1\);/);
   assert.match(pet, /WebDesktopPet/);
 });
 
