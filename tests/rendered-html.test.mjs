@@ -539,7 +539,23 @@ test("uses rounded filled surfaces across every profile workspace tab", async ()
   assert.match(profileCss, /\.profile-sidebar,[\s\S]*?\.profile-panel\{[\s\S]*?border:1px solid var\(--profile-card-line\);[\s\S]*?background:var\(--profile-card-bg\);/);
   assert.match(profileCss, /\.profile-panel\{[\s\S]*?border-radius:var\(--profile-card-radius\);[\s\S]*?overflow:hidden;/);
   assert.match(profileCss, /html\[data-theme="light"\] \.profile-page\{[\s\S]*?--profile-card-bg:#ffffff;[\s\S]*?--profile-card-line:rgba\(24,33,49,\.1\);/);
+  assert.match(profile, /const providerOrder: Provider\[\] = \["microsoft", "qq", "wechat-open", "wechat-oa"\]/);
+  assert.match(profile, /<b>账号或邮箱 \+ 密码<\/b>/);
+  assert.match(profile, /当前站点尚未配置此登录方式/);
+  assert.doesNotMatch(profile, /<h2>活跃设备<\/h2>/);
+  assert.match(profileCss, /\.profile-password-form\{[\s\S]*?grid-template-columns:minmax\(0,720px\);[\s\S]*?padding:24px;/);
+  assert.match(profileCss, /\.profile-account-form\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\);[\s\S]*?padding:24px;/);
   assert.match(pet, /WebDesktopPet/);
+});
+
+test("restores rounded corners and omits active-device profile data", async () => {
+  const [themeCss, workerProfile] = await Promise.all([
+    readFile(new URL("../app/theme.css", import.meta.url), "utf8"),
+    readFile(new URL("../worker/profile.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(themeCss, /\.course-hero\.glass\{[\s\S]*?border-radius:20px;[\s\S]*?overflow:hidden;/);
+  assert.match(themeCss, /html\[data-theme="light"\] \.course-entry\.glass,[\s\S]*?border-radius:16px;[\s\S]*?background:#fff;/);
+  assert.doesNotMatch(workerProfile, /sessions: sessions\.results/);
 });
 
 test("applies the restrained dark reading hierarchy without touching the desktop pet", async () => {

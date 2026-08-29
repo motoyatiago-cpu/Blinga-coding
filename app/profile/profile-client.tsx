@@ -31,13 +31,6 @@ type ProfilePayload = {
     aiDetail: string;
   };
   links: Array<{ provider: Provider; name: string | null; email: string | null; lastUsedAt: string }>;
-  sessions: Array<{
-    id: string;
-    current: boolean;
-    device: string;
-    ipHint: string | null;
-    lastSeenAt: string;
-  }>;
   drafts: Array<{ language: string; topicIndex: number; preview: string; codeAvailable: boolean; updatedAt: string }>;
   notes: Array<{ language: string; topicIndex: number; preview: string; updatedAt: string }>;
 };
@@ -93,6 +86,8 @@ const providerLabels: Record<Provider, string> = {
   "wechat-open": "微信扫码",
   "wechat-oa": "微信内授权",
 };
+
+const providerOrder: Provider[] = ["microsoft", "qq", "wechat-open", "wechat-oa"];
 
 const avatarPresets = ["#7182ff", "#58e6ba", "#b27cff", "#ff8b76", "#f2c94c", "#4da3ff"];
 
@@ -316,8 +311,8 @@ export default function ProfileClient() {
     }
   }
 
-  async function signOut(all = false) {
-    await fetch(all ? "/api/auth/logout-all" : "/api/auth/logout", {
+  async function signOut() {
+    await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "same-origin",
     });
@@ -476,7 +471,7 @@ export default function ProfileClient() {
               </button>
             ))}
           </nav>
-          <button className="profile-signout" onClick={() => signOut(false)}>退出登录</button>
+          <button className="profile-signout" onClick={signOut}>退出登录</button>
         </aside>
 
         <section className="profile-main">
@@ -561,8 +556,35 @@ export default function ProfileClient() {
 
           {tab === "security" && <div className="profile-security">
             <section className="profile-panel glass"><header><div><h2>登录账号</h2></div></header><form className="profile-account-form" onSubmit={saveAccount}><label className="profile-field"><span>账号</span><input autoCapitalize="none" spellCheck={false} autoComplete="username" minLength={4} maxLength={20} pattern="[A-Za-z0-9_]{4,20}" placeholder="4–20 位字母、数字或下划线" value={accountUsername} onChange={(event) => setAccountUsername(event.target.value)} /></label><label className="profile-field"><span>邮箱</span><input type="email" value={profile.user.email || "尚未绑定邮箱"} readOnly aria-readonly="true" /></label><p>账号和邮箱都可用于登录。邮箱与第三方身份绑定，为避免账号丢失，暂不在此直接修改。</p><button className="profile-primary" type="submit" disabled={busy || !accountUsername}>{busy ? "保存中" : "保存账号"}</button></form></section>
-            <section className="profile-panel glass"><header><div><h2>登录方式</h2></div></header><div className="profile-link-list">{profile.links.map((link) => <article key={link.provider}><i>{link.provider === "microsoft" ? "M" : link.provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[link.provider]}</b><small>{link.email || link.name || "已验证账号"}</small></div><span>已绑定</span><button disabled={busy || (profile.links.length <= 1 && !passwordStatus?.enabled)} onClick={() => unlink(link.provider)}>解绑</button></article>)}{configuredProviders.filter(([provider]) => !profile.links.some((link) => link.provider === provider)).map(([provider]) => <article key={provider}><i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i><div><b>{providerLabels[provider]}</b><small>绑定后可使用该方式登录同一账号</small></div><a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a></article>)}</div></section>
-            <section className="profile-panel profile-password-card glass">
+            <section className="profile-panel glass">
+              <header><div><h2>登录方式</h2></div></header>
+              <div className="profile-link-list">
+                <article>
+                  <i>密</i>
+                  <div><b>账号或邮箱 + 密码</b><small>{passwordStatus?.enabled ? `登录标识：${passwordStatus.loginIdentifier}` : "设置独立密码后即可使用"}</small></div>
+                  <span>{passwordStatus?.enabled ? "已启用" : "未设置"}</span>
+                  <a href="#independent-password">管理</a>
+                </article>
+                {providerOrder.map((provider) => {
+                  const link = profile.links.find((item) => item.provider === provider);
+                  const configured = Boolean(session.providers[provider]);
+                  return <article key={provider}>
+                    <i>{provider === "microsoft" ? "M" : provider === "qq" ? "Q" : "微"}</i>
+                    <div>
+                      <b>{providerLabels[provider]}</b>
+                      <small>{link ? (link.email || link.name || "已验证账号") : configured ? "绑定后可登录同一账号" : "当前站点尚未配置此登录方式"}</small>
+                    </div>
+                    <span>{link ? "已绑定" : configured ? "可绑定" : "暂未开放"}</span>
+                    {link
+                      ? <button disabled={busy || (profile.links.length <= 1 && !passwordStatus?.enabled)} onClick={() => unlink(provider)}>解绑</button>
+                      : configured
+                        ? <a href={`/api/auth/${provider}/start?intent=link&returnTo=${encodeURIComponent("/profile?tab=security")}`}>绑定</a>
+                        : <span className="profile-provider-unavailable" aria-label={`${providerLabels[provider]} 暂未开放`}>—</span>}
+                  </article>;
+                })}
+              </div>
+            </section>
+            <section className="profile-panel profile-password-card glass" id="independent-password">
               <header><div><h2>独立密码</h2></div><b>{passwordStatus?.enabled ? "已启用" : "未设置"}</b></header>
               <form className="profile-password-form" onSubmit={savePassword}>
                 <p>{passwordStatus?.enabled ? "修改后，除当前设备外的登录会话将自动退出。" : "设置后，可使用账号或邮箱与密码登录 Blinga coding。"}</p>
@@ -574,7 +596,6 @@ export default function ProfileClient() {
                 <button className="profile-primary" disabled={busy || !passwordForm.newPassword || !passwordForm.confirmPassword || (Boolean(passwordStatus?.enabled) && !passwordForm.currentPassword)} type="submit">{busy ? "保存中" : passwordStatus?.enabled ? "更新密码" : "启用密码登录"}</button>
               </form>
             </section>
-            <section className="profile-panel glass"><header><div><h2>活跃设备</h2></div><button onClick={() => signOut(true)}>退出全部设备</button></header><div className="profile-session-list">{profile.sessions.map((item) => <article key={item.id}><div><b>{item.current ? "当前设备" : "其他设备"}</b><p>{item.device}</p><small>{item.ipHint || "未知网络"} · {formatDate(item.lastSeenAt)}</small></div></article>)}</div></section>
           </div>}
 
           {tab === "data" && <div className="profile-data-grid">

@@ -603,12 +603,53 @@ body:has(.profile-page)::after{
 }
 
 .profile-password-form{
-  padding:20px 0 24px;
+  grid-template-columns:minmax(0,720px);
+  justify-content:start;
+  padding:24px;
+}
+
+.profile-account-form{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px 24px;
+  padding:24px;
+}
+
+.profile-account-form .profile-field,
+.profile-password-form .profile-field{
+  padding:0;
+}
+
+.profile-account-form>p,
+.profile-account-form .profile-primary{
+  grid-column:1/-1;
+}
+
+.profile-account-form .profile-primary,
+.profile-password-form .profile-primary{
+  margin-left:0;
+  margin-right:0;
+}
+
+.profile-password-form>p,
+.profile-password-form>small,
+.profile-password-form .profile-primary{
+  grid-column:1;
 }
 
 .profile-password-summary{
   padding:22px 24px;
   border-bottom:1px solid var(--profile-card-line);
+}
+
+.profile-provider-unavailable{
+  min-width:32px;
+  color:#687287!important;
+  text-align:center;
+}
+
+.profile-link-list{
+  padding-left:4px;
+  padding-right:4px;
 }
 
 .profile-data-grid .profile-panel>p{
@@ -659,5 +700,19 @@ html[data-theme="light"] .profile-page{
   .profile-primary{
     margin-left:18px;
     margin-right:18px;
+  }
+
+  .profile-password-form{
+    padding:20px 18px;
+  }
+
+  .profile-account-form{
+    grid-template-columns:1fr;
+    padding:20px 18px;
+  }
+
+  .profile-account-form>p,
+  .profile-account-form .profile-primary{
+    grid-column:1;
   }
 }
