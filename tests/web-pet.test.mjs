@@ -160,6 +160,11 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(css, /\.web-pet-bubble\.is-visible/);
   assert.match(css, /\.web-pet-root:not\(\.is-dragging\):hover/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(css, /html\[data-theme="light"\] \.web-pet-root/);
+  assert.match(css, /--web-pet-surface:#ffffff/);
+  assert.match(css, /\.web-pet-menu-item\{[\s\S]*?background:var\(--web-pet-surface\)/);
+  assert.match(css, /\.web-pet-feeling-panel\{[\s\S]*?background:var\(--web-pet-surface-strong\)/);
+  assert.match(css, /\.web-pet-feeling-options button\{[\s\S]*?color:var\(--web-pet-muted\)/);
   assert.doesNotMatch(css, /web-pet-face-overlay/);
 
   assert.match(expressionBuilder, /SOURCE_SCREENS/);

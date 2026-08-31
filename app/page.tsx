@@ -66,6 +66,19 @@ type KnowledgeData = {
   depth: number;
 };
 type KnowledgeNode = Node<KnowledgeData, "knowledge">;
+type AiSearchSource = {
+  id: number;
+  title: string;
+  url: string;
+  description: string;
+  publishedAt?: string;
+};
+type AiResponse = {
+  answer: string;
+  sources?: AiSearchSource[];
+  searchedAt?: string;
+  webSearched?: boolean;
+};
 
 const MAX_SOURCE_FILE_CHARS = 12_000;
 const INITIAL_CHAT_MESSAGE = {
@@ -135,6 +148,14 @@ function defaultSourceFileName(language: Lang): string {
   if (language === "C/C++") return "main.cpp";
   if (language === "JavaScript") return "main.js";
   return "Main.java";
+}
+
+function sourceHostname(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "网页来源";
+  }
 }
 
 const pythonLessons: Course[] = [
@@ -1915,7 +1936,8 @@ export default function Home() {
   const [completedTopics, setCompletedTopics] = useState<Record<string, number[]>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResult, setSearchResult] = useState("");
+  const [searchResult, setSearchResult] = useState<AiResponse | null>(null);
+  const [searchStatus, setSearchStatus] = useState("");
   const [searchBusy, setSearchBusy] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -1975,7 +1997,8 @@ export default function Home() {
     setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopicIndex }));
     if (fromSearch) {
       setSearchOpen(false);
-      setSearchResult("");
+      setSearchResult(null);
+      setSearchStatus("");
     }
     if (!isSameCourse) {
       const nextUrl = buildCourseUrl(nextLanguage, safeTopicIndex);
@@ -1998,7 +2021,8 @@ export default function Home() {
     searchAbortRef.current?.abort();
     searchRequestRef.current += 1;
     setSearchQuery(value);
-    setSearchResult("");
+    setSearchResult(null);
+    setSearchStatus("");
     setSearchBusy(false);
   }
 
@@ -2201,9 +2225,13 @@ export default function Home() {
       body: JSON.stringify({ mode, prompt, context }),
       signal,
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "AI 服务暂时不可用");
-    return data.answer as string;
+    const contentType = response.headers.get("Content-Type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json() as AiResponse & { error?: string }
+      : null;
+    if (!response.ok) throw new Error(data?.error || "AI 服务暂时不可用");
+    if (!data?.answer) throw new Error("AI 未返回有效内容");
+    return data;
   }
 
   async function search() {
@@ -2218,16 +2246,20 @@ export default function Home() {
       controller.abort();
     }, 50_000);
     setSearchBusy(true);
-    setSearchResult("正在检索课程知识与扩展资料…");
+    setSearchResult(null);
+    setSearchStatus("正在联网检索并核对来源…");
     try {
-      const answer = await callAi("search", searchQuery, controller.signal);
-      if (requestId === searchRequestRef.current) setSearchResult(answer);
+      const result = await callAi("search", searchQuery, controller.signal);
+      if (requestId === searchRequestRef.current) {
+        setSearchResult(result);
+        setSearchStatus("");
+      }
     } catch (error) {
       if (requestId === searchRequestRef.current) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          if (timedOut) setSearchResult("AI 搜索响应超时，请稍后重试");
+          setSearchStatus(timedOut ? "联网搜索响应超时，请稍后重试" : "已停止本次搜索");
         } else {
-          setSearchResult(error instanceof Error ? error.message : "搜索失败");
+          setSearchStatus(error instanceof Error ? error.message : "搜索失败");
         }
       }
     } finally {
@@ -2255,9 +2287,9 @@ export default function Home() {
     setQuestion("");
     setAiBusy(true);
     try {
-      const answer = await callAi("chat", value, controller.signal);
+      const result = await callAi("chat", value, controller.signal);
       if (requestId === chatRequestRef.current) {
-        setMessages((current) => [...current, { role: "ai", text: answer }].slice(-40));
+        setMessages((current) => [...current, { role: "ai", text: result.answer }].slice(-40));
       }
     } catch (error) {
       if (requestId === chatRequestRef.current) {
@@ -2325,7 +2357,38 @@ export default function Home() {
                   )}</div>
                 : <p>没有找到完全匹配的课程，可调整关键词或使用 AI 深度搜索。</p>}
             </section>}
-            {searchResult && <div className="search-answer"><p>{searchResult}</p></div>}
+            {searchStatus && <div className="search-answer search-answer-status" role="status"><p>{searchStatus}</p></div>}
+            {searchResult && <div className="search-answer">
+              <p>{searchResult.answer}</p>
+              {searchResult.webSearched && searchResult.sources && searchResult.sources.length > 0 && (
+                <section className="search-sources" aria-label="联网搜索来源">
+                  <header>
+                    <b>联网来源</b>
+                    {searchResult.searchedAt && <time dateTime={searchResult.searchedAt}>
+                      {new Date(searchResult.searchedAt).toLocaleString("zh-CN", { hour12: false })}
+                    </time>}
+                  </header>
+                  <div>
+                    {searchResult.sources.map((source) => (
+                      <a
+                        href={source.url}
+                        key={`${source.id}:${source.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`来源 ${source.id}：${source.title}（新标签页打开）`}
+                      >
+                        <span>{source.id}</span>
+                        <span>
+                          <b>{source.title}</b>
+                          <small>{sourceHostname(source.url)}{source.publishedAt ? ` · ${source.publishedAt}` : ""}</small>
+                        </span>
+                        <strong aria-hidden="true">↗</strong>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>}
           </div>
         </div>
 

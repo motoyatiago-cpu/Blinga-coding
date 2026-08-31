@@ -1,3 +1,23 @@
+:root,
+html[data-theme="dark"]{
+  --ui-page:#0d0f12;
+  --ui-surface:#15181d;
+  --ui-surface-raised:#1a1e24;
+  --ui-surface-soft:#111419;
+  --ui-control:#1a1e24;
+  --ui-control-hover:#232832;
+  --ui-text:#f1f3f5;
+  --ui-text-muted:#a5acb7;
+  --ui-text-subtle:#7f8792;
+  --ui-line:rgba(255,255,255,.08);
+  --ui-accent:#818cf8;
+  --ui-accent-soft:rgba(129,140,248,.14);
+  --ui-accent-text:#cbd0ff;
+  --ui-on-accent:#fff;
+  --ui-scrim:rgba(3,4,7,.72);
+  --ui-shadow:0 20px 60px rgba(0,0,0,.36);
+}
+
 .theme-toggle{
   width:38px;
   height:38px;
@@ -7,14 +27,14 @@
   padding:0;
   border:0;
   border-radius:9px;
-  background:var(--surface-hover,#1a1e24);
-  color:var(--text,#f1f3f5);
+  background:var(--ui-control);
+  color:var(--ui-text);
   cursor:pointer;
   transition:background-color .18s ease,color .18s ease,transform .18s ease;
 }
 
 .theme-toggle:hover{
-  background:#232832;
+  background:var(--ui-control-hover);
 }
 
 .theme-toggle:focus-visible{
@@ -67,6 +87,22 @@ html[data-theme="light"]{
   --purple:#5965d8;
   --line:rgba(24,33,49,.09);
   --line-hi:rgba(24,33,49,.15);
+  --ui-page:#f4f6fa;
+  --ui-surface:#ffffff;
+  --ui-surface-raised:#f7f8fb;
+  --ui-surface-soft:#edf0f5;
+  --ui-control:#eef1f6;
+  --ui-control-hover:#dde3ec;
+  --ui-text:#182131;
+  --ui-text-muted:#526071;
+  --ui-text-subtle:#667085;
+  --ui-line:rgba(24,33,49,.1);
+  --ui-accent:#5965d8;
+  --ui-accent-soft:rgba(89,101,216,.12);
+  --ui-accent-text:#4652c5;
+  --ui-on-accent:#ffffff;
+  --ui-scrim:rgba(36,43,57,.28);
+  --ui-shadow:0 18px 54px rgba(34,45,67,.14);
 }
 
 html[data-theme="light"] body{
@@ -75,17 +111,36 @@ html[data-theme="light"] body{
 }
 
 html[data-theme="light"] .theme-toggle{
-  background:#e9edf4;
-  color:#283246;
+  background:var(--ui-control);
+  color:var(--ui-text);
 }
 
 html[data-theme="light"] .theme-toggle:hover{
-  background:#dde3ec;
+  background:var(--ui-control-hover);
 }
 
 html[data-theme="light"] :is(.topbar.glass,.profile-topbar,.forum-topbar){
   color:var(--text);
   background:#fff;
+}
+
+html[data-theme="light"] :is(.topbar nav a,.search-trigger,.course-nav-back,.course-switcher a){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.topbar nav a:hover,.topbar nav a.active,.course-nav-back:hover,.course-switcher a:hover){
+  color:var(--ui-text);
+}
+
+html[data-theme="light"] .search-trigger{
+  background:var(--ui-control);
+  border-color:transparent;
+}
+
+html[data-theme="light"] .search-trigger kbd{
+  color:var(--ui-text-muted);
+  background:var(--ui-surface);
+  border-color:var(--ui-line);
 }
 
 html[data-theme="light"] :is(.brand,.profile-brand,.forum-brand,.course-back,.profile-topbar-actions>a){
@@ -109,6 +164,49 @@ html[data-theme="light"] :is(.profile-orb,.forum-ambient){
 
 html[data-theme="light"] :is(.lesson-card,.deep-lesson,.feature-section,.lesson-notes,.course-catalog,.profile-main){
   color:var(--text);
+}
+
+html[data-theme="light"] :is(.lesson-card,.concept-flow article,.pitfall-grid article,.lesson-notes,.document-export){
+  color:var(--ui-text);
+  background:var(--ui-surface);
+  background-image:none;
+  border-color:var(--ui-line);
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.concept-flow p,.pitfall-grid p,.lesson-notes textarea,.document-export small,.document-export label){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.section-heading select,.document-export select){
+  color:var(--ui-text);
+  background:var(--ui-control);
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] :is(.pager button,.toolbar button,.focus-mode-toggle){
+  color:var(--ui-text-muted);
+  background:var(--ui-control);
+  border-color:transparent;
+}
+
+html[data-theme="light"] :is(.pager button:hover,.toolbar button:hover,.focus-mode-toggle:hover){
+  color:var(--ui-text);
+  background:var(--ui-control-hover);
+}
+
+html[data-theme="light"] :is(.primary,.toolbar button.primary,.document-export button){
+  color:var(--ui-on-accent);
+  background:var(--ui-accent);
+}
+
+html[data-theme="light"] .note{
+  color:var(--ui-text);
+  background:var(--ui-accent-soft);
+}
+
+html[data-theme="light"] .note :is(b,span){
+  color:inherit;
 }
 
 html[data-theme="light"] :is(.breadcrumb,.catalog-breadcrumb,.meta,.deep-intro p,.section-heading p,.lesson-card>p,.note span,.profile-section-head,.profile-panel p,.profile-panel small,.forum-hero>span,.forum-categories p,.forum-guidelines p){
@@ -175,26 +273,121 @@ html[data-theme="light"] :is(.account-popover>a:hover,.account-popover>button:ho
 }
 
 html[data-theme="light"] .search-overlay{
-  background:rgba(36,43,57,.28);
+  background:var(--ui-scrim);
+}
+
+html[data-theme="light"] .account-popover>header{
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] .account-popover header small,
+html[data-theme="light"] .account-provider-list>p{
+  color:var(--ui-text-muted);
 }
 
 html[data-theme="light"] .search-dialog.glass,
 html[data-theme="light"] .search-answer,
 html[data-theme="light"] .course-search-results{
-  color:#182131;
-  background:#fff;
+  color:var(--ui-text);
+  background:var(--ui-surface);
   box-shadow:none;
+}
+
+html[data-theme="light"] :is(.search-dialog-head button,.course-search-results>div>button){
+  color:var(--ui-text);
+}
+
+html[data-theme="light"] :is(.search-dialog-head small,.course-search-results>header,.course-search-results button small,.course-search-results button em,.course-search-results>p,.search-answer p){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.search-dialog-head button:hover,.course-search-results>div>button:hover,.course-search-results>div>button:focus-visible){
+  color:var(--ui-text);
+  background:var(--ui-control);
 }
 
 html[data-theme="light"] :is(.search-box input,.chat-input textarea){
-  color:#182131;
-  background:#f1f3f7;
-  border-color:rgba(24,33,49,.1);
+  color:var(--ui-text);
+  background:var(--ui-surface-raised);
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] .chat.glass{
+  color:var(--ui-text);
+  background:var(--ui-surface);
+  background-image:none;
+  border-color:var(--ui-line);
+  box-shadow:var(--ui-shadow);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+
+html[data-theme="light"] .chat-head{
+  color:var(--ui-text);
+  background:var(--ui-surface-raised);
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] .chat-head>div>span{
+  color:var(--ui-accent-text);
+  background:var(--ui-accent-soft);
+  border-color:transparent;
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.chat-head small,.chat-head button,.chat-head-actions .chat-clear,.chat-head-actions .chat-reset-layout){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.chat-head button:hover,.chat-head-actions .chat-clear:hover,.chat-head-actions .chat-reset-layout:hover){
+  color:var(--ui-text);
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] .messages{
+  background:var(--ui-surface);
+}
+
+html[data-theme="light"] .message.ai{
+  color:var(--ui-text);
+  background:var(--ui-surface-soft);
+  border-color:transparent;
+}
+
+html[data-theme="light"] .message.user{
+  color:#2d387f;
+  background:var(--ui-accent-soft);
+  border-color:transparent;
+}
+
+html[data-theme="light"] .chips button{
+  color:var(--ui-text-muted);
+  background:var(--ui-control);
+  border-color:transparent;
+}
+
+html[data-theme="light"] .chips button:hover{
+  color:var(--ui-accent-text);
+  background:var(--ui-accent-soft);
+}
+
+html[data-theme="light"] .chat-input{
+  background:var(--ui-surface-raised);
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] .ai-working{
+  color:var(--ui-text-muted);
 }
 
 html[data-theme="light"] .graph-shell.glass{
-  background:#fff;
+  background:var(--ui-surface);
   box-shadow:none;
+}
+
+html[data-theme="light"] .graph-shell.is-loading:after{
+  color:var(--ui-accent-text);
+  background:rgba(244,246,250,.9);
 }
 
 html[data-theme="light"] .react-flow__background{
@@ -206,9 +399,19 @@ html[data-theme="light"] :is(.react-flow__controls,.react-flow__minimap){
 }
 
 html[data-theme="light"] .knowledge-node{
-  background:#fff;
+  background:var(--ui-surface);
   background-image:none;
   box-shadow:none;
+}
+
+html[data-theme="light"] :is(.node-description,.node-color,.node-delete){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] .react-flow__controls-button{
+  color:var(--ui-text-muted)!important;
+  background:var(--ui-surface-raised)!important;
+  border-color:var(--ui-line)!important;
 }
 
 html[data-theme="light"] .forum-topbar nav{
@@ -217,6 +420,16 @@ html[data-theme="light"] .forum-topbar nav{
 
 html[data-theme="light"] :is(.forum-topbar nav a,.forum-brand){
   color:#475467;
+}
+
+html[data-theme="light"] :is(.forum-guidelines li,.forum-categories p,.forum-guidelines p){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] .forum-brand>span{
+  color:var(--ui-accent-text);
+  background:var(--ui-control);
+  border-color:transparent;
 }
 
 html[data-theme="light"] .login-brand{
@@ -243,6 +456,69 @@ html[data-theme="light"] :is(.login-providers a,.guest-entry){
   color:#344054;
   background:#f1f3f7;
   border-color:rgba(24,33,49,.08);
+}
+
+html[data-theme="light"] .login-message{
+  color:#9b3d3a;
+  background:#fff0ef;
+}
+
+html[data-theme="light"] :is(.password-input button,.login-options button){
+  color:var(--ui-text-muted);
+  background:transparent;
+}
+
+html[data-theme="light"] :is(.password-input button:hover,.login-options button:hover){
+  color:var(--ui-text);
+}
+
+/* Personal workspace surfaces use the same semantic theme tokens. */
+html[data-theme="light"] :is(.profile-page,.profile-gate,.profile-loading){
+  color:var(--ui-text);
+  background:var(--ui-page);
+  background-image:none;
+}
+
+html[data-theme="light"] .profile-topbar,
+html[data-theme="light"] .profile-sidebar{
+  color:var(--ui-text);
+  background:var(--ui-surface);
+}
+
+html[data-theme="light"] :is(.profile-sidebar nav button,.profile-signout){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.profile-sidebar nav button:hover,.profile-sidebar nav button.active,.profile-signout:hover){
+  color:var(--ui-text);
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] .profile-sidebar nav button.active{
+  box-shadow:inset 2px 0 0 var(--ui-accent);
+}
+
+html[data-theme="light"] :is(.profile-panel header>button,.profile-history-head button,.profile-upload,.profile-link-list article>button,.profile-link-list article>a,.profile-password-login){
+  color:var(--ui-text);
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] :is(.profile-field input,.profile-field select,.profile-history-head select){
+  color:var(--ui-text);
+  background:var(--ui-surface-raised);
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] :is(.profile-recent-grid article:hover,.profile-history-list article:hover,.profile-content-list>a:hover,.profile-content-list>button:hover,.profile-link-list article:hover,.profile-session-list article:hover){
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] :is(.profile-content-list>a,.profile-content-list>button,.profile-password-list b,.profile-password-summary b,.profile-link-list article div b,.profile-session-list b){
+  color:var(--ui-text);
+}
+
+html[data-theme="light"] :is(.profile-content-list p,.profile-content-list pre,.profile-recent-grid p,.profile-history-list p,.profile-password-list span,.profile-password-summary p,.profile-session-list p,.profile-account-form>p,.profile-password-form>p,.profile-password-form>small){
+  color:var(--ui-text-muted);
 }
 
 /* Code, terminal and source-viewer surfaces deliberately remain dark in both modes. */
@@ -289,4 +565,25 @@ html[data-theme="light"] .course-level-summary article.glass{
   .course-hero.glass{
     border-radius:16px;
   }
+}
+
+html[data-theme="light"] .search-sources{
+  border-color:var(--ui-line);
+}
+
+html[data-theme="light"] :is(.search-sources>header,.search-sources a small,.search-sources a strong){
+  color:var(--ui-text-muted);
+}
+
+html[data-theme="light"] :is(.search-sources>header b,.search-sources a){
+  color:var(--ui-text);
+}
+
+html[data-theme="light"] .search-sources a>span:first-child{
+  color:var(--ui-accent);
+  background:var(--ui-accent-soft);
+}
+
+html[data-theme="light"] :is(.search-sources a:hover,.search-sources a:focus-visible){
+  background:var(--ui-control);
 }
