@@ -159,3 +159,16 @@ export const learningActivity = sqliteTable("learning_activity", {
 }, (table) => [
   index("learning_activity_user_idx").on(table.userId, table.id),
 ]);
+
+export const forumPosts = sqliteTable("forum_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  authorKey: text("author_key").notNull(),
+  authorName: text("author_name").notNull(),
+  category: text("category").notNull(),
+  content: text("content").notNull(),
+  resolved: integer("resolved").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("forum_posts_created_idx").on(table.id),
+  index("forum_posts_author_idx").on(table.authorKey, table.id),
+]);

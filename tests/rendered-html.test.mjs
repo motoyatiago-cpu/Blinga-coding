@@ -643,6 +643,27 @@ test("adds a persistent light and dark theme without recoloring code tools", asy
   }
 });
 
+test("server-renders the complete two-column forum workspace", async () => {
+  const [response, styles, worker, migration] = await Promise.all([
+    render("/forum"),
+    readFile(new URL("../app/forum/forum.css", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0010_elite_vertigo.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /用户论坛/);
+  assert.match(html, /最新讨论/);
+  assert.match(html, /发布讨论/);
+  assert.match(html, /社区指南/);
+  assert.match(html, /热门标签/);
+  assert.match(styles, /grid-template-columns:minmax\(0,1fr\) 300px/);
+  assert.match(worker, /if \(url\.pathname === "\/api\/forum"\)/);
+  assert.doesNotMatch(worker, /CREATE TABLE IF NOT EXISTS forum_posts/);
+  assert.match(migration, /CREATE TABLE `forum_posts`/);
+});
+
 test("server-renders the personal workspace route", async () => {
   const response = await render("/profile");
   assert.equal(response.status, 200);

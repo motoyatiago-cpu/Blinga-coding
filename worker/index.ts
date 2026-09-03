@@ -39,6 +39,7 @@ const MAX_CODE_INPUT = 12_000;
 const MAX_STDIN_INPUT = 2_000;
 const MAX_RUNNER_OUTPUT = 16_000;
 const MAX_NOTE_INPUT = 8_000;
+const MAX_FORUM_INPUT = 1_000;
 const AI_UPSTREAM_TIMEOUT_MS = 45_000;
 
 type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
@@ -596,6 +597,46 @@ async function handleNotesRequest(request: Request, env: Env): Promise<Response>
   return jsonResponse({ saved: true });
 }
 
+type ForumRecord = { id:number; author_key:string; author_name:string; category:"help"|"share"; content:string; resolved:number; created_at:string };
+
+async function forumPayload(request:Request,env:Env){
+  const principal=await resolvePrincipal(request,env);
+  const rows=await env.DB.prepare(`SELECT id, author_key, author_name, category, content, resolved, created_at FROM forum_posts ORDER BY id DESC LIMIT 100`).all<ForumRecord>();
+  const stats=await env.DB.prepare(`SELECT COUNT(*) AS posts, COUNT(DISTINCT author_key) AS participants FROM forum_posts`).first<{posts:number;participants:number}>();
+  return {
+    posts:rows.results.map((post:ForumRecord)=>({id:post.id,authorName:post.author_name,category:post.category,content:post.content,resolved:Boolean(post.resolved),ownedByViewer:principal?.userKey===post.author_key,createdAt:post.created_at})),
+    stats:{posts:Number(stats?.posts||0),participants:Number(stats?.participants||0)},
+    viewer:{authenticated:Boolean(principal)},
+  };
+}
+
+async function handleForumRequest(request:Request,env:Env):Promise<Response>{
+  if(request.method==="GET") return jsonResponse(await forumPayload(request,env));
+  const origin=request.headers.get("Origin");
+  if(origin&&origin!==new URL(request.url).origin)return jsonResponse({error:"请求来源无效"},403);
+  const principal=await resolvePrincipal(request,env);
+  if(!principal)return jsonResponse({error:"请先登录后再参与讨论"},401);
+  let body:{id?:unknown;category?:unknown;content?:unknown;resolved?:unknown};
+  try{body=await request.json()}catch{return jsonResponse({error:"请求格式无效"},400)}
+  if(request.method==="POST"){
+    const category=body.category==="help"||body.category==="share"?body.category:null;
+    const content=typeof body.content==="string"?body.content.trim():"";
+    if(!category||!content||content.length>MAX_FORUM_INPUT)return jsonResponse({error:"讨论内容为空或超过 1000 个字符"},400);
+    const fallbackName=principal.legacyEmail?.split("@")[0]||"学习者";
+    const authorName=(principal.session?.displayName||fallbackName).trim().slice(0,80)||"学习者";
+    await env.DB.prepare(`INSERT INTO forum_posts (author_key, author_name, category, content, resolved, created_at) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`).bind(principal.userKey,authorName,category,content).run();
+    return jsonResponse(await forumPayload(request,env),201);
+  }
+  if(request.method==="PATCH"){
+    const id=Number(body.id);
+    if(!Number.isInteger(id)||id<=0||body.resolved!==true)return jsonResponse({error:"讨论标识无效"},400);
+    const result=await env.DB.prepare("UPDATE forum_posts SET resolved = 1 WHERE id = ? AND author_key = ?").bind(id,principal.userKey).run();
+    if(!result.meta.changes)return jsonResponse({error:"只能更新自己发布的讨论"},403);
+    return jsonResponse(await forumPayload(request,env));
+  }
+  return jsonResponse({error:"仅支持 GET、POST 或 PATCH 请求"},405);
+}
+
 const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = {
   Python: [
     { stdin: "学习者\n", expected: "你好，学习者！\n欢迎来到 Blinga coding" },
@@ -1058,6 +1099,10 @@ const worker = {
 
     if (url.pathname === "/api/notes") {
       return handleNotesRequest(request, env);
+    }
+
+    if (url.pathname === "/api/forum") {
+      return handleForumRequest(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {
