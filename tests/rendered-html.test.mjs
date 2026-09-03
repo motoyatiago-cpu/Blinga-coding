@@ -683,6 +683,10 @@ test("adds a persistent light and dark theme without recoloring code tools", asy
   assert.match(themeCss, /--ui-text:#182131/);
   assert.match(themeCss, /html\[data-theme="light"\] \.chat\.glass/);
   assert.match(themeCss, /html\[data-theme="light"\] \.message\.ai/);
+  assert.match(themeCss, /--ui-chat-text:#101828/);
+  assert.match(themeCss, /html\[data-theme="light"\] \.message\.ai\{\s*color:var\(--ui-chat-text\)/);
+  assert.match(themeCss, /html\[data-theme="light"\] \.message\.user\{\s*color:var\(--ui-chat-text\)/);
+  assert.match(themeCss, /html\[data-theme="light"\] \.chat-input textarea::placeholder/);
   assert.match(themeCss, /html\[data-theme="light"\] \.profile-topbar/);
   assert.match(themeCss, /html\[data-theme="light"\] :is\(\.search-dialog-head button,\.course-search-results>div>button\)/);
   assert.match(themeCss, /Code, terminal and source-viewer surfaces deliberately remain dark/);

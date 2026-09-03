@@ -101,6 +101,8 @@ html[data-theme="light"]{
   --ui-accent-soft:rgba(89,101,216,.12);
   --ui-accent-text:#4652c5;
   --ui-on-accent:#ffffff;
+  --ui-chat-text:#101828;
+  --ui-chat-muted:#344054;
   --ui-scrim:rgba(36,43,57,.28);
   --ui-shadow:0 18px 54px rgba(34,45,67,.14);
 }
@@ -349,19 +351,19 @@ html[data-theme="light"] .messages{
 }
 
 html[data-theme="light"] .message.ai{
-  color:var(--ui-text);
+  color:var(--ui-chat-text);
   background:var(--ui-surface-soft);
   border-color:transparent;
 }
 
 html[data-theme="light"] .message.user{
-  color:#2d387f;
+  color:var(--ui-chat-text);
   background:var(--ui-accent-soft);
   border-color:transparent;
 }
 
 html[data-theme="light"] .chips button{
-  color:var(--ui-text-muted);
+  color:var(--ui-chat-muted);
   background:var(--ui-control);
   border-color:transparent;
 }
@@ -376,8 +378,17 @@ html[data-theme="light"] .chat-input{
   border-color:var(--ui-line);
 }
 
+html[data-theme="light"] .chat-input textarea{
+  color:var(--ui-chat-text);
+}
+
+html[data-theme="light"] .chat-input textarea::placeholder{
+  color:var(--ui-chat-muted);
+  opacity:1;
+}
+
 html[data-theme="light"] .ai-working{
-  color:var(--ui-text-muted);
+  color:var(--ui-chat-muted);
 }
 
 html[data-theme="light"] .graph-shell.glass{
