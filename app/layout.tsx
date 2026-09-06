@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "./global-styles.css";
 import "lenis/dist/lenis.css";
 import "./refined-dark-ui.css";
 import "./theme.css";

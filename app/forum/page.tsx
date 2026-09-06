@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import ThemeToggle from "../theme-toggle";
 import ForumClient from "./forum-client";
-import "./forum.css";
 
 export const metadata: Metadata = {
   title: "用户论坛 · Blinga coding",

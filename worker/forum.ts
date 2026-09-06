@@ -17,6 +17,8 @@ const POST_RATE_LIMIT = 5;
 type ForumPostRow = {
   id: string;
   user_id: string;
+  category: string;
+  resolved: number;
   content: string;
   created_at: string;
   updated_at: string;
@@ -86,6 +88,8 @@ function publicPost(row: ForumPostRow, viewer: SessionUser | null) {
   return {
     id: row.id,
     content: row.content,
+    category: row.category,
+    resolved: Boolean(row.resolved),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     author: {
@@ -162,7 +166,7 @@ async function listPosts(request: Request, env: ForumEnv): Promise<Response> {
   const result = cursor
     ? await env.DB.prepare(`
         SELECT
-          p.id, p.user_id, p.content, p.created_at, p.updated_at,
+          p.id, p.user_id, p.category, p.resolved, p.content, p.created_at, p.updated_at,
           u.display_name, u.username, u.avatar_type, u.avatar_value
         FROM forum_posts p
         JOIN users u ON u.id = p.user_id
@@ -173,7 +177,7 @@ async function listPosts(request: Request, env: ForumEnv): Promise<Response> {
       `).bind(cursor.createdAt, cursor.createdAt, cursor.id, limit + 1).all<ForumPostRow>()
     : await env.DB.prepare(`
         SELECT
-          p.id, p.user_id, p.content, p.created_at, p.updated_at,
+          p.id, p.user_id, p.category, p.resolved, p.content, p.created_at, p.updated_at,
           u.display_name, u.username, u.avatar_type, u.avatar_value
         FROM forum_posts p
         JOIN users u ON u.id = p.user_id
@@ -202,7 +206,7 @@ async function createPost(request: Request, env: ForumEnv): Promise<Response> {
   const contentLength = Number(request.headers.get("Content-Length") || "0");
   if (contentLength > 5_000) return forumJson({ error: "留言内容过长" }, 413);
 
-  let body: { content?: unknown; requestId?: unknown };
+  let body: { content?: unknown; requestId?: unknown; category?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -212,6 +216,7 @@ async function createPost(request: Request, env: ForumEnv): Promise<Response> {
   const content = typeof body.content === "string"
     ? body.content.replace(/\r\n?/g, "\n").trim()
     : "";
+  const category = body.category === "share" ? "share" : "help";
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
   if (!content) return forumJson({ error: "请输入留言内容" }, 400);
   if (content.length > MAX_POST_LENGTH) {
@@ -243,9 +248,9 @@ async function createPost(request: Request, env: ForumEnv): Promise<Response> {
   try {
     await env.DB.batch([
       env.DB.prepare(`
-        INSERT INTO forum_posts (id, user_id, request_id, content)
-        VALUES (?, ?, ?, ?)
-      `).bind(id, user.id, requestId, content),
+        INSERT INTO forum_posts (id, user_id, request_id, content, category)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(id, user.id, requestId, content, category),
       env.DB.prepare(`
         INSERT INTO forum_user_stats (
           user_id, post_count, first_post_at, last_post_at, updated_at
@@ -267,6 +272,8 @@ async function createPost(request: Request, env: ForumEnv): Promise<Response> {
   const row: ForumPostRow = {
     id,
     user_id: user.id,
+    category,
+    resolved: 0,
     content,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -346,6 +353,14 @@ export async function handleForumRequest(
   if (url.pathname !== "/api/forum/posts") return null;
   if (request.method === "GET") return listPosts(request, env);
   if (request.method === "POST") return createPost(request, env);
+  if (request.method === "PATCH") {
+    if (!sameOrigin(request)) return forumJson({ error: "请求来源无效" }, 403);
+    const user = await getSessionUser(request, env);
+    if (!user) return forumJson({ error: "请先登录" }, 401);
+    const id = url.searchParams.get("id") || "";
+    const result = await env.DB.prepare("UPDATE forum_posts SET resolved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND is_deleted = 0 AND category = 'help'").bind(id, user.id).run();
+    return result.meta.changes ? forumJson({ resolved: true }) : forumJson({ error: "讨论不存在或无权修改" }, 404);
+  }
   if (request.method === "DELETE") return deletePost(request, env);
   return forumJson({ error: "不支持该请求方法" }, 405);
 }
