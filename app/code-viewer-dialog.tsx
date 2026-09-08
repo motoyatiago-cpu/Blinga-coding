@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildCourseUrl } from "./course-links";
 
@@ -180,10 +180,12 @@ export default function CodeViewerDialog({
     };
   }, [request]);
 
-  const lineNumbers = useMemo(() => {
-    if (record?.code == null) return "1";
-    return Array.from({ length: Math.max(1, record.code.split("\n").length) }, (_, index) => index + 1).join("\n");
-  }, [record?.code]);
+  const lineNumbers = record?.code == null
+    ? "1"
+    : Array.from(
+        { length: Math.max(1, record.code.split("\n").length) },
+        (_, index) => index + 1,
+      ).join("\n");
 
   if (!request || typeof document === "undefined") return null;
 

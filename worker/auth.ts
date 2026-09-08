@@ -857,8 +857,8 @@ async function validateMicrosoftIdToken(
   const valid = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     key,
-    parsed.signature,
-    new TextEncoder().encode(parsed.signingInput),
+    Uint8Array.from(parsed.signature).buffer,
+    new TextEncoder().encode(parsed.signingInput).buffer,
   );
   if (!valid) throw new Error("Microsoft ID token 签名无效");
 

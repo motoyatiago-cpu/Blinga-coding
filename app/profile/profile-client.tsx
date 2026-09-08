@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import CodeViewerDialog, { type CodeRecordRequest } from "../code-viewer-dialog";
 import ThemeToggle from "../theme-toggle";
 import { buildCourseUrl } from "../course-links";
@@ -160,40 +160,7 @@ export default function ProfileClient() {
     [session],
   );
 
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (requested && tabs.some((item) => item.id === requested)) setTab(requested);
-    const authError = new URLSearchParams(window.location.search).get("authError");
-    if (authError) setMessage(`登录未完成：${authError}`);
-    loadSession();
-  }, []);
-
-  async function loadSession() {
-    try {
-      let nextSession = await readJson<SessionPayload>(
-        await fetch("/api/auth/session", { credentials: "same-origin" }),
-      );
-      if (!nextSession.authenticated && nextSession.transition?.active) {
-        await readJson(await fetch("/api/auth/transition/activate", {
-          method: "POST",
-          credentials: "same-origin",
-        }));
-        nextSession = await readJson<SessionPayload>(
-          await fetch("/api/auth/session", { credentials: "same-origin" }),
-        );
-      }
-      setSession(nextSession);
-      if (nextSession.authenticated) await loadPrivateData();
-    } catch (error) {
-      setSession({
-        authenticated: false,
-        providers: { microsoft: false, qq: false, "wechat-open": false, "wechat-oa": false },
-      });
-      setMessage(error instanceof Error ? error.message : "无法读取登录状态");
-    }
-  }
-
-  async function loadPrivateData() {
+  const loadPrivateData = useCallback(async () => {
     const [nextProfile, nextOverview, nextHistory, nextPasswordStatus] = await Promise.all([
       readJson<ProfilePayload>(await fetch("/api/profile", { credentials: "same-origin" })),
       readJson<OverviewPayload>(await fetch("/api/profile/overview", { credentials: "same-origin" })),
@@ -219,7 +186,41 @@ export default function ProfileClient() {
       reduceMotion: nextProfile.preferences.reduceMotion,
       aiDetail: nextProfile.preferences.aiDetail,
     });
-  }
+  }, []);
+
+  const loadSession = useCallback(async () => {
+    try {
+      let nextSession = await readJson<SessionPayload>(
+        await fetch("/api/auth/session", { credentials: "same-origin" }),
+      );
+      if (!nextSession.authenticated && nextSession.transition?.active) {
+        await readJson(await fetch("/api/auth/transition/activate", {
+          method: "POST",
+          credentials: "same-origin",
+        }));
+        nextSession = await readJson<SessionPayload>(
+          await fetch("/api/auth/session", { credentials: "same-origin" }),
+        );
+      }
+      setSession(nextSession);
+      if (nextSession.authenticated) await loadPrivateData();
+    } catch (error) {
+      setSession({
+        authenticated: false,
+        providers: { microsoft: false, qq: false, "wechat-open": false, "wechat-oa": false },
+      });
+      setMessage(error instanceof Error ? error.message : "无法读取登录状态");
+    }
+  }, [loadPrivateData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("tab") as Tab | null;
+    if (requested && tabs.some((item) => item.id === requested)) setTab(requested);
+    const authError = params.get("authError");
+    if (authError) setMessage(`登录未完成：${authError}`);
+    void loadSession();
+  }, [loadSession]);
 
   function changeTab(nextTab: Tab) {
     setTab(nextTab);
