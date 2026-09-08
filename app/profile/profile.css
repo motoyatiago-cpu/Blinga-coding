@@ -494,3 +494,225 @@ body:has(.profile-page)::after{
     gap:32px;
   }
 }
+
+/* Rounded, filled profile surfaces. Business components and interactions stay unchanged. */
+.profile-page{
+  --profile-card-bg:#15181d;
+  --profile-card-subtle:#191d23;
+  --profile-card-hover:#1d2229;
+  --profile-card-line:rgba(255,255,255,.075);
+  --profile-card-radius:20px;
+}
+
+.profile-sidebar,
+.profile-hero-card,
+.profile-stats article,
+.profile-panel{
+  border:1px solid var(--profile-card-line);
+  background:var(--profile-card-bg);
+}
+
+.profile-sidebar{
+  border-radius:var(--profile-card-radius);
+}
+
+.profile-hero-card{
+  padding:32px;
+  border-radius:var(--profile-card-radius);
+}
+
+.profile-stats{
+  gap:14px;
+  margin:16px 0 28px;
+}
+
+.profile-stats article{
+  min-height:108px;
+  padding:20px;
+  border-radius:16px;
+}
+
+.profile-panel{
+  margin-bottom:20px;
+  border-radius:var(--profile-card-radius);
+  overflow:hidden;
+}
+
+.profile-panel>header{
+  min-height:68px;
+  padding:20px 24px;
+  border-bottom:1px solid var(--profile-card-line);
+}
+
+.profile-recent-grid,
+.profile-history-list,
+.profile-content-list,
+.profile-link-list,
+.profile-session-list{
+  gap:6px;
+  padding:10px 12px 14px;
+}
+
+.profile-recent-grid article,
+.profile-history-list article,
+.profile-content-list>a,
+.profile-content-list>button,
+.profile-link-list article,
+.profile-session-list article,
+.profile-password-list li{
+  border-radius:12px;
+}
+
+.profile-recent-grid article:hover,
+.profile-history-list article:hover,
+.profile-content-list>a:hover,
+.profile-content-list>button:hover,
+.profile-link-list article:hover,
+.profile-session-list article:hover{
+  background:var(--profile-card-hover);
+}
+
+.profile-content-columns,
+.profile-data-grid{
+  gap:20px;
+}
+
+.profile-settings .profile-panel,
+.profile-data-grid .profile-panel{
+  padding-bottom:24px;
+}
+
+.profile-avatar-settings{
+  padding:24px 24px 18px;
+}
+
+.profile-field,
+.profile-toggle{
+  padding-left:24px;
+  padding-right:24px;
+}
+
+.profile-form-grid{
+  column-gap:8px;
+  padding:22px 0;
+}
+
+.profile-primary{
+  margin-left:24px;
+  margin-right:24px;
+}
+
+.profile-password-form{
+  grid-template-columns:minmax(0,720px);
+  justify-content:start;
+  padding:24px;
+}
+
+.profile-account-form{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px 24px;
+  padding:24px;
+}
+
+.profile-account-form .profile-field,
+.profile-password-form .profile-field{
+  padding:0;
+}
+
+.profile-account-form>p,
+.profile-account-form .profile-primary{
+  grid-column:1/-1;
+}
+
+.profile-account-form .profile-primary,
+.profile-password-form .profile-primary{
+  margin-left:0;
+  margin-right:0;
+}
+
+.profile-password-form>p,
+.profile-password-form>small,
+.profile-password-form .profile-primary{
+  grid-column:1;
+}
+
+.profile-password-summary{
+  padding:22px 24px;
+  border-bottom:1px solid var(--profile-card-line);
+}
+
+.profile-provider-unavailable{
+  min-width:32px;
+  color:#687287!important;
+  text-align:center;
+}
+
+.profile-link-list{
+  padding-left:4px;
+  padding-right:4px;
+}
+
+.profile-data-grid .profile-panel>p{
+  padding:20px 24px 24px;
+}
+
+html[data-theme="light"] .profile-page{
+  --profile-card-bg:#ffffff;
+  --profile-card-subtle:#f5f7fb;
+  --profile-card-hover:#f1f4f8;
+  --profile-card-line:rgba(24,33,49,.1);
+}
+
+@media(max-width:900px){
+  .profile-sidebar,
+  .profile-hero-card,
+  .profile-panel{
+    border-radius:18px;
+  }
+}
+
+@media(max-width:650px){
+  .profile-hero-card{
+    padding:24px;
+  }
+
+  .profile-stats{
+    gap:10px;
+    margin-bottom:22px;
+  }
+
+  .profile-stats article{
+    border-radius:14px;
+  }
+
+  .profile-panel>header,
+  .profile-avatar-settings{
+    padding-left:18px;
+    padding-right:18px;
+  }
+
+  .profile-field,
+  .profile-toggle{
+    padding-left:18px;
+    padding-right:18px;
+  }
+
+  .profile-primary{
+    margin-left:18px;
+    margin-right:18px;
+  }
+
+  .profile-password-form{
+    padding:20px 18px;
+  }
+
+  .profile-account-form{
+    grid-template-columns:1fr;
+    padding:20px 18px;
+  }
+
+  .profile-account-form>p,
+  .profile-account-form .profile-primary{
+    grid-column:1;
+  }
+}

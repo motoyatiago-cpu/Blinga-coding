@@ -1,5 +1,11 @@
-import ForumClient from "./forum-client";
+import type { Metadata } from "next";
 import ThemeToggle from "../theme-toggle";
+import ForumClient from "./forum-client";
+
+export const metadata: Metadata = {
+  title: "用户论坛 · Blinga coding",
+  description: "Blinga coding 用户论坛。",
+};
 
 export default function ForumPage() {
   return (

@@ -2,6 +2,17 @@
   --look-x:0px;
   --look-y:0px;
   --look-rotate:0deg;
+  --web-pet-surface:rgba(15,20,33,.94);
+  --web-pet-surface-strong:rgba(15,20,33,.98);
+  --web-pet-surface-hover:rgba(25,34,53,.98);
+  --web-pet-control:rgba(255,255,255,.06);
+  --web-pet-text:#f1f6ff;
+  --web-pet-muted:#aab5c7;
+  --web-pet-subtle:#8d9bb1;
+  --web-pet-line:rgba(145,166,224,.22);
+  --web-pet-accent:#8ee8ff;
+  --web-pet-accent-soft:rgba(111,129,255,.16);
+  --web-pet-shadow:0 16px 38px rgba(0,0,0,.34);
   position:fixed;
   right:58px;
   bottom:18px;
@@ -17,6 +28,20 @@
   -webkit-touch-callout:none;
   contain:layout style;
   isolation:isolate;
+}
+
+html[data-theme="light"] .web-pet-root{
+  --web-pet-surface:#ffffff;
+  --web-pet-surface-strong:#ffffff;
+  --web-pet-surface-hover:#eef1f6;
+  --web-pet-control:#eef1f6;
+  --web-pet-text:#182131;
+  --web-pet-muted:#526071;
+  --web-pet-subtle:#667085;
+  --web-pet-line:rgba(24,33,49,.12);
+  --web-pet-accent:#4652c5;
+  --web-pet-accent-soft:rgba(89,101,216,.12);
+  --web-pet-shadow:0 18px 46px rgba(34,45,67,.16);
 }
 
 .web-pet-root.is-dragging{
@@ -54,11 +79,11 @@
   max-width:220px;
   width:max-content;
   padding:10px 14px;
-  border:1px solid rgba(142,167,229,.24);
+  border:1px solid var(--web-pet-line);
   border-radius:16px 16px 5px 16px;
-  background:rgba(14,19,31,.9);
-  box-shadow:0 16px 36px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08);
-  color:#eef5ff;
+  background:var(--web-pet-surface);
+  box-shadow:var(--web-pet-shadow);
+  color:var(--web-pet-text);
   font-size:13px;
   line-height:1.45;
   letter-spacing:.01em;
@@ -109,11 +134,11 @@
   align-items:center;
   gap:9px;
   padding:0 13px;
-  border:1px solid rgba(145,166,224,.22);
+  border:1px solid var(--web-pet-line);
   border-radius:15px;
-  background:rgba(15,20,33,.92);
-  box-shadow:0 14px 34px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.08);
-  color:#f1f6ff;
+  background:var(--web-pet-surface);
+  box-shadow:var(--web-pet-shadow);
+  color:var(--web-pet-text);
   font:inherit;
   font-size:13px;
   text-decoration:none;
@@ -177,8 +202,8 @@
   place-items:center;
   flex:0 0 auto;
   border-radius:9px;
-  background:rgba(111,129,255,.16);
-  color:#8ee8ff;
+  background:var(--web-pet-accent-soft);
+  color:var(--web-pet-accent);
   font-size:14px;
 }
 
@@ -217,11 +242,11 @@
   z-index:8;
   width:228px;
   padding:12px;
-  border:1px solid rgba(145,166,224,.22);
+  border:1px solid var(--web-pet-line);
   border-radius:18px;
-  background:rgba(15,20,33,.96);
-  box-shadow:0 16px 38px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.07);
-  color:#f1f6ff;
+  background:var(--web-pet-surface-strong);
+  box-shadow:var(--web-pet-shadow);
+  color:var(--web-pet-text);
   opacity:0;
   visibility:hidden;
   pointer-events:none;
@@ -271,14 +296,14 @@
   height:28px;
   border:0;
   border-radius:9px;
-  background:rgba(255,255,255,.06);
-  color:#cbd5e7;
+  background:var(--web-pet-control);
+  color:var(--web-pet-muted);
   cursor:pointer;
 }
 
 .web-pet-feeling-panel>p{
   margin:12px 2px 9px;
-  color:#9aa8bf;
+  color:var(--web-pet-subtle);
   font-size:12px;
 }
 
@@ -296,8 +321,8 @@
   padding:0 9px;
   border:0;
   border-radius:10px;
-  background:rgba(255,255,255,.055);
-  color:#dbe4f2;
+  background:var(--web-pet-control);
+  color:var(--web-pet-muted);
   font-size:11px;
   cursor:pointer;
 }
@@ -306,12 +331,12 @@
 .web-pet-feeling-options button:focus-visible,
 .web-pet-feeling-options button.is-selected{
   outline:none;
-  background:rgba(111,129,255,.2);
-  color:#fff;
+  background:var(--web-pet-accent-soft);
+  color:var(--web-pet-text);
 }
 
 .web-pet-feeling-options span{
-  color:#8ee8ff;
+  color:var(--web-pet-accent);
   font-size:13px;
 }
 
@@ -320,16 +345,16 @@
   margin-top:9px;
   padding:8px 9px;
   border-radius:9px;
-  background:rgba(111,129,255,.09);
-  color:#aebad0;
+  background:var(--web-pet-accent-soft);
+  color:var(--web-pet-muted);
   font-size:10px;
   line-height:1.45;
 }
 
 .web-pet-menu-item:hover,
 .web-pet-menu-item:focus-visible{
-  border-color:rgba(111,225,255,.52);
-  background:rgba(25,34,53,.97);
+  border-color:var(--web-pet-accent);
+  background:var(--web-pet-surface-hover);
   outline:none;
 }
 

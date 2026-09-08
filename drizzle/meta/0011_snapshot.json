@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5e2faaaf-ca35-4734-addc-96ef42049e20",
-  "prevId": "77209a44-3e40-4c5a-b43a-1a3d5bf71748",
+  "id": "68924d7f-4b86-41d5-97bb-48a3386ff234",
+  "prevId": "5e2faaaf-ca35-4734-addc-96ef42049e20",
   "tables": {
     "auth_sessions": {
       "name": "auth_sessions",
@@ -283,12 +283,28 @@
           "notNull": true,
           "autoincrement": false
         },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'help'"
+        },
         "content": {
           "name": "content",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "resolved": {
+          "name": "resolved",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "status": {
           "name": "status",

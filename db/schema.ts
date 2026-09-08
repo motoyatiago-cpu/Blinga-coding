@@ -161,14 +161,31 @@ export const learningActivity = sqliteTable("learning_activity", {
 ]);
 
 export const forumPosts = sqliteTable("forum_posts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  authorKey: text("author_key").notNull(),
-  authorName: text("author_name").notNull(),
-  category: text("category").notNull(),
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  requestId: text("request_id").notNull(),
+  category: text("category").notNull().default("help"),
   content: text("content").notNull(),
   resolved: integer("resolved").notNull().default(0),
+  status: text("status").notNull().default("published"),
+  isDeleted: integer("is_deleted").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
-  index("forum_posts_created_idx").on(table.id),
-  index("forum_posts_author_idx").on(table.authorKey, table.id),
+  uniqueIndex("forum_posts_user_request_idx").on(table.userId, table.requestId),
+  index("forum_posts_public_feed_idx").on(
+    table.status,
+    table.isDeleted,
+    table.createdAt,
+    table.id,
+  ),
+  index("forum_posts_user_created_idx").on(table.userId, table.createdAt),
 ]);
+
+export const forumUserStats = sqliteTable("forum_user_stats", {
+  userId: text("user_id").primaryKey(),
+  postCount: integer("post_count").notNull().default(0),
+  firstPostAt: text("first_post_at"),
+  lastPostAt: text("last_post_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
