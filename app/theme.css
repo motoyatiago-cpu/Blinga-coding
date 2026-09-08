@@ -272,3 +272,21 @@ html[data-theme="light"] :is(.code-example,.sandbox,.run-history,.code-viewer-di
     transition:none;
   }
 }
+
+/* Restore the rounded course surfaces that visually carry a filled background. */
+.course-hero.glass{
+  border-radius:20px;
+  overflow:hidden;
+}
+
+html[data-theme="light"] .course-entry.glass,
+html[data-theme="light"] .course-level-summary article.glass{
+  border-radius:16px;
+  background:#fff;
+}
+
+@media(max-width:650px){
+  .course-hero.glass{
+    border-radius:16px;
+  }
+}

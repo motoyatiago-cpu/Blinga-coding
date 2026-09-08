@@ -58,7 +58,7 @@ async function tableExists(database: D1Database, table: string): Promise<boolean
 
 async function readProfile(user: SessionUser, env: ProfileEnv): Promise<Response> {
   await ensureAuthSchema(env.DB);
-  const [preferences, links, sessions] = await Promise.all([
+  const [preferences, links] = await Promise.all([
     env.DB
       .prepare(`
         SELECT default_language, editor_font_size, reduce_motion, ai_detail, updated_at
@@ -87,22 +87,6 @@ async function readProfile(user: SessionUser, env: ProfileEnv): Promise<Response
         provider_email: string | null;
         created_at: string;
         last_used_at: string;
-      }>(),
-    env.DB
-      .prepare(`
-        SELECT id, user_agent, ip_hint, created_at, last_seen_at, expires_at
-        FROM auth_sessions
-        WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP
-        ORDER BY last_seen_at DESC
-      `)
-      .bind(user.id)
-      .all<{
-        id: string;
-        user_agent: string | null;
-        ip_hint: string | null;
-        created_at: string;
-        last_seen_at: string;
-        expires_at: string;
       }>(),
   ]);
 
@@ -171,15 +155,6 @@ async function readProfile(user: SessionUser, env: ProfileEnv): Promise<Response
       email: item.provider_email,
       createdAt: item.created_at,
       lastUsedAt: item.last_used_at,
-    })),
-    sessions: sessions.results.map((item) => ({
-      id: item.id,
-      current: item.id === user.sessionId,
-      device: item.user_agent || "未知设备",
-      ipHint: item.ip_hint,
-      createdAt: item.created_at,
-      lastSeenAt: item.last_seen_at,
-      expiresAt: item.expires_at,
     })),
     drafts,
     notes,
