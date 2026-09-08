@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#020306" />
+    <meta name="description" content="流明场——由手势实时驱动的 WebGL 粒子体验。" />
+    <title>流明场——手势粒子体验</title>
+    <script type="module" crossorigin src="/feeling/lumen/assets/index-DuypahrI.js"></script>
+    <link rel="stylesheet" crossorigin href="/feeling/lumen/assets/index-i6s4mgGh.css">
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene" aria-label="手势控制的三维粒子场"></canvas>
+      <video id="camera-feed" playsinline muted aria-hidden="true"></video>
+
+      <div class="grain" aria-hidden="true"></div>
+      <header class="brand" aria-label="流明场">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>流明 / 场</span>
+      </header>
+
+      <section id="status-panel" class="status-panel" aria-label="运行状态">
+        <div class="eyebrow">系统遥测</div>
+        <dl>
+          <div><dt>摄像头</dt><dd><i id="camera-dot"></i><span id="camera-status">待机</span></dd></div>
+          <div><dt>检测到手</dt><dd id="hands-status">0 / 2</dd></div>
+          <div><dt>帧率</dt><dd id="fps-status">—</dd></div>
+          <div><dt>粒子数</dt><dd id="particle-status">—</dd></div>
+        </dl>
+      </section>
+
+      <nav class="mode-switcher" aria-label="粒子模式">
+        <span class="eyebrow">场域模式</span>
+        <div class="mode-buttons">
+          <button type="button" data-mode="galaxy" aria-pressed="true"><kbd>1</kbd> 星系</button>
+          <button type="button" data-mode="explosion" aria-pressed="false"><kbd>2</kbd> 爆炸</button>
+          <button type="button" data-mode="blackhole" aria-pressed="false"><kbd>3</kbd> 黑洞</button>
+          <button type="button" data-mode="nebula" aria-pressed="false"><kbd>4</kbd> 星云</button>
+        </div>
+      </nav>
+
+      <div id="gesture-hint" class="gesture-hint" aria-live="polite">
+        <span class="tracking-reticle" aria-hidden="true"></span>
+        <span id="gesture-copy">等待摄像头</span>
+      </div>
+
+      <button id="guide-toggle" class="guide-toggle" type="button" aria-controls="gesture-guide" aria-expanded="false">
+        <span>手势说明</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+
+      <aside id="gesture-guide" class="gesture-guide" aria-labelledby="guide-title" aria-hidden="true" inert>
+        <div id="guide-resizer" class="guide-resizer" role="separator" aria-orientation="vertical" aria-label="调整手势说明侧栏宽度" aria-valuemin="280" aria-valuemax="560" aria-valuenow="360" tabindex="0"></div>
+        <header class="guide-header">
+          <div>
+            <div class="eyebrow">交互指南</div>
+            <h2 id="guide-title">用双手塑造粒子</h2>
+          </div>
+          <button id="guide-close" class="guide-close" type="button" aria-label="关闭手势说明">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </header>
+        <p class="guide-intro">让手部完整进入画面，并将掌心朝向摄像头。动作保持片刻，识别会更稳定。</p>
+        <ol class="gesture-list">
+          <li><span class="gesture-index">01</span><div><strong>张开手掌</strong><small>五指伸展</small></div><em>粒子扩散</em></li>
+          <li><span class="gesture-index">02</span><div><strong>握拳</strong><small>五指弯曲</small></div><em>粒子聚集</em></li>
+          <li><span class="gesture-index">03</span><div><strong>捏合</strong><small>拇指与食指靠近</small></div><em>吸取粒子</em></li>
+          <li><span class="gesture-index">04</span><div><strong>确认手势</strong><small>拇指与食指成环</small></div><em>生成能量环</em></li>
+          <li><span class="gesture-index">05</span><div><strong>食指</strong><small>仅伸出食指并向上</small></div><em>粒子激光</em></li>
+          <li><span class="gesture-index">06</span><div><strong>剪刀手</strong><small>伸出食指与中指</small></div><em>分裂为两股</em></li>
+          <li><span class="gesture-index">07</span><div><strong>摇滚手</strong><small>伸出食指与小指</small></div><em>产生闪电</em></li>
+          <li><span class="gesture-index">08</span><div><strong>大拇指向上</strong><small>仅伸出拇指并向上</small></div><em>向上喷射</em></li>
+          <li><span class="gesture-index">09</span><div><strong>大拇指向下</strong><small>仅伸出拇指并向下</small></div><em>向下坠落</em></li>
+          <li><span class="gesture-index">10</span><div><strong>手势“六”</strong><small>伸出拇指与小指</small></div><em>形成环形波</em></li>
+          <li><span class="gesture-index">11</span><div><strong>手指爱心</strong><small>拇指与食指交叉靠近</small></div><em>形成爱心</em></li>
+          <li><span class="gesture-index">12</span><div><strong>挥手</strong><small>手掌快速左右移动</small></div><em>产生冲击波</em></li>
+          <li><span class="gesture-index">13</span><div><strong>指向</strong><small>食指朝指定方向</small></div><em>沿指向飞行</em></li>
+          <li><span class="gesture-index">14</span><div><strong>双手托起</strong><small>两只手掌朝上</small></div><em>向上漂浮</em></li>
+          <li><span class="gesture-index">15</span><div><strong>双手举起</strong><small>双手同时快速向上</small></div><em>星空爆发</em></li>
+          <li><span class="gesture-index">16</span><div><strong>拍手</strong><small>双手快速靠近</small></div><em>爆炸冲击波</em></li>
+          <li><span class="gesture-index">17</span><div><strong>双手快速张开</strong><small>双手距离瞬间增大</small></div><em>超新星爆炸</em></li>
+        </ol>
+        <p class="guide-resize-note">拖动侧栏左边缘可调整宽度</p>
+      </aside>
+
+      <button id="camera-toggle" class="icon-button camera-toggle" type="button" aria-label="显示摄像头预览" aria-pressed="false" title="显示摄像头预览">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 8.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1.5l5 3v-13l-5 3Z"/></svg>
+      </button>
+
+      <section id="start-screen" class="start-screen">
+        <div class="start-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="start-content">
+          <div class="eyebrow">手势响应粒子引擎</div>
+          <h1>用双手<br />塑造光。</h1>
+          <p>双手距离控制场域尺度，掌心开合改变密度，指尖会扰动附近的光粒子。所有视觉与识别均在本机浏览器中运行。</p>
+          <button id="start-button" class="start-button" type="button">
+            <span>进入粒子场</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <p id="start-error" class="start-error" role="alert"></p>
+          <div class="privacy-note"><i></i> 摄像头画面仅在本机处理</div>
+        </div>
+      </section>
+
+      <div id="loading-screen" class="loading-screen" hidden>
+        <div class="loader"><i></i><i></i><i></i></div>
+        <p id="loading-copy">正在初始化视觉模型</p>
+      </div>
+    </div>
+  </body>
+</html>

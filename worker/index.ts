@@ -1106,6 +1106,9 @@ const worker = {
       }, allowedWidths);
     }
 
+    if (url.pathname.startsWith("/feeling/")) {
+      return env.ASSETS.fetch(request);
+    }
     return handler.fetch(request, env, ctx);
   },
 };

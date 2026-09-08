@@ -85,12 +85,9 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(actionMenu, /用户论坛/);
   assert.match(actionMenu, /Feeling/);
   assert.match(actionMenu, /PET_FEELING_PANEL_ID/);
-  assert.match(feelingPanel, /此刻感觉怎么样/);
-  assert.match(feelingPanel, /开心/);
-  assert.match(feelingPanel, /平静/);
-  assert.match(feelingPanel, /疲惫/);
-  assert.match(feelingPanel, /需要帮助/);
-  assert.match(feelingPanel, /aria-live="polite"/);
+  for (const entry of ["烟花祝福", "流明场", "空中绘画", "星星"]) assert.ok(feelingPanel.includes(entry));
+  assert.match(feelingPanel, /target="_blank"/);
+  assert.match(feelingPanel, /rel="noopener noreferrer"/);
   assert.match(actionMenu, /href="\/forum"/);
   assert.match(actionMenu, /target="_blank"/);
   assert.match(actionMenu, /rel="noopener noreferrer"/);
@@ -164,7 +161,7 @@ test("runs the complete modular web pet assistant", async () => {
   assert.match(css, /--web-pet-surface:#ffffff/);
   assert.match(css, /\.web-pet-menu-item\{[\s\S]*?background:var\(--web-pet-surface\)/);
   assert.match(css, /\.web-pet-feeling-panel\{[\s\S]*?background:var\(--web-pet-surface-strong\)/);
-  assert.match(css, /\.web-pet-feeling-options button\{[\s\S]*?color:var\(--web-pet-muted\)/);
+  assert.match(css, /\.web-pet-feeling-options a\{[\s\S]*?color:var\(--web-pet-muted\)/);
   assert.doesNotMatch(css, /web-pet-face-overlay/);
 
   assert.match(expressionBuilder, /SOURCE_SCREENS/);

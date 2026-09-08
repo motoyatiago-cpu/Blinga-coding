@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>未来纪元 - 高级隔空画画 v3 (双指+强识别)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MediaPipe 依赖 -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: sans-serif; }
+    .mirror-video { transform: scaleX(-1); }
+    .glass-panel { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    #flash { transition: opacity 0.3s ease-out; }
+  </style>
+</head>
+<body class="relative w-screen h-screen flex justify-center items-center">
+
+  <div id="flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-[100]"></div>
+  <video id="video" class="mirror-video absolute w-full h-full object-cover z-0 opacity-40" autoplay playsinline></video>
+  <canvas id="drawCanvas" class="absolute w-full h-full z-10"></canvas>
+  <canvas id="cursorCanvas" class="absolute w-full h-full z-20 pointer-events-none"></canvas>
+
+  <!-- 顶部状态栏 -->
+  <div class="absolute top-8 left-1/2 transform -translate-x-1/2 z-30 glass-panel px-8 py-4 rounded-full flex items-center gap-6 shadow-2xl">
+    <div class="text-lg font-bold tracking-widest text-white/90">
+      模式: <span id="modeText" class="text-green-400 drop-shadow-md">启动中...</span>
+    </div>
+    <div class="h-6 w-px bg-white/30"></div>
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-white/70">画笔</span>
+      <div id="colorIndicator" class="w-6 h-6 rounded-full border-2 border-white/50 transition-all duration-300" style="background-color: #00FFFF; box-shadow: 0 0 15px #00FFFF;"></div>
+    </div>
+  </div>
+
+  <!-- 左侧：粗细调节滑动条 -->
+  <div id="thicknessSlider" class="absolute left-8 top-1/2 transform -translate-y-1/2 z-30 glass-panel w-12 h-64 rounded-full flex flex-col justify-between items-center py-4">
+    <span class="text-xs text-white/70 font-bold">粗</span>
+    <div class="w-full h-full relative mx-auto my-2 flex justify-center">
+      <div class="w-1 h-full bg-white/20 rounded absolute"></div>
+      <div id="thicknessFill" class="w-1 absolute bottom-0 bg-cyan-400 rounded transition-all duration-75" style="height: 30%;"></div>
+      <div id="thicknessHandle" class="absolute w-5 h-5 bg-white rounded-full shadow-[0_0_10px_cyan] transition-all duration-75" style="bottom: 30%; margin-bottom: -10px;"></div>
+    </div>
+    <span class="text-xs text-white/70 font-bold">细</span>
+  </div>
+
+  <!-- 右侧：悬停保存 -->
+  <div id="saveBtn" class="absolute top-8 right-8 z-30 glass-panel px-6 py-4 rounded-2xl flex items-center gap-3 border-white/20">
+    <span class="text-2xl">📸</span>
+    <div class="flex flex-col">
+      <span class="font-bold text-white/90">悬停保存</span>
+      <span class="text-xs text-white/50">将指尖停留在此处</span>
+    </div>
+  </div>
+
+  <!-- 底部操作说明 -->
+  <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 glass-panel px-8 py-3 rounded-2xl text-sm text-white/80 flex gap-6 whitespace-nowrap">
+    <div>👆 <b>单指</b>: 单线</div>
+    <div>✌️ <b>双指(食+中)</b>: 双线画</div>
+    <div>🤟 <b>三指</b>: 橡皮擦</div>
+    <div>🖐️ <b>五指</b>: 清屏</div>
+    <div>👌 <b>捏合</b>: 换色</div>
+    <div>👈 <b>悬停左侧</b>: 调粗细</div>
+  </div>
+
+  <script>
+    // --- DOM 初始化 ---
+    const videoElement = document.getElementById('video');
+    const drawCanvas = document.getElementById('drawCanvas');
+    const drawCtx = drawCanvas.getContext('2d');
+    const cursorCanvas = document.getElementById('cursorCanvas');
+    const cursorCtx = cursorCanvas.getContext('2d');
+    const modeText = document.getElementById('modeText');
+    const colorIndicator = document.getElementById('colorIndicator');
+    const saveBtn = document.getElementById('saveBtn');
+    const flashEffect = document.getElementById('flash');
+    const thicknessSlider = document.getElementById('thicknessSlider');
+    const thicknessFill = document.getElementById('thicknessFill');
+    const thicknessHandle = document.getElementById('thicknessHandle');
+
+    // --- 状态与配置 ---
+    const colors = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF4444'];
+    let colorIndex = 0;
+    
+    // 渲染循环状态 (支持双指坐标)
+    let handDetected = false;
+    let currentGesture = 'IDLE', previousGesture = 'IDLE';
+    // 数组索引 0: 食指, 1: 中指
+    let targetX = [0, 0], targetY = [0, 0];
+    let currentX = [0, 0], currentY = [0, 0]; 
+    let lastDrawX = [0, 0], lastDrawY = [0, 0];
+    let isDrawing = false;
+    const smoothFactor = 0.35; 
+
+    let baseLineWidth = 15;
+    const maxLineWidth = 50, minLineWidth = 2;
+
+    let lastColorChangeTime = 0, lastClearTime = 0;
+    let particles = [];
+    let shockwave = { active: false, radius: 0, maxRadius: window.innerWidth, alpha: 1, x: 0, y: 0 };
+    let hoverProgress = 0;
+
+    function resizeCanvas() {
+      drawCanvas.width = cursorCanvas.width = window.innerWidth;
+      drawCanvas.height = cursorCanvas.height = window.innerHeight;
+      shockwave.maxRadius = Math.max(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- 升级版算法：全角度空间手势识别 ---
+    function isFingerUp(tip, pip, wrist) {
+      // 核心原理：计算指尖到手腕的距离，如果大于第二关节到手腕的距离，说明手指是伸直的
+      // 这个算法完全免疫手部倾斜、旋转带来的误判！
+      const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+      const distPip = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+      return distTip > distPip;
+    }
+
+    function detectGesture(landmarks) {
+      const wrist = landmarks[0];
+      const thumbTip = landmarks[4];
+      const indexTip = landmarks[8], indexPip = landmarks[6];
+      const middleTip = landmarks[12], middlePip = landmarks[10];
+      const ringTip = landmarks[16], ringPip = landmarks[14];
+      const pinkyTip = landmarks[20], pinkyPip = landmarks[18];
+
+      // 使用新算法判断各手指状态
+      const isIndexUp = isFingerUp(indexTip, indexPip, wrist);
+      const isMiddleUp = isFingerUp(middleTip, middlePip, wrist);
+      const isRingUp = isFingerUp(ringTip, ringPip, wrist);
+      const isPinkyUp = isFingerUp(pinkyTip, pinkyPip, wrist);
+
+      // 1. 捏合检测
+      const distPinch = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+      if (distPinch < 0.05) return 'PINCH';
+
+      // 2. 五指张开清屏
+      if (isIndexUp && isMiddleUp && isRingUp && isPinkyUp) return 'OPEN_PALM';
+
+      // 3. 橡皮擦 (食指+中指+无名指，三指)
+      if (isIndexUp && isMiddleUp && isRingUp && !isPinkyUp) return 'ERASE';
+
+      // 4. 双指画画 (食指+中指)
+      if (isIndexUp && isMiddleUp && !isRingUp && !isPinkyUp) return 'DRAW_DOUBLE';
+
+      // 5. 单指画画 (仅食指)
+      if (isIndexUp && !isMiddleUp && !isRingUp && !isPinkyUp) return 'DRAW_SINGLE';
+
+      return 'IDLE';
+    }
+
+    function onResults(results) {
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        handDetected = true;
+        const landmarks = results.multiHandLandmarks[0];
+        
+        previousGesture = currentGesture;
+        currentGesture = detectGesture(landmarks);
+        
+        // 目标坐标 0：食指
+        targetX[0] = (1 - landmarks[8].x) * cursorCanvas.width;
+        targetY[0] = landmarks[8].y * cursorCanvas.height;
+        // 目标坐标 1：中指
+        targetX[1] = (1 - landmarks[12].x) * cursorCanvas.width;
+        targetY[1] = landmarks[12].y * cursorCanvas.height;
+      } else {
+        handDetected = false;
+        currentGesture = 'IDLE';
+        isDrawing = false;
+      }
+    }
+
+    function spawnParticles(x, y, color) {
+      for (let i = 0; i < 2; i++) {
+        particles.push({
+          x: x + (Math.random() - 0.5) * baseLineWidth,
+          y: y + (Math.random() - 0.5) * baseLineWidth,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4 - 1,
+          life: 1.0, color: color
+        });
+      }
+    }
+
+    function triggerSave() {
+      flashEffect.style.opacity = '1';
+      setTimeout(() => flashEffect.style.opacity = '0', 200);
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = drawCanvas.width; exportCanvas.height = drawCanvas.height;
+      const eCtx = exportCanvas.getContext('2d');
+      eCtx.fillStyle = '#050505'; eCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      eCtx.drawImage(drawCanvas, 0, 0);
+      const link = document.createElement('a');
+      link.download = `air-art-${Date.now()}.png`;
+      link.href = exportCanvas.toDataURL('image/png'); link.click();
+    }
+
+    // --- 渲染引擎 ---
+    function renderLoop() {
+      cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+      const now = Date.now();
+
+      if (shockwave.active) {
+        shockwave.radius += 40; shockwave.alpha -= 0.03;
+        if (shockwave.alpha <= 0) shockwave.active = false;
+        else {
+          cursorCtx.beginPath(); cursorCtx.arc(shockwave.x, shockwave.y, shockwave.radius, 0, Math.PI * 2);
+          cursorCtx.strokeStyle = `rgba(255, 255, 255, ${shockwave.alpha})`; cursorCtx.lineWidth = 15 * shockwave.alpha; cursorCtx.stroke();
+        }
+      }
+
+      if (handDetected) {
+        // 分别对食指和中指进行平滑插值
+        for(let i=0; i<2; i++) {
+          currentX[i] += (targetX[i] - currentX[i]) * smoothFactor;
+          currentY[i] += (targetY[i] - currentY[i]) * smoothFactor;
+        }
+
+        // 以食指为UI交互基准点
+        const pointerX = currentX[0];
+        const pointerY = currentY[0];
+
+        // 粗细滑动条检测
+        const sRect = thicknessSlider.getBoundingClientRect();
+        const isHoveringSlider = pointerX > sRect.left - 40 && pointerX < sRect.right + 40 && pointerY > sRect.top && pointerY < sRect.bottom;
+
+        // 如果手势发生变化，强制断开线条，防止飞线连接
+        if (currentGesture !== previousGesture) {
+          isDrawing = false; 
+        }
+
+        if (isHoveringSlider) {
+          modeText.innerText = '调节粗细'; modeText.className = 'text-purple-400';
+          isDrawing = false; 
+          let percent = 1 - ((pointerY - sRect.top) / sRect.height);
+          percent = Math.max(0, Math.min(1, percent));
+          baseLineWidth = minLineWidth + percent * (maxLineWidth - minLineWidth);
+          
+          thicknessFill.style.height = `${percent * 100}%`;
+          thicknessHandle.style.bottom = `${percent * 100}%`;
+          thicknessHandle.style.boxShadow = `0 0 15px ${colors[colorIndex]}`;
+          thicknessFill.style.backgroundColor = colors[colorIndex];
+
+          cursorCtx.beginPath(); cursorCtx.arc(pointerX, pointerY, baseLineWidth / 2, 0, Math.PI * 2);
+          cursorCtx.fillStyle = colors[colorIndex]; cursorCtx.fill();
+        } 
+        else {
+          if (currentGesture === 'OPEN_PALM') {
+            modeText.innerText = '清屏!'; modeText.className = 'text-red-500 font-bold';
+            isDrawing = false;
+            if (now - lastClearTime > 2000) {
+              drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+              shockwave = { active: true, radius: 0, maxRadius: Math.max(window.innerWidth, window.innerHeight), alpha: 1, x: pointerX, y: pointerY };
+              lastClearTime = now;
+            }
+          }
+          else if (currentGesture === 'PINCH') {
+            modeText.innerText = '切换颜色'; modeText.className = 'text-yellow-400';
+            isDrawing = false;
+            if (now - lastColorChangeTime > 1000) {
+              colorIndex = (colorIndex + 1) % colors.length;
+              colorIndicator.style.backgroundColor = colors[colorIndex];
+              colorIndicator.style.boxShadow = `0 0 15px ${colors[colorIndex]}`;
+              lastColorChangeTime = now;
+            }
+          }
+          else if (currentGesture === 'ERASE') {
+            modeText.innerText = '三指橡皮擦'; modeText.className = 'text-pink-400';
+            isDrawing = false;
+            drawCtx.globalCompositeOperation = 'destination-out';
+            drawCtx.beginPath(); drawCtx.arc(pointerX, pointerY, baseLineWidth * 3, 0, Math.PI * 2); drawCtx.fill();
+            drawCtx.globalCompositeOperation = 'source-over';
+          }
+          else if (currentGesture === 'DRAW_SINGLE' || currentGesture === 'DRAW_DOUBLE') {
+            modeText.innerText = currentGesture === 'DRAW_DOUBLE' ? '双线绘画中' : '单线绘画中'; 
+            modeText.className = 'text-cyan-400';
+            
+            if (!isDrawing) { 
+              isDrawing = true; 
+              // 初始化两根手指的起点
+              lastDrawX[0] = currentX[0]; lastDrawY[0] = currentY[0]; 
+              lastDrawX[1] = currentX[1]; lastDrawY[1] = currentY[1];
+            }
+            
+            // 循环绘制：单指循环1次，双指循环2次
+            const fingersToDraw = currentGesture === 'DRAW_DOUBLE' ? 2 : 1;
+            
+            for(let i=0; i<fingersToDraw; i++) {
+              drawCtx.beginPath();
+              drawCtx.moveTo(lastDrawX[i], lastDrawY[i]);
+              drawCtx.lineTo(currentX[i], currentY[i]);
+              drawCtx.strokeStyle = colors[colorIndex];
+              drawCtx.lineWidth = baseLineWidth; 
+              drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+              drawCtx.shadowBlur = 15; drawCtx.shadowColor = colors[colorIndex];
+              drawCtx.stroke();
+              
+              spawnParticles(currentX[i], currentY[i], colors[colorIndex]);
+              lastDrawX[i] = currentX[i]; lastDrawY[i] = currentY[i];
+            }
+          } else {
+            modeText.innerText = '准备就绪'; modeText.className = 'text-white/70';
+            isDrawing = false;
+          }
+
+          // 悬停保存交互
+          const btnRect = saveBtn.getBoundingClientRect();
+          if (pointerX > btnRect.left && pointerX < btnRect.right && pointerY > btnRect.top && pointerY < btnRect.bottom) {
+            hoverProgress += 1;
+            saveBtn.style.transform = `scale(${1 + hoverProgress/300})`;
+            cursorCtx.beginPath(); cursorCtx.arc(pointerX, pointerY, 40, -Math.PI/2, -Math.PI/2 + (hoverProgress/60) * Math.PI * 2);
+            cursorCtx.strokeStyle = 'white'; cursorCtx.lineWidth = 4; cursorCtx.lineCap = 'round'; cursorCtx.stroke();
+            if (hoverProgress >= 60) { triggerSave(); hoverProgress = 0; }
+          } else {
+            hoverProgress = 0; saveBtn.style.transform = 'scale(1)';
+          }
+
+          // 绘制光标 (根据当前模式画1个或2个光标)
+          if (currentGesture === 'ERASE') {
+            cursorCtx.beginPath(); cursorCtx.arc(pointerX, pointerY, baseLineWidth * 3, 0, Math.PI * 2);
+            cursorCtx.strokeStyle = 'white'; cursorCtx.lineWidth = 2; cursorCtx.stroke();
+          } else {
+            const fingersToShow = (currentGesture === 'DRAW_DOUBLE') ? 2 : 1;
+            for(let i=0; i<fingersToShow; i++) {
+               const cursorSize = (currentGesture.includes('DRAW')) ? baseLineWidth / 2 : 8;
+               cursorCtx.beginPath(); cursorCtx.arc(currentX[i], currentY[i], cursorSize, 0, Math.PI * 2);
+               cursorCtx.fillStyle = currentGesture.includes('DRAW') ? colors[colorIndex] : 'rgba(255,255,255,0.8)';
+               cursorCtx.fill();
+            }
+          }
+        }
+      }
+
+      // 魔法粒子系统渲染
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        cursorCtx.globalAlpha = p.life;
+        cursorCtx.beginPath(); cursorCtx.arc(p.x, p.y, 2 + p.life * (baseLineWidth/5), 0, Math.PI * 2);
+        cursorCtx.fillStyle = p.color; cursorCtx.shadowBlur = 10; cursorCtx.shadowColor = p.color;
+        cursorCtx.fill();
+        cursorCtx.globalAlpha = 1.0; cursorCtx.shadowBlur = 0;
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // --- 启动配置 ---
+    const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+    // 将追踪置信度提高到 0.8，进一步强化稳定性
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
+    hands.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => { await hands.send({image: videoElement}); },
+      width: 1280, height: 720
+    });
+    
+    camera.start();
+    requestAnimationFrame(renderLoop);
+  </script>
+</body>
+</html>

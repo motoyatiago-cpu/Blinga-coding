@@ -313,7 +313,8 @@ html[data-theme="light"] .web-pet-root{
   gap:7px;
 }
 
-.web-pet-feeling-options button{
+.web-pet-feeling-options a{
+  text-decoration:none;
   min-height:38px;
   display:flex;
   align-items:center;
@@ -327,9 +328,8 @@ html[data-theme="light"] .web-pet-root{
   cursor:pointer;
 }
 
-.web-pet-feeling-options button:hover,
-.web-pet-feeling-options button:focus-visible,
-.web-pet-feeling-options button.is-selected{
+.web-pet-feeling-options a:hover,
+.web-pet-feeling-options a:focus-visible{
   outline:none;
   background:var(--web-pet-accent-soft);
   color:var(--web-pet-text);

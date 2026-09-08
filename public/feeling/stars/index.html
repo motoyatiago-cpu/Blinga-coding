@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 粒子引力引擎 | 终极版</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js 核心及后期处理依赖 (严格匹配 r128 版本) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020205; font-family: sans-serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; }
+        .glass-ui { background: rgba(15, 15, 20, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        #video-feed { display: none; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; padding: 0; background: transparent; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; }
+        .shape-btn { transition: all 0.3s ease; }
+        .shape-btn.active { background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 15px currentColor; border-color: currentColor; }
+    </style>
+</head>
+<body class="text-white select-none">
+
+    <video id="video-feed" autoplay playsinline></video>
+    <div id="canvas-container"></div>
+
+    <!-- UI 交互层 -->
+    <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-6">
+        
+        <!-- 顶部状态与控制 -->
+        <div class="flex justify-between items-start pointer-events-auto">
+            <div class="glass-ui px-6 py-4 rounded-2xl flex flex-col gap-2 shadow-[0_0_30px_rgba(0,255,255,0.1)]">
+                <h1 class="text-2xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">
+                    QUANTUM PARTICLES
+                </h1>
+                <p class="text-sm text-gray-400 flex items-center gap-2">
+                    <span id="ai-status" class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                    <span id="status-text">AI 视觉加载中...</span>
+                </p>
+                <div class="text-xs text-gray-500 mt-1 flex flex-col gap-1">
+                    <span>👐 双手张合：引爆宇宙 / 缩放</span>
+                    <span>👆 食指单指：强力物理排斥场</span>
+                </div>
+            </div>
+
+            <div class="glass-ui px-4 py-3 rounded-2xl flex items-center gap-5">
+                <button id="mic-btn" class="flex items-center gap-2 text-sm text-gray-300 hover:text-green-400 transition-colors">
+                    <span>🎤 开启律动</span>
+                </button>
+                <div class="w-px h-6 bg-white/20"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-300">主题</span>
+                    <input type="color" id="color-picker" value="#00ffff">
+                </div>
+                <div class="w-px h-6 bg-white/20"></div>
+                <button id="fullscreen-btn" class="hover:text-cyan-400 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 底部形态切换 -->
+        <div class="flex justify-center pointer-events-auto mb-4">
+            <div class="glass-ui p-2 rounded-full flex gap-2">
+                <button data-shape="nebula" style="color: #00ffff" class="shape-btn active px-6 py-2 rounded-full text-sm font-medium border border-transparent hover:bg-white/10">星云 (Nebula)</button>
+                <button data-shape="galaxy" style="color: #a855f7" class="shape-btn px-6 py-2 rounded-full text-sm font-medium border border-transparent hover:bg-white/10">星系 (Galaxy)</button>
+                <button data-shape="heart" style="color: #ef4444" class="shape-btn px-6 py-2 rounded-full text-sm font-medium border border-transparent hover:bg-white/10">心脏 (Heart)</button>
+                <button data-shape="saturn" style="color: #f59e0b" class="shape-btn px-6 py-2 rounded-full text-sm font-medium border border-transparent hover:bg-white/10">土星 (Saturn)</button>
+                <button data-shape="lotus" style="color: #ec4899" class="shape-btn px-6 py-2 rounded-full text-sm font-medium border border-transparent hover:bg-white/10">莲花 (Lotus)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Three.js & 后期泛光 (Unreal Bloom) 初始化
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020205, 0.0015);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 450;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false }); // Bloom 需要不透明背景
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // 初始化 EffectComposer
+        const renderScene = new THREE.RenderPass(scene, camera);
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            2.0, // 强度 Strength (调大让光晕更夸张)
+            0.5, // 半径 Radius
+            0.1  // 阈值 Threshold
+        );
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // ==========================================
+        // 2. 音频律动 (Web Audio API)
+        // ==========================================
+        let audioContext, analyser, dataArray;
+        let audioBassScale = 0; // 提取的低音能量
+
+        document.getElementById('mic-btn').addEventListener('click', async (e) => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                e.target.innerHTML = '🎧 律动活跃中';
+                e.target.className = "flex items-center gap-2 text-sm text-green-400 font-bold transition-colors";
+            } catch (err) {
+                console.error("音频授权失败:", err);
+                alert("无法获取麦克风权限，音频律动不可用。");
+            }
+        });
+
+        // ==========================================
+        // 3. 超高性能粒子引擎架构
+        // ==========================================
+        const PARTICLE_COUNT = 25000;
+        const geometry = new THREE.BufferGeometry();
+        
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+        const randomOffsets = new Float32Array(PARTICLE_COUNT * 3);
+        
+        // 双色彩缓冲：基准颜色 vs 渲染颜色 (用于速度变色)
+        const baseColors = new Float32Array(PARTICLE_COUNT * 3); 
+        const renderColors = new Float32Array(PARTICLE_COUNT * 3);
+
+        let currentShape = 'nebula';
+        let globalColor = new THREE.Color('#00ffff');
+
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.6, 'rgba(255,255,255,0.1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gradient; ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const material = new THREE.PointsMaterial({
+            size: 4.0,
+            map: createGlowTexture(),
+            transparent: true,
+            opacity: 0.9,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 800;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 800;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 800;
+            
+            randomOffsets[i * 3] = (Math.random() - 0.5) * 1000;
+            randomOffsets[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+            randomOffsets[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(renderColors, 3));
+
+        // ==========================================
+        // 4. 形态生成器
+        // ==========================================
+        const shapeGenerators = {
+            nebula: (i) => {
+                const r = Math.cbrt(Math.random()) * 180;
+                const theta = Math.random() * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * Math.random() - 1.0);
+                targetPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                targetPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                targetPositions[i * 3 + 2] = r * Math.cos(phi);
+            },
+            galaxy: (i) => {
+                const arms = 5;
+                const distance = Math.random() * 280;
+                const angle = distance * 0.025;
+                const armOffset = (Math.floor(Math.random() * arms) * (Math.PI * 2)) / arms;
+                const randomSpread = (280 - distance) * (Math.random() - 0.5) * 0.15;
+                targetPositions[i * 3] = Math.cos(angle + armOffset) * distance + (Math.random()-0.5)*15;
+                targetPositions[i * 3 + 1] = randomSpread * 2;
+                targetPositions[i * 3 + 2] = Math.sin(angle + armOffset) * distance + (Math.random()-0.5)*15;
+            },
+            heart: (i) => {
+                const t = Math.random() * Math.PI * 2;
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                const scale = 8.5;
+                targetPositions[i * 3] = x * scale + (Math.random()-0.5)*4;
+                targetPositions[i * 3 + 1] = y * scale + (Math.random()-0.5)*4;
+                targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 30;
+            },
+            saturn: (i) => {
+                if (i % 10 < 2) {
+                    const r = 70 * Math.cbrt(Math.random());
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    targetPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                    targetPositions[i * 3 + 1] = r * Math.cos(phi);
+                    targetPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+                } else {
+                    const r = 90 + Math.random() * 150;
+                    const theta = Math.random() * 2 * Math.PI;
+                    targetPositions[i * 3] = r * Math.cos(theta);
+                    targetPositions[i * 3 + 1] = (Math.random() - 0.5) * 6;
+                    targetPositions[i * 3 + 2] = r * Math.sin(theta);
+                }
+            },
+            lotus: (i) => {
+                const theta = Math.random() * Math.PI * 2;
+                const rRaw = Math.random(); 
+                const petalForm = Math.abs(Math.sin(7 * theta / 2));
+                const r = rRaw * 180 * petalForm + 20;
+                const height = Math.pow(rRaw, 2) * 100;
+                targetPositions[i * 3] = r * Math.cos(theta);
+                targetPositions[i * 3 + 1] = height - 50;
+                targetPositions[i * 3 + 2] = r * Math.sin(theta);
+            }
+        };
+
+        function transitionToShape(shapeName) {
+            currentShape = shapeName;
+            const generator = shapeGenerators[shapeName];
+            const hsl = {}; globalColor.getHSL(hsl);
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                generator(i);
+                // 赋予基准颜色并打乱亮度
+                const l = Math.min(1.0, Math.max(0.1, hsl.l + (Math.random() - 0.5) * 0.6));
+                const c = new THREE.Color().setHSL(hsl.h, hsl.s, l);
+                baseColors[i * 3] = c.r;
+                baseColors[i * 3 + 1] = c.g;
+                baseColors[i * 3 + 2] = c.b;
+            }
+        }
+
+        // ==========================================
+        // 5. 手势与物理场逻辑
+        // ==========================================
+        const videoElement = document.getElementById('video-feed');
+        let gestureScale = 1.0, gestureDispersion = 0.0;
+        let smoothedScale = 1.0, smoothedDisp = 0.0;
+        
+        let pointerActive = false;
+        const pointer3D = new THREE.Vector3(); // 记录指尖的 3D 坐标
+
+        function onHandResults(results) {
+            const statusIndicator = document.getElementById('ai-status');
+            const statusText = document.getElementById('status-text');
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]';
+                statusText.innerText = '引力场激活中';
+
+                // 处理指尖物理场映射 (取第一只手的食指指尖 8号点)
+                const indexTip = results.multiHandLandmarks[0][8];
+                pointerActive = true;
+                // 将摄像头坐标(0~1)映射到 Three.js 视口空间 [-250, 250]
+                // 摄像头是镜像的，所以 X 轴要反转
+                pointer3D.x = -(indexTip.x - 0.5) * 600;
+                pointer3D.y = -(indexTip.y - 0.5) * 600;
+                pointer3D.z = 0; // 假设物理场作用在 0 深度面上
+
+                // 处理缩放与发散
+                let distRaw = 0;
+                if (results.multiHandLandmarks.length >= 2) {
+                    const h1 = results.multiHandLandmarks[0][9];
+                    const h2 = results.multiHandLandmarks[1][9];
+                    distRaw = Math.hypot(h1.x - h2.x, h1.y - h2.y);
+                } else {
+                    const thumb = results.multiHandLandmarks[0][4];
+                    const pinky = results.multiHandLandmarks[0][20];
+                    distRaw = Math.hypot(thumb.x - pinky.x, thumb.y - pinky.y) * 2.5; 
+                }
+
+                const nDist = Math.max(0.1, Math.min(1.0, distRaw));
+                gestureScale = 0.5 + (nDist - 0.1) * 3.5; 
+                gestureDispersion = nDist > 0.6 ? (nDist - 0.6) * 3.0 : 0;
+
+            } else {
+                pointerActive = false;
+                gestureScale = 1.0;
+                gestureDispersion = 0.0;
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-cyan-500';
+                statusText.innerText = '系统巡航中';
+            }
+        }
+
+        const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+        hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+        hands.onResults(onHandResults);
+        const cameraTools = new Camera(videoElement, { onFrame: async () => { await hands.send({ image: videoElement }); }, width: 640, height: 480 });
+        cameraTools.start();
+
+        // ==========================================
+        // 6. 终极渲染核心循环 (Physics + Render)
+        // ==========================================
+        const clock = new THREE.Clock();
+        const HIGH_ENERGY_COLOR = { r: 1.0, g: 1.0, b: 1.0 }; // 极速运动时发白光
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            // 1. 处理音频数据
+            if (analyser && dataArray) {
+                analyser.getByteFrequencyData(dataArray);
+                let bassSum = 0;
+                for(let i=0; i<10; i++) bassSum += dataArray[i]; // 取前10个频段算作低音
+                // 平滑音频跳动
+                audioBassScale += ((bassSum / 10) / 255.0 - audioBassScale) * 0.2; 
+            }
+
+            // 音频会额外放大模型并增强 Bloom 光晕
+            const finalGlobalScale = gestureScale * (1.0 + audioBassScale * 0.4);
+            bloomPass.strength = 1.5 + audioBassScale * 2.0 + gestureDispersion * 1.5;
+
+            // 平滑插值手势数据
+            smoothedScale += (finalGlobalScale - smoothedScale) * 0.1;
+            smoothedDisp += (gestureDispersion - smoothedDisp) * 0.1;
+
+            const posArr = geometry.attributes.position.array;
+            const colArr = geometry.attributes.color.array;
+
+            // 2. 遍历粒子，执行寻路、物理排斥与速度上色
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
+                
+                // 基础目标位置
+                let tgtX = (targetPositions[ix] * smoothedScale) + (randomOffsets[ix] * smoothedDisp);
+                let tgtY = (targetPositions[iy] * smoothedScale) + (randomOffsets[iy] * smoothedDisp);
+                let tgtZ = (targetPositions[iz] * smoothedScale) + (randomOffsets[iz] * smoothedDisp);
+
+                // --- 磁性排斥物理场 (Magnetic Repulsion) ---
+                if (pointerActive) {
+                    const dx = posArr[ix] - pointer3D.x;
+                    const dy = posArr[iy] - pointer3D.y;
+                    // 计算粒子到指尖的 2D 平面距离
+                    const distSq = dx*dx + dy*dy; 
+                    const influenceRadiusSq = 15000; // 影响半径平方 (~122)
+
+                    if (distSq < influenceRadiusSq) {
+                        const dist = Math.sqrt(distSq);
+                        const force = Math.pow((1.0 - dist / 122), 2); // 越近斥力呈指数放大
+                        // 强制改变粒子的目标位置向外排斥
+                        tgtX += (dx / dist) * force * 150;
+                        tgtY += (dy / dist) * force * 150;
+                        tgtZ += (Math.random() - 0.5) * force * 150; // Z轴随机打乱
+                    }
+                }
+
+                // 计算当前点到目标点的距离向量 (即速度)
+                const moveX = (tgtX - posArr[ix]) * 0.05;
+                const moveY = (tgtY - posArr[iy]) * 0.05;
+                const moveZ = (tgtZ - posArr[iz]) * 0.05;
+                
+                const speedSq = moveX*moveX + moveY*moveY + moveZ*moveZ;
+                
+                // 更新位置
+                posArr[ix] += moveX;
+                posArr[iy] += moveY;
+                posArr[iz] += moveZ;
+
+                // --- 速度决定颜色 (Velocity Coloring) ---
+                // 速度极快时 (如手指拨开、大爆发)，向高能态(白色)混合
+                // 0.2 是调节颜色的敏感度阈值
+                const mixFactor = Math.min(1.0, speedSq * 0.02); 
+                
+                colArr[ix] = baseColors[ix] + (HIGH_ENERGY_COLOR.r - baseColors[ix]) * mixFactor;
+                colArr[iy] = baseColors[iy] + (HIGH_ENERGY_COLOR.g - baseColors[iy]) * mixFactor;
+                colArr[iz] = baseColors[iz] + (HIGH_ENERGY_COLOR.b - baseColors[iz]) * mixFactor;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+
+            // 视窗整体旋转
+            particles.rotation.y += 0.001;
+            particles.rotation.x = Math.sin(time * 0.5) * 0.05;
+            
+            // 使用特效合成器渲染
+            composer.render();
+        }
+
+        // ==========================================
+        // 7. UI 事件绑定
+        // ==========================================
+        document.querySelectorAll('.shape-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                globalColor = new THREE.Color(e.target.style.color);
+                document.getElementById('color-picker').value = '#' + globalColor.getHexString();
+                transitionToShape(e.target.dataset.shape);
+            });
+        });
+
+        document.getElementById('color-picker').addEventListener('input', (e) => {
+            globalColor = new THREE.Color(e.target.value);
+            transitionToShape(currentShape);
+        });
+
+        document.getElementById('fullscreen-btn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        transitionToShape('nebula');
+        animate();
+    </script>
+</body>
+</html>
