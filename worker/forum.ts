@@ -45,43 +45,34 @@ function sameOrigin(request: Request): boolean {
   return !origin || origin === new URL(request.url).origin;
 }
 
+class ForumSchemaError extends Error {
+  constructor() { super("Forum schema does not match the deployed migrations"); }
+}
+
+const schemaChecks = new WeakMap<D1Database, Promise<void>>();
+/** Migrations own DDL. Requests only verify readiness, never rebuild user tables. */
 export async function ensureForumSchema(database: D1Database): Promise<void> {
-  await database.batch([
-    database.prepare(`
-      CREATE TABLE IF NOT EXISTS forum_posts (
-        id TEXT PRIMARY KEY NOT NULL,
-        user_id TEXT NOT NULL,
-        request_id TEXT NOT NULL,
-        content TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'published',
-        is_deleted INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `),
-    database.prepare(`
-      CREATE TABLE IF NOT EXISTS forum_user_stats (
-        user_id TEXT PRIMARY KEY NOT NULL,
-        post_count INTEGER NOT NULL DEFAULT 0,
-        first_post_at TEXT,
-        last_post_at TEXT,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `),
-    database.prepare(`
-      CREATE UNIQUE INDEX IF NOT EXISTS forum_posts_user_request_idx
-      ON forum_posts (user_id, request_id)
-    `),
-    database.prepare(`
-      CREATE INDEX IF NOT EXISTS forum_posts_public_feed_idx
-      ON forum_posts (status, is_deleted, created_at DESC, id DESC)
-    `),
-    database.prepare(`
-      CREATE INDEX IF NOT EXISTS forum_posts_user_created_idx
-      ON forum_posts (user_id, created_at DESC)
-    `),
-    database.prepare("PRAGMA optimize"),
-  ]);
+  let check = schemaChecks.get(database);
+  if (!check) {
+    check = (async () => {
+      const required: Record<string, string[]> = {
+        forum_posts: ["id", "user_id", "request_id", "category", "resolved", "content", "status", "is_deleted", "created_at", "updated_at"],
+        forum_user_stats: ["user_id", "post_count", "first_post_at", "last_post_at", "updated_at"],
+      };
+      for (const [table, columns] of Object.entries(required)) {
+        const info = await database.prepare(`PRAGMA table_info(${table})`).all<{ name: string; type: string }>();
+        const actual = new Set(info.results.map((column) => column.name));
+        if (columns.some((column) => !actual.has(column))) throw new ForumSchemaError();
+        if (table === "forum_posts" && info.results.find((column) => column.name === "id")?.type.toUpperCase() !== "TEXT") throw new ForumSchemaError();
+      }
+    })();
+    schemaChecks.set(database, check);
+  }
+  try { await check; }
+  catch (error) {
+    schemaChecks.delete(database); // A corrected migration is observable on retry.
+    throw error;
+  }
 }
 
 function publicPost(row: ForumPostRow, viewer: SessionUser | null) {
@@ -338,7 +329,7 @@ async function publicAvatar(request: Request, env: ForumEnv): Promise<Response> 
   return new Response(object.body, { headers });
 }
 
-export async function handleForumRequest(
+async function dispatchForumRequest(
   request: Request,
   env: ForumEnv,
 ): Promise<Response | null> {
@@ -357,10 +348,27 @@ export async function handleForumRequest(
     if (!sameOrigin(request)) return forumJson({ error: "请求来源无效" }, 403);
     const user = await getSessionUser(request, env);
     if (!user) return forumJson({ error: "请先登录" }, 401);
+    await ensureForumSchema(env.DB);
     const id = url.searchParams.get("id") || "";
     const result = await env.DB.prepare("UPDATE forum_posts SET resolved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND is_deleted = 0 AND category = 'help'").bind(id, user.id).run();
     return result.meta.changes ? forumJson({ resolved: true }) : forumJson({ error: "讨论不存在或无权修改" }, 404);
   }
   if (request.method === "DELETE") return deletePost(request, env);
   return forumJson({ error: "不支持该请求方法" }, 405);
+}
+
+
+/** Catch awaited failures at the API boundary; never return SQL or HTML to clients. */
+export async function handleForumRequest(request: Request, env: ForumEnv): Promise<Response | null> {
+  const path = new URL(request.url).pathname;
+  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar"].includes(path)) return null;
+  try {
+    return await dispatchForumRequest(request, env);
+  } catch (error) {
+    console.error("[forum] request failed", path, error);
+    return forumJson({
+      code: error instanceof ForumSchemaError ? "FORUM_SCHEMA_NOT_READY" : "FORUM_UNAVAILABLE",
+      error: "论坛暂时不可用，请稍后重试",
+    }, 503);
+  }
 }

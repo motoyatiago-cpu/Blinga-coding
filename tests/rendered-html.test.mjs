@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render(pathname = "/") {
+async function readLayout() {
+  const sources = await Promise.all(["layout.tsx", "site-effects.tsx"].map((file) => readFile(new URL(`../app/${file}`, import.meta.url), "utf8")));
+  return sources.join("\n");
+}
+
+async function render(pathname = "/home") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -50,7 +55,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
 
 test("keeps the notes endpoint and persistent schema wired together", async () => {
   const [page, worker, schema, hosting] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
@@ -66,7 +71,7 @@ test("keeps the notes endpoint and persistent schema wired together", async () =
 });
 
 test("indexes every independent lesson for instant course search", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8");
 
   assert.match(page, /const courseSearchIndex: CourseSearchItem\[\]/);
   assert.match(page, /function findCourseMatches\(query: string\)/);
@@ -77,7 +82,7 @@ test("indexes every independent lesson for instant course search", async () => {
 
 test("makes AI requests cancellable and time-bounded", async () => {
   const [page, worker] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
   ]);
 
@@ -92,7 +97,7 @@ test("makes AI requests cancellable and time-bounded", async () => {
 
 test("performs real server-side web search and returns inspectable sources", async () => {
   const [page, worker, webSearch, envExample, themeCss, globalsCss] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/web-search.ts", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
@@ -117,7 +122,7 @@ test("performs real server-side web search and returns inspectable sources", asy
 });
 
 test("keeps editor line numbers, cursor position, and indentation synchronized", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8");
 
   assert.match(page, /const lineNumbers = useMemo/);
   assert.match(page, /function syncEditorScroll/);
@@ -129,7 +134,7 @@ test("keeps editor line numbers, cursor position, and indentation synchronized",
 
 test("provides a reversible sandbox focus mode", async () => {
   const [page, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
@@ -142,7 +147,7 @@ test("provides a reversible sandbox focus mode", async () => {
 });
 
 test("imports and downloads source files without an upload endpoint", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8");
 
   assert.match(page, /const sourceFileExtensions: Record<Lang, string\[\]>/);
   assert.match(page, /async function importSourceFile/);
@@ -155,7 +160,7 @@ test("imports and downloads source files without an upload endpoint", async () =
 
 test("protects source reset with confirmation and a timed undo", async () => {
   const [page, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
@@ -172,7 +177,7 @@ test("protects source reset with confirmation and a timed undo", async () => {
 test("adds a reusable and reduced-motion-safe GSAP hover layer", async () => {
   const [motion, layout, css, packageJson] = await Promise.all([
     readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readLayout(),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
@@ -193,7 +198,7 @@ test("adds a reusable and reduced-motion-safe GSAP hover layer", async () => {
 
 test("uses the desktop pet as the only floating AI entry", async () => {
   const [page, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
@@ -207,7 +212,7 @@ test("uses the desktop pet as the only floating AI entry", async () => {
 
 test("moves, resizes, and restores the existing AI assistant panel", async () => {
   const [page, hook, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/use-draggable-ai-panel.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
@@ -233,10 +238,10 @@ test("moves, resizes, and restores the existing AI assistant panel", async () =>
 test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
   const [smoothScroll, layout, css, packageJson, page] = await Promise.all([
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readLayout(),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(smoothScroll, /new Lenis\(\{/);
@@ -262,7 +267,7 @@ test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () 
 });
 
 test("removes decorative and redundant UI prompts while preserving status feedback", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8");
 
   assert.doesNotMatch(page, /拖拽节点，直接编辑内容，并用颜色标记核心考点/);
   assert.doesNotMatch(page, /输入变化即时诊断，运行状态与终端结果动态同步/);
@@ -279,7 +284,7 @@ test("removes decorative and redundant UI prompts while preserving status feedba
 
 test("removes decorative uppercase eyebrow labels across learning and profile pages", async () => {
   const [page, coursePage, profile] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
   ]);
@@ -314,7 +319,7 @@ test("removes decorative uppercase eyebrow labels across learning and profile pa
 test("applies the Blinga coding V2 product design system without replacing feature modules", async () => {
   const [css, page, motion, smoothScroll] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
   ]);
@@ -336,7 +341,7 @@ test("applies the Blinga coding V2 product design system without replacing featu
 test("uses one-based lesson numbers in every public course URL", async () => {
   const [links, page, catalog, viewer, profile] = await Promise.all([
     readFile(new URL("../app/course-links.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/code-viewer-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
@@ -357,7 +362,7 @@ test("uses one-based lesson numbers in every public course URL", async () => {
 
 test("adds an accessible avatar menu and a dedicated personal workspace", async () => {
   const [page, menu, profile, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/account-menu.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile.css", import.meta.url), "utf8"),
@@ -488,7 +493,7 @@ test("adds username or email login, registration, password management, and guest
 
 test("stores authenticated run snapshots and opens saved code in an accessible viewer", async () => {
   const [page, profile, viewer, worker, profileWorker, schema, migration, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/code-viewer-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
@@ -522,7 +527,7 @@ test("stores authenticated run snapshots and opens saved code in an accessible v
 
 test("removes redundant sidebar glyphs and balances the learning and profile type scale", async () => {
   const [page, coursePage, profile, css, profileCss, motion] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -580,14 +585,14 @@ test("restores rounded corners and omits active-device profile data", async () =
     readFile(new URL("../worker/profile.ts", import.meta.url), "utf8"),
   ]);
   assert.match(themeCss, /\.course-hero\.glass\{[\s\S]*?border-radius:20px;[\s\S]*?overflow:hidden;/);
-  assert.match(themeCss, /html\[data-theme="light"\] \.course-entry\.glass,[\s\S]*?border-radius:16px;[\s\S]*?background:#fff;/);
+  assert.match(themeCss, /html\[data-theme="light"\] \.course-entry\.glass,[\s\S]*?border-radius:16px;[\s\S]*?background:transparent;/);
   assert.doesNotMatch(workerProfile, /sessions: sessions\.results/);
 });
 
 test("applies the restrained dark reading hierarchy without touching the desktop pet", async () => {
   const [layout, page, catalog, css, pet] = await Promise.all([
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readLayout(),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/web-desktop-pet.tsx", import.meta.url), "utf8"),
@@ -620,7 +625,7 @@ test("applies the restrained dark reading hierarchy without touching the desktop
 
 test("keeps the account menu compact and exports mind maps as PDF only", async () => {
   const [page, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
   ]);
 
@@ -638,7 +643,7 @@ test("keeps the account menu compact and exports mind maps as PDF only", async (
 
 test("removes passive microcopy while preserving functional error feedback", async () => {
   const [page, catalog, css] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
   ]);
@@ -661,10 +666,10 @@ test("removes passive microcopy while preserving functional error feedback", asy
 
 test("adds a persistent light and dark theme without recoloring code tools", async () => {
   const [layout, toggle, themeCss, page, coursePage, profile, forum, login, register] = await Promise.all([
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readLayout(),
     readFile(new URL("../app/theme-toggle.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/theme.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[language]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile/profile-client.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/forum/page.tsx", import.meta.url), "utf8"),

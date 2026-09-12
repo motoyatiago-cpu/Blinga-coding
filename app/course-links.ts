@@ -28,5 +28,5 @@ export function buildCourseUrl(
   topicIndex: number,
   hash: "learn" | "lab" | "notes" = "learn",
 ): string {
-  return `/?lang=${encodeURIComponent(language)}&topic=${courseTopicNumber(topicIndex)}#${hash}`;
+  return `/home?lang=${encodeURIComponent(language)}&topic=${courseTopicNumber(topicIndex)}#${hash}`;
 }

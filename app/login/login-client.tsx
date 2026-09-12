@@ -92,7 +92,7 @@ export default function LoginClient() {
 
   return (
     <main className="login-page">
-      <a className="login-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
+      <a className="login-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
       <ThemeToggle className="theme-toggle-float" />
       <section className="login-panel" aria-labelledby="login-title">
         <header><h1 id="login-title">欢迎回来</h1><p>请输入你的账号信息。</p></header>
@@ -108,7 +108,7 @@ export default function LoginClient() {
           {configuredProviders.map(([provider]) => <a key={provider} href={`/api/auth/${provider}/start?returnTo=${encodeURIComponent(safeReturnTo())}`}>{providerLabels[provider]}</a>)}
         </div>}
         <p className="register-entry">还没有账号？ <a href="/register">立即注册</a></p>
-        <a className="guest-entry" href="/"><span>访客浏览</span><small>无需登录，仅浏览公开课程</small></a>
+        <a className="guest-entry" href="/home"><span>访客浏览</span><small>无需登录，仅浏览公开课程</small></a>
       </section>
     </main>
   );

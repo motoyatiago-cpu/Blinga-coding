@@ -170,9 +170,9 @@ html[data-theme="light"] :is(.lesson-card,.deep-lesson,.feature-section,.lesson-
 
 html[data-theme="light"] :is(.lesson-card,.concept-flow article,.pitfall-grid article,.lesson-notes,.document-export){
   color:var(--ui-text);
-  background:var(--ui-surface);
+  background:transparent;
   background-image:none;
-  border-color:var(--ui-line);
+  border-color:transparent;
   box-shadow:none;
 }
 
@@ -204,7 +204,8 @@ html[data-theme="light"] :is(.primary,.toolbar button.primary,.document-export b
 
 html[data-theme="light"] .note{
   color:var(--ui-text);
-  background:var(--ui-accent-soft);
+  background:transparent;
+  border-color:transparent;
 }
 
 html[data-theme="light"] .note :is(b,span){
@@ -226,7 +227,8 @@ html[data-theme="light"] :is(.language.selected,.course-topic-nav a.active,.topi
 
 html[data-theme="light"] :is(.course-hero.glass,.catalog-topic.glass,.profile-sidebar.glass,.profile-panel.glass,.profile-hero-card.glass,.profile-stats article.glass,.profile-gate-card.glass,.forum-categories article,.forum-guidelines){
   color:var(--text);
-  background:#fff;
+  background:transparent;
+  border-color:transparent;
   background-image:none;
   box-shadow:none;
   backdrop-filter:none;
@@ -449,8 +451,9 @@ html[data-theme="light"] .login-brand{
 
 html[data-theme="light"] .login-panel{
   color:#182131;
-  background:#fff;
-  border-color:rgba(24,33,49,.08);
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
 }
 
 html[data-theme="light"] :is(.login-panel header p,.password-login-form label,.login-options label,.login-providers>span,.register-entry,.guest-entry small){
@@ -494,6 +497,49 @@ html[data-theme="light"] .profile-topbar,
 html[data-theme="light"] .profile-sidebar{
   color:var(--ui-text);
   background:var(--ui-surface);
+}
+
+/* Reading regions blend into the page; controls and floating tools keep surfaces.
+   Transparent borders preserve existing geometry during a theme switch. */
+html[data-theme="light"] :is(.deep-lesson,.feature-section,.lesson-notes){
+  border-color:transparent;
+}
+
+html[data-theme="light"] :is(.profile-sidebar.glass,.profile-panel.glass,.profile-hero-card.glass,.profile-stats article.glass,.profile-gate-card.glass){
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.profile-panel>header,.profile-sidebar>header,.profile-password-summary,.profile-password-list li,.profile-content-list>a,.profile-content-list>button,.profile-history-list article,.profile-recent-grid article,.profile-link-list article,.profile-session-list article){
+  border-color:transparent;
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.forum-aside section,.forum-post){
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.forum-composer,.search-answer,.course-search-results){
+  background:var(--ui-surface-raised);
+  border-color:transparent;
+  box-shadow:none;
+}
+
+html[data-theme="light"] :is(.forum-editor,.forum-composer-head select){
+  border-color:var(--ui-line);
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] .forum-tags span{
+  border-color:transparent;
+  background:var(--ui-control);
+}
+
+html[data-theme="light"] .forum-tabs{
+  border-bottom-color:transparent;
 }
 
 html[data-theme="light"] :is(.profile-sidebar nav button,.profile-signout){
@@ -569,7 +615,7 @@ html[data-theme="light"] :is(.code-example,.sandbox,.run-history,.code-viewer-di
 html[data-theme="light"] .course-entry.glass,
 html[data-theme="light"] .course-level-summary article.glass{
   border-radius:16px;
-  background:#fff;
+  background:transparent;
 }
 
 @media(max-width:650px){

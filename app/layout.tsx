@@ -4,9 +4,7 @@ import "./global-styles.css";
 import "lenis/dist/lenis.css";
 import "./refined-dark-ui.css";
 import "./theme.css";
-import HoverBounceMotion from "./hover-bounce";
-import SmoothScrollMotion from "./smooth-scroll";
-import { WebDesktopPet } from "./web-pet";
+import SiteEffects from "./site-effects";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,10 +38,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SmoothScrollMotion />
-        <HoverBounceMotion />
         {children}
-        <WebDesktopPet />
+        <SiteEffects />
       </body>
     </html>
   );

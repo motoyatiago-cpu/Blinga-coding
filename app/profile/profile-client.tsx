@@ -416,7 +416,7 @@ export default function ProfileClient() {
     return (
       <main className="profile-gate">
         <div className="profile-orb one" /><div className="profile-orb two" />
-        <a className="profile-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
+        <a className="profile-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
         <section className="profile-gate-card glass">
           <h1>你的学习，归于一个账号</h1>
           <p>登录后可同步课程进度、运行历史、代码草稿、学习笔记和个人偏好。</p>
@@ -434,7 +434,7 @@ export default function ProfileClient() {
               ))}
             </div>
           ) : null}
-          <a className="profile-back" href="/">← 返回学习中心</a>
+          <a className="profile-back" href="/home">← 返回学习中心</a>
         </section>
       </main>
     );
@@ -448,8 +448,8 @@ export default function ProfileClient() {
     <main className="profile-page">
       <div className="profile-orb one" /><div className="profile-orb two" />
       <header className="profile-topbar glass">
-        <a className="profile-brand" href="/"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
-        <div className="profile-topbar-actions"><ThemeToggle /><a href="/">返回学习中心</a></div>
+        <a className="profile-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
+        <div className="profile-topbar-actions"><ThemeToggle /><a href="/home">返回学习中心</a></div>
       </header>
 
       <div className="profile-layout">
@@ -486,7 +486,7 @@ export default function ProfileClient() {
               <div><span>欢迎回来</span><h2>{profile.user.displayName}</h2></div>
               {overview.continueLearning
                 ? <a href={buildCourseUrl(overview.continueLearning.language, overview.continueLearning.topicIndex)}>继续 {overview.continueLearning.language}</a>
-                : <a href="/#learn">开始第一节课</a>}
+                : <a href="/home#learn">开始第一节课</a>}
             </section>
             <div className="profile-stats">
               {[

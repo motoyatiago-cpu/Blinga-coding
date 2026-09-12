@@ -1323,7 +1323,8 @@ async function registerPasswordAccount(request: Request, env: AuthEnv): Promise<
   const username = normalizeUsername(body.username);
   if (!username) return authJson({ error: "账号需为 4–20 位字母、数字或下划线" }, 400);
   const email = normalizeEmail(body.email);
-  if (!email) return authJson({ error: "请输入有效的邮箱" }, 400);
+  // Email remains optional for older clients; username-only accounts need no placeholder email.
+  if (body.email != null && body.email !== "" && !email) return authJson({ error: "请输入有效的邮箱" }, 400);
   const password = String(body.password || "");
   const confirmPassword = String(body.confirmPassword || "");
   const validationError = passwordValidationError(password);
@@ -1357,7 +1358,7 @@ async function registerPasswordAccount(request: Request, env: AuthEnv): Promise<
         INSERT INTO password_credentials (
           user_id, login_identifier, password_salt, password_hash, iterations
         ) VALUES (?, ?, ?, ?, ?)
-      `).bind(userId, email, bytesToBase64Url(salt), passwordHash, PASSWORD_ITERATIONS),
+      `).bind(userId, email || username, bytesToBase64Url(salt), passwordHash, PASSWORD_ITERATIONS),
     ]);
   } catch {
     return authJson({ error: "账号或邮箱已被使用" }, 409);

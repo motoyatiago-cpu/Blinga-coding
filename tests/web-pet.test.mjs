@@ -32,8 +32,8 @@ test("runs the complete modular web pet assistant", async () => {
     poseFiles,
     expressionFiles,
   ] = await Promise.all([
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/site-effects.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/forum/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/web-desktop-pet.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/web-pet/components/pet-avatar.tsx", import.meta.url), "utf8"),

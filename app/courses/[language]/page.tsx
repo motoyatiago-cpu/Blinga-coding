@@ -92,14 +92,14 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
   return <main className="course-page">
     <div className="ambient one" /><div className="ambient two" />
     <header className="topbar glass">
-      <a className="brand" href="/"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
-      <nav><a href="/">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href="/#map">知识图谱</a><a href="/#lab">在线实训</a></nav>
-      <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href="/">返回学习台 →</a></div>
+      <a className="brand" href="/home"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
+      <nav><a href="/home">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href="/home#map">知识图谱</a><a href="/home#lab">在线实训</a></nav>
+      <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href="/home">返回学习台 →</a></div>
     </header>
 
     <div className="course-layout">
       <aside className="course-language-nav glass">
-        <a className="course-nav-back" href="/">← 全部编程语言</a>
+        <a className="course-nav-back" href="/home">← 全部编程语言</a>
         <div className="language selected course-root-link">
           <span>{course.name}</span>
         </div>
@@ -119,7 +119,7 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
       </aside>
 
       <section className="course-catalog">
-        <div className="catalog-breadcrumb"><a href="/">学习中心</a><span>/</span><b>{course.name}</b></div>
+        <div className="catalog-breadcrumb"><a href="/home">学习中心</a><span>/</span><b>{course.name}</b></div>
         <header className="course-hero glass">
           <div><h1>{course.name} 分级课程</h1><p>{course.description}</p></div>
           <div className="course-stats"><div><b>3</b><span>学习级别</span></div><div><b>7</b><span>核心知识点</span></div><div><b>∞</b><span>在线练习</span></div></div>
