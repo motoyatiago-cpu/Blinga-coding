@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@noble/hashes": "2.0.1",
     "@xyflow/react": "^12.11.2",
     "drizzle-orm": "0.45.2",
     "gsap": "^3.15.0",

@@ -1,3 +1,5 @@
+import { derivePasswordBytes } from "./password-kdf";
+
 export type AuthProvider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
 
 export interface AuthEnv {
@@ -191,19 +193,12 @@ async function derivePasswordHash(
   salt: Uint8Array,
   iterations = PASSWORD_ITERATIONS,
 ): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: Uint8Array.from(salt).buffer, iterations },
-    key,
-    256,
-  );
-  return bytesToBase64Url(new Uint8Array(bits));
+  const bytes = await derivePasswordBytes(password, salt, iterations);
+  try {
+    return bytesToBase64Url(bytes);
+  } finally {
+    bytes.fill(0);
+  }
 }
 
 function constantTimeEqual(left: string, right: string): boolean {

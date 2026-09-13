@@ -444,7 +444,8 @@ test("adds username or email login, registration, password management, and guest
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(auth, /PBKDF2/);
+  assert.match(auth, /derivePasswordBytes\(password, salt, iterations\)/);
+  assert.match(await readFile(new URL("../worker/password-kdf.ts", import.meta.url), "utf8"), /pbkdf2Async/);
   assert.match(auth, /PASSWORD_ITERATIONS = 210_000/);
   assert.match(auth, /constantTimeEqual/);
   assert.match(auth, /PASSWORD_MAX_FAILURES = 5/);
