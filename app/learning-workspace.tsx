@@ -66,18 +66,8 @@ type KnowledgeData = {
   depth: number;
 };
 type KnowledgeNode = Node<KnowledgeData, "knowledge">;
-type AiSearchSource = {
-  id: number;
-  title: string;
-  url: string;
-  description: string;
-  publishedAt?: string;
-};
 type AiResponse = {
   answer: string;
-  sources?: AiSearchSource[];
-  searchedAt?: string;
-  webSearched?: boolean;
 };
 
 const MAX_SOURCE_FILE_CHARS = 12_000;
@@ -148,14 +138,6 @@ function defaultSourceFileName(language: Lang): string {
   if (language === "C/C++") return "main.cpp";
   if (language === "JavaScript") return "main.js";
   return "Main.java";
-}
-
-function sourceHostname(value: string): string {
-  try {
-    return new URL(value).hostname.replace(/^www\./, "");
-  } catch {
-    return "网页来源";
-  }
 }
 
 const pythonLessons: Course[] = [
@@ -2247,7 +2229,7 @@ export default function Home() {
     }, 50_000);
     setSearchBusy(true);
     setSearchResult(null);
-    setSearchStatus("正在联网检索并核对来源…");
+    setSearchStatus("正在生成回答…");
     try {
       const result = await callAi("search", searchQuery, controller.signal);
       if (requestId === searchRequestRef.current) {
@@ -2257,7 +2239,7 @@ export default function Home() {
     } catch (error) {
       if (requestId === searchRequestRef.current) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          setSearchStatus(timedOut ? "联网搜索响应超时，请稍后重试" : "已停止本次搜索");
+          setSearchStatus(timedOut ? "AI 回答超时，请稍后重试" : "已停止本次问答");
         } else {
           setSearchStatus(error instanceof Error ? error.message : "搜索失败");
         }
@@ -2337,7 +2319,7 @@ export default function Home() {
         <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
           <div className="search-dialog glass" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
             <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b></div><button onClick={() => setSearchOpen(false)} aria-label="关闭搜索">×</button></div>
-            <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：循环、指针、异步编程…" /><button onClick={search} disabled={!searchQuery.trim() || searchBusy}>{searchBusy ? "分析中" : "AI 深度搜索"}</button></div>
+            <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：循环、指针、异步编程…" /><button onClick={search} disabled={!searchQuery.trim() || searchBusy}>{searchBusy ? "分析中" : "AI 智能问答"}</button></div>
             {searchQuery.trim() && <section className="course-search-results" aria-label="即时课程匹配">
               <header><span>即时课程匹配</span><b>{courseMatches.length ? `${courseMatches.length} 个结果` : "暂无匹配"}</b></header>
               {courseMatches.length > 0
@@ -2355,39 +2337,11 @@ export default function Home() {
                       <strong>打开 →</strong>
                     </button>
                   )}</div>
-                : <p>没有找到完全匹配的课程，可调整关键词或使用 AI 深度搜索。</p>}
+                : <p>没有找到完全匹配的课程，可调整关键词或使用 AI 智能问答。</p>}
             </section>}
             {searchStatus && <div className="search-answer search-answer-status" role="status"><p>{searchStatus}</p></div>}
             {searchResult && <div className="search-answer">
               <p>{searchResult.answer}</p>
-              {searchResult.webSearched && searchResult.sources && searchResult.sources.length > 0 && (
-                <section className="search-sources" aria-label="联网搜索来源">
-                  <header>
-                    <b>联网来源</b>
-                    {searchResult.searchedAt && <time dateTime={searchResult.searchedAt}>
-                      {new Date(searchResult.searchedAt).toLocaleString("zh-CN", { hour12: false })}
-                    </time>}
-                  </header>
-                  <div>
-                    {searchResult.sources.map((source) => (
-                      <a
-                        href={source.url}
-                        key={`${source.id}:${source.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`来源 ${source.id}：${source.title}（新标签页打开）`}
-                      >
-                        <span>{source.id}</span>
-                        <span>
-                          <b>{source.title}</b>
-                          <small>{sourceHostname(source.url)}{source.publishedAt ? ` · ${source.publishedAt}` : ""}</small>
-                        </span>
-                        <strong aria-hidden="true">↗</strong>
-                      </a>
-                    ))}
-                  </div>
-                </section>
-              )}
             </div>}
           </div>
         </div>
