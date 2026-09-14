@@ -656,6 +656,12 @@ body:has(.profile-page)::after{
   padding:20px 24px 24px;
 }
 
+.profile-data-grid .danger>button{
+  margin-left:24px;
+  margin-right:24px;
+  max-width:calc(100% - 48px);
+}
+
 html[data-theme="light"] .profile-page{
   --profile-card-bg:#ffffff;
   --profile-card-subtle:#f5f7fb;
@@ -697,9 +703,14 @@ html[data-theme="light"] .profile-page{
     padding-right:18px;
   }
 
-  .profile-primary{
+  .profile-primary,
+  .profile-data-grid .danger>button{
     margin-left:18px;
     margin-right:18px;
+  }
+
+  .profile-data-grid .danger>button{
+    max-width:calc(100% - 36px);
   }
 
   .profile-password-form{
