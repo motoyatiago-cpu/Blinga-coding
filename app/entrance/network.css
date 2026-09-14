@@ -1,0 +1,83 @@
+
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :host{
+    --bg: #07080d;
+    --violet: #a78bfa;
+    --cyan: #67e8f9;
+    --amber: #f2b774;
+    --text: #ece9f5;
+    --text-dim: #8a8696;
+    --line: rgba(255,255,255,.09);
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  :host{ height:100%; background:var(--bg); }
+  :host{ font-family:'Space Grotesk', sans-serif; overflow-x:hidden; }
+
+  canvas#net{
+    position:fixed; inset:0; z-index:0; display:block;
+  }
+
+  /* ============ 加载层：暗角 + 文字 ============ */
+
+  #vignette{
+    position:fixed; inset:0; z-index:4; pointer-events:none;
+    background: radial-gradient(46% 46% at 50% 50%, rgba(7,8,13,0) 0%, rgba(7,8,13,.55) 62%, rgba(7,8,13,.92) 100%);
+    transition: opacity .3s ease;
+  }
+  #vignette.fade{ opacity:0; }
+
+  #loader{
+    position:fixed; inset:0; z-index:6;
+    display:flex; align-items:center; justify-content:center;
+    pointer-events:none;
+    transition: opacity .25s ease;
+  }
+  #loader.hidden{ opacity:0; }
+
+  #wordmark{
+    text-align:center;
+    opacity:0; transform: scale(.9) translateY(6px);
+    transition: opacity .25s cubic-bezier(.2,.8,.2,1), transform .3s cubic-bezier(.2,.8,.2,1);
+  }
+  #wordmark.show{ opacity:1; transform:scale(1) translateY(0); }
+  #wordmark .title{
+    font-size: clamp(34px, 6vw, 54px);
+    font-weight:700; letter-spacing:-.5px; color:var(--text);
+    text-shadow: 0 0 40px rgba(167,139,250,.35);
+  }
+  #wordmark .sub{
+    margin-top:12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: clamp(12.5px, 1.6vw, 14.5px);
+    letter-spacing:1.5px;
+    color: var(--cyan);
+    min-height: 1.4em;
+  }
+  #wordmark .sub::after{
+    content:'▍';
+    margin-left:2px;
+    animation: blink 1s step-end infinite;
+    color: var(--cyan);
+  }
+  #wordmark.show.done .sub::after{ opacity:0; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* ============ 网络扩散后成为背景的容器 ============ */
+  /* 把你自己的页面内容放进 #site 里即可：加载结束后它会自动淡入显现，
+     背后的 canvas 会持续以动态神经网络的形式作为背景运行。 */
+
+  .site{
+    position:relative; z-index:2;
+    min-height:100vh;
+    opacity:0; transform: translateY(8px);
+    transition: opacity .35s ease .1s, transform .35s ease .1s;
+  }
+  .site.revealed{ opacity:1; transform:translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){
+    #wordmark, #loader, #vignette, .site{ transition-duration:.3s !important; }
+  }
+
+.skip{position:fixed;right:24px;bottom:24px;z-index:10;padding:12px 20px;background:#20222c;color:#fff;border:0;border-radius:8px;cursor:pointer;font:inherit}.skip:focus-visible{outline:2px solid #67e8f9}

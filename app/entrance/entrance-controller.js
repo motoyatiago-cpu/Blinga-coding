@@ -1,4 +1,4 @@
-export function startEntrance(root, scope, handlers) {
+export function startEntrance(root, scope, handlers, enter = (path) => window.location.assign(path)) {
 
   const stage = root.getElementById("auth-stage");
   const form = root.getElementById("auth-form");
@@ -350,11 +350,12 @@ export function startEntrance(root, scope, handlers) {
       : "登录成功，欢迎回来。");
     splashSequence("success");
 
-    await wait(reducedMotion.matches ? 250 : 1150);
+    await wait(200);
     if (token !== runToken) return;
 
     if (result.redirectTo) {
-      window.location.assign(result.redirectTo);
+      if (result.redirectTo.startsWith('/api/')) window.location.assign(result.redirectTo);
+      else enter(result.redirectTo);
       return;
     }
 
