@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import CodeViewerDialog, { type CodeRecordRequest } from "../code-viewer-dialog";
 import ThemeToggle from "../theme-toggle";
+import ProfileEntry from "./profile-entry";
 import { buildCourseUrl } from "../course-links";
 
 type Provider = "microsoft" | "qq" | "wechat-open" | "wechat-oa";
@@ -409,12 +410,12 @@ export default function ProfileClient() {
   }
 
   if (!session) {
-    return <main className="profile-loading"><span /><p>正在读取个人空间</p></main>;
+    return <ProfileEntry ready={false} />;
   }
 
   if (!session.authenticated) {
     return (
-      <main className="profile-gate">
+      <ProfileEntry ready><main className="profile-gate">
         <div className="profile-orb one" /><div className="profile-orb two" />
         <a className="profile-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
         <section className="profile-gate-card glass">
@@ -436,16 +437,16 @@ export default function ProfileClient() {
           ) : null}
           <a className="profile-back" href="/home">← 返回学习中心</a>
         </section>
-      </main>
+      </main></ProfileEntry>
     );
   }
 
   if (!profile || !overview || !history) {
-    return <main className="profile-loading"><span /><p>正在整理学习记录</p></main>;
+    return <ProfileEntry ready={false} />;
   }
 
   return (
-    <main className="profile-page">
+    <ProfileEntry ready reduceMotion={profile.preferences.reduceMotion}><main className="profile-page">
       <div className="profile-orb one" /><div className="profile-orb two" />
       <header className="profile-topbar glass">
         <a className="profile-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
@@ -606,6 +607,6 @@ export default function ProfileClient() {
         </section>
         <CodeViewerDialog request={codeViewerRequest} onClose={() => setCodeViewerRequest(null)} />
       </div>
-    </main>
+    </main></ProfileEntry>
   );
 }

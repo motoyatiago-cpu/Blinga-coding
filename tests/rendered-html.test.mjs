@@ -699,7 +699,8 @@ test("server-renders the personal workspace route", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /个人主页 · Blinga coding/);
-  assert.match(html, /正在读取个人空间/);
+  assert.match(html, /正在加载个人主页/);
+  assert.match(html, /profile-entry-overlay/);
 });
 
 test("server-renders the password and guest login route", async () => {
