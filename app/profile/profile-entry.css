@@ -1,3 +1,4 @@
+html:has(.profile-entry){scrollbar-gutter:stable}
 .profile-entry{min-height:100dvh;background:var(--bg,#0d0f12)}
 .profile-entry-content{opacity:0;transition:opacity 600ms ease;min-height:100dvh}
 .profile-entry[data-phase="revealing"]>.profile-entry-content,
