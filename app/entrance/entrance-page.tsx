@@ -34,7 +34,7 @@ export default function EntrancePage({ author = false }: { author?: boolean }) {
       skip?.focus();
       if (skip) scope.listen(skip, "click", done);
       scope.listen(window, "keydown", ((event: KeyboardEvent) => { if (event.key === "Escape") done(); }) as EventListener);
-      scope.timeout(done, 4000);
+      scope.timeout(done, 7500);
       void import("./network-renderer.js").then(({ startNetworkIntro }) => {
         if (!scope.signal.aborted) startNetworkIntro(root, scope, done);
       }).catch(done);

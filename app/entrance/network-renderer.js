@@ -1,9 +1,10 @@
 
 export function startNetworkIntro(root, scope, done) {
-  const setTimeout = (fn, delay) => scope.timeout(fn, delay / 3);
+  const playbackRate = 1.65;
+  const setTimeout = (fn, delay) => scope.timeout(fn, delay / playbackRate);
   const clearTimeout = window.clearTimeout.bind(window);
   const requestAnimationFrame = (fn) => scope.frame((time) => { if (!document.hidden) fn(time); else scope.listen(document, 'visibilitychange', () => { if (!document.hidden) requestAnimationFrame(fn); }, { once: true }); });
-  scope.timeout(done, 3300);
+  scope.timeout(done, 6000);
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { done(); return; }
   const canvas = root.getElementById('net');
   const ctx = canvas.getContext('2d');
@@ -130,7 +131,7 @@ export function startNetworkIntro(root, scope, done) {
       const bulge = rand(-1, 1) * Math.min(dist * 0.4, 150);
       this.cx = (this.x0 + tx) / 2 + nx * bulge;
       this.cy = (this.y0 + ty) / 2 + ny * bulge;
-      this.progress = 0; this.duration = duration / 3; this.t0 = performance.now();
+      this.progress = 0; this.duration = duration / playbackRate; this.t0 = performance.now();
     }
     update(now){
       if (this.progress < 1){
