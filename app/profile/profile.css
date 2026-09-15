@@ -670,6 +670,7 @@ body:has(.profile-page)::after{
   margin-left:var(--data-content-inset);
   margin-right:var(--data-content-inset);
   max-width:calc(100% - 2 * var(--data-content-inset));
+  color:var(--text,#f1f3f5);
 }
 
 html[data-theme="light"] .profile-page{
