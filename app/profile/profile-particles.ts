@@ -3,6 +3,8 @@ export function startProfileParticles(canvas: HTMLCanvasElement, reducedMotion: 
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
   let width = 0, height = 0, frame = 0, lastTime = 0;
+  let disposed = false;
+  const frameInterval = 1000 / 30;
   let mouse: { x: number; y: number } | null = null;
   let particles: Array<{ x: number; y: number; dx: number; dy: number; size: number }> = [];
   let rgb = "0,212,255";
@@ -10,17 +12,26 @@ export function startProfileParticles(canvas: HTMLCanvasElement, reducedMotion: 
     rgb = document.documentElement.dataset.theme === "light" ? "0,125,170" : "0,212,255";
   };
   const resize = () => {
+    if (disposed) return;
+    const oldWidth = width, oldHeight = height;
     width = canvas.clientWidth;
     height = canvas.clientHeight;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    particles = Array.from({ length: Math.min(220, Math.ceil(width * height / 9000)) }, () => ({
+    const count = Math.min(220, Math.ceil(width * height / 9000));
+    // Preserve positions during viewport changes instead of flashing a new scene.
+    particles = particles.slice(0, count);
+    for (const p of particles) {
+      p.x *= oldWidth ? width / oldWidth : 1;
+      p.y *= oldHeight ? height / oldHeight : 1;
+    }
+    particles.push(...Array.from({ length: Math.max(0, count - particles.length) }, () => ({
       x: Math.random() * width, y: Math.random() * height,
       dx: Math.random() - .5, dy: Math.random() - .5, size: Math.random() * 2 + 1,
-    }));
-    if (reducedMotion) draw(0);
+    })));
+    if (!document.hidden) draw(0);
   };
   function draw(step: number) {
     if (!ctx) return;
@@ -63,25 +74,34 @@ export function startProfileParticles(canvas: HTMLCanvasElement, reducedMotion: 
   }
   const animate = (time: number) => {
     frame = 0;
-    if (document.hidden || reducedMotion) return;
-    const step = lastTime ? Math.min((time - lastTime) / 16.667, 2) : 1;
-    lastTime = time;
-    draw(step);
+    if (disposed || document.hidden || reducedMotion) return;
+    const elapsed = time - lastTime;
+    if (!lastTime || elapsed >= frameInterval) {
+      const step = lastTime ? Math.min(elapsed / 16.667, 3) : 1;
+      lastTime = time;
+      draw(step);
+    }
     frame = requestAnimationFrame(animate);
   };
   const visibility = () => {
+    if (disposed) return;
     cancelAnimationFrame(frame);
     frame = 0;
     lastTime = 0;
     if (canvas.parentElement) canvas.parentElement.dataset.paused = String(document.hidden);
     if (!document.hidden && !reducedMotion) frame = requestAnimationFrame(animate);
+    if (!document.hidden && reducedMotion) draw(0);
   };
   const move = (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
     mouse = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   const leave = () => { mouse = null; };
-  const observer = new MutationObserver(() => { updateTheme(); if (reducedMotion) draw(0); });
+  const observer = new MutationObserver(() => {
+    if (disposed) return;
+    updateTheme();
+    if (reducedMotion && !document.hidden) draw(0);
+  });
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   updateTheme();
   resize();
@@ -91,6 +111,7 @@ export function startProfileParticles(canvas: HTMLCanvasElement, reducedMotion: 
   canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerleave", leave);
   return () => {
+    disposed = true;
     cancelAnimationFrame(frame);
     observer.disconnect();
     window.removeEventListener("resize", resize);

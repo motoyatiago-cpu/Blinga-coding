@@ -12,6 +12,7 @@ export default function ProfileEntry({ ready, reduceMotion = false, children }: 
   const started = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const reduced = reduceMotion || systemReduced;
+  const finished = phase === "done";
   useEffect(() => {
     started.current = performance.now();
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -21,9 +22,11 @@ export default function ProfileEntry({ ready, reduceMotion = false, children }: 
     return () => media.removeEventListener("change", sync);
   }, []);
   useEffect(() => {
-    if (phase === "done" || !canvas.current) return;
-    return startProfileParticles(canvas.current, reduced);
-  }, [phase === "done", reduced]);
+    if (finished || !canvas.current) return;
+    // Read the media query before the first frame, not after a state update.
+    return startProfileParticles(canvas.current,
+      reduced || window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, [finished, reduced]);
   useEffect(() => {
     if (!ready || phase !== "loading") return;
     const timer = window.setTimeout(() => setPhase("revealing"),

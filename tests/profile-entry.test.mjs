@@ -52,10 +52,30 @@ test("particle loop pauses in hidden tabs, resumes once, and fully disposes", (t
   m.listeners.get("document:visibilitychange")();
   m.listeners.get("document:visibilitychange")();
   assert.equal(m.frames.size, 1);
+  const lateFrame = m.frames.values().next().value;
   stop();
+  lateFrame(100);
   assert.equal(m.frames.size, 0);
   assert.equal(m.listeners.size, 0);
   assert.equal(m.disconnected(), true);
+});
+
+test("high refresh displays do not repaint particles on every frame", (t) => {
+  const m = setup(t);
+  const stop = startProfileParticles(m.canvas, false);
+  function tick(time) {
+    const [id, fn] = m.frames.entries().next().value;
+    m.frames.delete(id);
+    fn(time);
+  }
+  tick(100);
+  const count = m.drawn();
+  tick(108);
+  tick(116);
+  assert.equal(m.drawn(), count);
+  tick(140);
+  assert.ok(m.drawn() > count);
+  stop();
 });
 
 test("reduced motion paints a still scene without an animation loop", (t) => {
