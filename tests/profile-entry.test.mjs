@@ -94,7 +94,9 @@ test("entry crossfades only after readiness and unmounts its overlay", async () 
   assert.match(entry, /phase !== "done" && <div/);
   assert.match(entry, /inert=\{phase !== "done"\}/);
   assert.match(entry, /clearTimeout\(timer\)/);
-  assert.match(css, /transition:opacity 600ms ease/);
+  assert.match(entry, /Math.max\(0, 300 - \(performance.now\(\) - started.current\)\)/);
+  assert.match(entry, /reduced \? 160 : 300/);
+  assert.equal((css.match(/transition:opacity 250ms ease/g) || []).length, 2);
   assert.match(css, /html\[data-theme="light"\]/);
   assert.match(css, /prefers-reduced-motion:reduce/);
 });

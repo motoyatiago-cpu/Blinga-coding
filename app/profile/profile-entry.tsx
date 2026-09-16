@@ -30,13 +30,13 @@ export default function ProfileEntry({ ready, reduceMotion = false, children }: 
   useEffect(() => {
     if (!ready || phase !== "loading") return;
     const timer = window.setTimeout(() => setPhase("revealing"),
-      reduced ? 0 : Math.max(0, 900 - (performance.now() - started.current)));
+      reduced ? 0 : Math.max(0, 300 - (performance.now() - started.current)));
     return () => window.clearTimeout(timer);
   }, [ready, phase, reduced]);
   useEffect(() => {
     if (phase !== "revealing") return;
     // Also works when transitionend is suppressed (background tab/reduced motion).
-    const timer = window.setTimeout(() => setPhase("done"), reduced ? 160 : 650);
+    const timer = window.setTimeout(() => setPhase("done"), reduced ? 160 : 300);
     return () => window.clearTimeout(timer);
   }, [phase, reduced]);
   return <div className="profile-entry" data-phase={phase} data-reduced={reduced} aria-busy={!ready}>

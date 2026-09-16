@@ -1,9 +1,9 @@
 html:has(.profile-entry){scrollbar-gutter:stable}
 .profile-entry{min-height:100dvh;background:var(--bg,#0d0f12)}
-.profile-entry-content{opacity:0;transition:opacity 600ms ease;min-height:100dvh}
+.profile-entry-content{opacity:0;transition:opacity 250ms ease;min-height:100dvh}
 .profile-entry[data-phase="revealing"]>.profile-entry-content,
 .profile-entry[data-phase="done"]>.profile-entry-content{opacity:1}
-.profile-entry-overlay{position:fixed;inset:0;z-index:2147483646;overflow:hidden;opacity:1;background:radial-gradient(circle at center,#0b1021 0%,var(--bg,#000) 100%);transition:opacity 600ms ease}
+.profile-entry-overlay{position:fixed;inset:0;z-index:2147483646;overflow:hidden;opacity:1;background:radial-gradient(circle at center,#0b1021 0%,var(--bg,#000) 100%);transition:opacity 250ms ease}
 .profile-entry[data-phase="revealing"]>.profile-entry-overlay{opacity:0}
 .profile-entry-overlay>canvas{position:absolute;inset:0;width:100%;height:100%}
 .profile-entry-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
