@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 type Reply = {
-  id: string; postId: string; content: string; deleted: boolean; createdAt: string; mine: boolean;
+  id: string; postId: string; content: string; deleted: boolean; createdAt: string;
+  permissions: { canDelete: boolean };
   author: { name: string; avatarType: string; avatarValue: string | null; avatarUrl: string | null } | null;
   replyTo: { id: string; name: string | null; deleted: boolean } | null;
 };
@@ -84,13 +85,19 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
     finally { sendingRef.current = false; if (alive.current) setSending(false); }
   }
   async function remove(row: Reply) {
-    if (deletingRef.current || !window.confirm("删除这条回复吗？")) return;
+    if (!row.permissions.canDelete || deletingRef.current || !window.confirm("删除这条回复吗？")) return;
     deletingRef.current = true; setDeleting(row.id); setError("");
     try {
       await read(await fetch(`/api/forum/replies?id=${encodeURIComponent(row.id)}`, { method: "DELETE", credentials: "same-origin" }));
       if (!alive.current) return;
       revision.current++;
-      setRows(current => current.map(item => item.id === row.id ? { ...item, deleted: true, content: "", author: null } :
+      setRows(current => current.map(item => item.id === row.id ? {
+        ...item,
+        deleted: true,
+        content: "",
+        author: null,
+        permissions: { canDelete: false },
+      } :
         item.replyTo?.id === row.id ? { ...item, replyTo: { ...item.replyTo, name: null, deleted: true } } : item));
       setCount(value => Math.max(0, value - 1));
       if (target?.id === row.id) setTarget(null);
@@ -112,7 +119,7 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
               {row.replyTo && <span className="forum-reply-target">回复 {row.replyTo.deleted ? "已删除的回复" : row.replyTo.name}</span>}
               <p>{row.content}</p>
               <div className="forum-reply-actions"><button type="button" disabled={sending} onClick={() => reply({ id: row.id, name: row.author?.name || "用户" })}>回复</button>
-                {row.mine && <button type="button" disabled={deleting !== null} onClick={() => void remove(row)}>{deleting === row.id ? "删除中" : "删除"}</button>}</div>
+                {row.permissions.canDelete && <button type="button" disabled={deleting !== null} onClick={() => void remove(row)}>{deleting === row.id ? "删除中" : "删除"}</button>}</div>
             </div></>}
         </article>)}
       </div>

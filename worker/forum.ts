@@ -79,12 +79,14 @@ export async function ensureForumSchema(database: D1Database): Promise<void> {
 }
 
 function publicPost(row: ForumPostRow, viewer: SessionUser | null) {
+  const isOwner = Boolean(viewer && viewer.id === row.user_id);
+  const resolved = Boolean(row.resolved);
   return {
     id: row.id,
     content: row.content,
     replyCount: Number(row.reply_count || 0),
     category: row.category,
-    resolved: Boolean(row.resolved),
+    resolved,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     author: {
@@ -95,7 +97,10 @@ function publicPost(row: ForumPostRow, viewer: SessionUser | null) {
         ? `/api/forum/avatar?post=${encodeURIComponent(row.id)}`
         : null,
     },
-    mine: viewer?.id === row.user_id,
+    permissions: {
+      canResolve: isOwner && !resolved && row.category === "help",
+      canDelete: isOwner,
+    },
   };
 }
 

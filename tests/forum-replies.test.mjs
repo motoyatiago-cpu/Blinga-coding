@@ -59,13 +59,25 @@ test('two real sessions can reply to each other and themselves; public reads kee
   assert.equal(page.headers.get('Cache-Control'),'no-store');
   const data = await page.json();
   assert.equal(data.replies.length,3);
-  assert.ok(data.replies.every(r => r.mine === false));
+  assert.ok(data.replies.every(r => r.permissions.canDelete === false));
+  const alicePage = await (await request('/api/forum/replies?postId=post-a','GET','alice')).json();
+  assert.equal(alicePage.replies.find(r => r.id === first.id).permissions.canDelete,false);
+  assert.equal(alicePage.replies.find(r => r.id === second.id).permissions.canDelete,true);
   assert.doesNotMatch(JSON.stringify(data),/user_id|token_hash|email|request_id/);
   const feed = await (await request('/api/forum/posts')).json();
   assert.equal(feed.posts.find(p => p.id === 'post-a').replyCount,3);
+  assert.deepEqual(feed.posts.find(p => p.id === 'post-a').permissions,{canResolve:false,canDelete:false});
+  const aliceFeed = await (await request('/api/forum/posts','GET','alice')).json();
+  assert.deepEqual(aliceFeed.posts.find(p => p.id === 'post-a').permissions,{canResolve:true,canDelete:true});
+  const bobFeed = await (await request('/api/forum/posts','GET','bob')).json();
+  assert.deepEqual(bobFeed.posts.find(p => p.id === 'post-a').permissions,{canResolve:false,canDelete:false});
+  assert.equal((await request('/api/forum/posts?id=post-a','PATCH','bob')).status,404);
+  assert.equal((await request('/api/forum/posts?id=post-a','DELETE','bob')).status,404);
   assert.equal(feed.stats.posts,2);
   assert.equal(feed.stats.contributors,1);
   await request('/api/forum/posts?id=post-a','PATCH','alice');
+  const resolvedFeed = await (await request('/api/forum/posts','GET','alice')).json();
+  assert.deepEqual(resolvedFeed.posts.find(p => p.id === 'post-a').permissions,{canResolve:false,canDelete:true});
   assert.equal((await send('bob')).status,201);
 });
 

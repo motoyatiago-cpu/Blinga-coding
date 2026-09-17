@@ -19,10 +19,11 @@ const json = (data: unknown, status = 200) => Response.json(data, { status, head
 } });
 const validId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
 function publicReply(row: ReplyRow, viewer: SessionUser | null) {
+  const canDelete = Boolean(viewer && viewer.id === row.user_id && !row.is_deleted);
   return {
     id: row.id, postId: row.post_id, content: row.is_deleted ? "" : row.content,
     deleted: Boolean(row.is_deleted), createdAt: row.created_at,
-    mine: viewer?.id === row.user_id,
+    permissions: { canDelete },
     author: row.is_deleted ? null : {
       name: row.username || row.display_name,
       avatarType: row.avatar_type,

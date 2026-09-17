@@ -16,7 +16,10 @@ type ForumPost = {
     avatarValue: string | null;
     avatarUrl: string | null;
   };
-  mine: boolean;
+  permissions: {
+    canResolve: boolean;
+    canDelete: boolean;
+  };
   replyCount: number;
 };
 
@@ -166,7 +169,7 @@ export default function ForumClient() {
   }
 
   async function remove(post: ForumPost) {
-    if (!post.mine || !window.confirm("删除这条留言吗？")) return;
+    if (!post.permissions.canDelete || !window.confirm("删除这条留言吗？")) return;
     setError("");
     try {
       await readJson(await fetch(`/api/forum/posts?id=${encodeURIComponent(post.id)}`, {
@@ -199,9 +202,14 @@ export default function ForumClient() {
   }
 
   async function resolvePost(post: ForumPost) {
+    if (!post.permissions.canResolve) return;
     try {
       await readJson(await fetch(`/api/forum/posts?id=${encodeURIComponent(post.id)}`, { method: "PATCH", credentials: "same-origin" }));
-      setPosts(current => current.map(item => item.id === post.id ? { ...item, resolved: true } : item));
+      setPosts(current => current.map(item => item.id === post.id ? {
+        ...item,
+        resolved: true,
+        permissions: { ...item.permissions, canResolve: false },
+      } : item));
     } catch (reason) { setError(reason instanceof Error ? reason.message : "暂时无法更新"); }
   }
   return (
@@ -262,8 +270,10 @@ export default function ForumClient() {
                   {relativeTime(post.createdAt)}
                 </time>
                 <span className="forum-post-category">{post.category === "share" ? "网站建议" : "编程求助"}{post.resolved ? " · 已解决" : ""}</span>
-                {post.mine && !post.resolved && post.category !== "share" && <button type="button" onClick={()=>void resolvePost(post)}>标记已解决</button>}
-                {post.mine && <button type="button" onClick={() => void remove(post)}>删除</button>}
+                {(post.permissions.canResolve || post.permissions.canDelete) && <span className="forum-owner-actions" aria-label="我的讨论操作">
+                  {post.permissions.canResolve && <button type="button" onClick={()=>void resolvePost(post)}>标记已解决</button>}
+                  {post.permissions.canDelete && <button type="button" onClick={() => void remove(post)}>删除</button>}
+                </span>}
               </header>
               <p>{post.content}</p>
               <ForumReplies postId={post.id} authorName={post.author.name} authenticated={viewer.authenticated} initialCount={post.replyCount || 0} />

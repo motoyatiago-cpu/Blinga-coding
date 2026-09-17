@@ -26,7 +26,11 @@ test("uses a real shared forum feed with authenticated writes", async () => {
   assert.match(client, /maxLength=\{MAX_LENGTH\}/);
   assert.match(client, /requestId: requestIdRef\.current/);
   assert.match(client, /post\.author\.avatarUrl/);
-  assert.match(client, /post\.mine/);
+  assert.match(client, /post\.permissions\.canResolve/);
+  assert.match(client, /post\.permissions\.canDelete/);
+  assert.doesNotMatch(client, /post\.mine/);
+  assert.match(worker, /canResolve: isOwner/);
+  assert.match(worker, /canDelete: isOwner/);
 
   assert.match(workerEntry, /handleForumRequest/);
   assert.match(worker, /getSessionUser/);
