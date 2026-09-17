@@ -290,6 +290,27 @@ html[data-theme="light"] .forum-composer textarea::placeholder{color:#98a2b3}
 @media(prefers-reduced-motion:reduce){
   .forum-post{transition:none}
 }
+.forum-replies{margin-top:12px;min-width:0}
+.forum-reply-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.forum-reply-actions button,.forum-reply-more{border:0;background:transparent;color:var(--forum-accent);font:inherit;font-size:13px;min-height:44px;padding:8px;cursor:pointer;border-radius:6px}
+.forum-reply-actions button:hover,.forum-reply-more:hover{background:var(--forum-hover)}
+.forum-reply-actions button:focus-visible,.forum-reply-more:focus-visible{outline:2px solid var(--forum-accent);outline-offset:2px}
+.forum-reply-actions button:disabled{opacity:.5;cursor:default}
+.forum-reply-actions span,.forum-reply-target{font-size:13px;color:var(--forum-muted)}
+.forum-reply-list{display:grid;gap:20px;margin-top:12px}
+.forum-reply{display:flex;gap:10px;min-width:0;padding:8px 0}
+.forum-reply-body{flex:1;min-width:0}
+.forum-reply-avatar{width:30px;height:30px;flex-shrink:0;border-radius:8px;background:var(--forum-hover);display:grid;place-items:center;overflow:hidden}
+.forum-reply-avatar img{width:100%;height:100%;object-fit:cover}
+.forum-post .forum-reply header{flex-wrap:wrap;gap:8px}
+.forum-post .forum-reply p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;margin:8px 0}
+.forum-post .forum-reply time{font-size:12px}
+.forum-post .forum-reply-deleted,.forum-reply-empty{color:var(--forum-muted);font-size:13px}
+.forum-reply-composer{margin-top:16px;display:grid;gap:10px}
+.forum-reply-composer label{font-size:14px;color:var(--forum-text);overflow-wrap:anywhere}
+.forum-reply-composer textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:96px;border:0;border-radius:8px;padding:12px;background:var(--forum-surface);color:var(--forum-text);font:inherit;font-size:16px}
+.forum-reply-composer textarea:focus-visible{outline:2px solid var(--forum-accent);outline-offset:2px}
+.forum-reply-composer .forum-reply-actions{justify-content:flex-end}
 /* Community workspace */
 .forum-content{width:min(1120px,calc(100% - 40px));padding:52px 0 80px}
 .forum-heading{margin-bottom:30px}

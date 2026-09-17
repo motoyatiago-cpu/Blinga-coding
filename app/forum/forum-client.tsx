@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ForumReplies from "./forum-replies";
 
 type ForumPost = {
   id: string;
@@ -16,6 +17,7 @@ type ForumPost = {
     avatarUrl: string | null;
   };
   mine: boolean;
+  replyCount: number;
 };
 
 type ForumPayload = {
@@ -264,6 +266,7 @@ export default function ForumClient() {
                 {post.mine && <button type="button" onClick={() => void remove(post)}>删除</button>}
               </header>
               <p>{post.content}</p>
+              <ForumReplies postId={post.id} authorName={post.author.name} authenticated={viewer.authenticated} initialCount={post.replyCount || 0} />
             </div>
           </article>
         ))}

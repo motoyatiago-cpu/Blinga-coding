@@ -4,6 +4,7 @@ import {
   type AuthEnv,
   type SessionUser,
 } from "./auth";
+import { handleReplies } from "./forum-replies";
 
 export interface ForumEnv extends AuthEnv {
   AVATARS?: R2Bucket;
@@ -26,6 +27,7 @@ type ForumPostRow = {
   username: string | null;
   avatar_type: string;
   avatar_value: string | null;
+  reply_count?: number;
 };
 
 function forumJson(data: unknown, status = 200): Response {
@@ -58,6 +60,7 @@ export async function ensureForumSchema(database: D1Database): Promise<void> {
       const required: Record<string, string[]> = {
         forum_posts: ["id", "user_id", "request_id", "category", "resolved", "content", "status", "is_deleted", "created_at", "updated_at"],
         forum_user_stats: ["user_id", "post_count", "first_post_at", "last_post_at", "updated_at"],
+        forum_replies: ["id", "post_id", "user_id", "reply_to_id", "request_id", "content", "is_deleted", "created_at", "updated_at"],
       };
       for (const [table, columns] of Object.entries(required)) {
         const info = await database.prepare(`PRAGMA table_info(${table})`).all<{ name: string; type: string }>();
@@ -79,6 +82,7 @@ function publicPost(row: ForumPostRow, viewer: SessionUser | null) {
   return {
     id: row.id,
     content: row.content,
+    replyCount: Number(row.reply_count || 0),
     category: row.category,
     resolved: Boolean(row.resolved),
     createdAt: row.created_at,
@@ -158,7 +162,8 @@ async function listPosts(request: Request, env: ForumEnv): Promise<Response> {
     ? await env.DB.prepare(`
         SELECT
           p.id, p.user_id, p.category, p.resolved, p.content, p.created_at, p.updated_at,
-          u.display_name, u.username, u.avatar_type, u.avatar_value
+          u.display_name, u.username, u.avatar_type, u.avatar_value,
+          (SELECT COUNT(*) FROM forum_replies r WHERE r.post_id = p.id AND r.is_deleted = 0) AS reply_count
         FROM forum_posts p
         JOIN users u ON u.id = p.user_id
         WHERE p.status = 'published' AND p.is_deleted = 0
@@ -169,7 +174,8 @@ async function listPosts(request: Request, env: ForumEnv): Promise<Response> {
     : await env.DB.prepare(`
         SELECT
           p.id, p.user_id, p.category, p.resolved, p.content, p.created_at, p.updated_at,
-          u.display_name, u.username, u.avatar_type, u.avatar_value
+          u.display_name, u.username, u.avatar_type, u.avatar_value,
+          (SELECT COUNT(*) FROM forum_replies r WHERE r.post_id = p.id AND r.is_deleted = 0) AS reply_count
         FROM forum_posts p
         JOIN users u ON u.id = p.user_id
         WHERE p.status = 'published' AND p.is_deleted = 0
@@ -308,10 +314,16 @@ async function deletePost(request: Request, env: ForumEnv): Promise<Response> {
 async function publicAvatar(request: Request, env: ForumEnv): Promise<Response> {
   if (request.method !== "GET") return new Response("Method not allowed", { status: 405 });
   const postId = new URL(request.url).searchParams.get("post")?.trim() || "";
-  if (!postId || postId.length > 64 || !env.AVATARS) return new Response("Not found", { status: 404 });
+  const replyId = new URL(request.url).searchParams.get("reply")?.trim() || "";
+  if ((!postId && !replyId) || postId.length > 64 || replyId.length > 64 || !env.AVATARS) return new Response("Not found", { status: 404 });
   await ensureAuthSchema(env.DB);
   await ensureForumSchema(env.DB);
-  const avatar = await env.DB.prepare(`
+  const avatar = replyId ? await env.DB.prepare(`
+    SELECT u.avatar_value FROM forum_replies r
+    JOIN users u ON u.id = r.user_id JOIN forum_posts p ON p.id = r.post_id
+    WHERE r.id = ? AND r.is_deleted = 0 AND p.status = 'published' AND p.is_deleted = 0
+      AND u.avatar_type = 'upload'
+  `).bind(replyId).first<{ avatar_value: string | null }>() : await env.DB.prepare(`
     SELECT u.avatar_value
     FROM forum_posts p
     JOIN users u ON u.id = p.user_id
@@ -334,6 +346,11 @@ async function dispatchForumRequest(
   env: ForumEnv,
 ): Promise<Response | null> {
   const url = new URL(request.url);
+  if (url.pathname === "/api/forum/replies") {
+    await ensureAuthSchema(env.DB);
+    await ensureForumSchema(env.DB);
+    return handleReplies(request, env);
+  }
   if (url.pathname === "/api/forum/avatar") return publicAvatar(request, env);
   if (url.pathname === "/api/forum/stats") {
     if (request.method !== "GET") return forumJson({ error: "仅支持 GET 请求" }, 405);
@@ -361,7 +378,7 @@ async function dispatchForumRequest(
 /** Catch awaited failures at the API boundary; never return SQL or HTML to clients. */
 export async function handleForumRequest(request: Request, env: ForumEnv): Promise<Response | null> {
   const path = new URL(request.url).pathname;
-  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar"].includes(path)) return null;
+  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar", "/api/forum/replies"].includes(path)) return null;
   try {
     return await dispatchForumRequest(request, env);
   } catch (error) {
