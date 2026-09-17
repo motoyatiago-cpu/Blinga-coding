@@ -15,6 +15,8 @@ test("uses a real shared forum feed with authenticated writes", async () => {
 
   assert.match(page, /<ForumClient \/>/);
   assert.match(client, /<h1>用户论坛/);
+  assert.match(client, /网站建议/);
+  assert.doesNotMatch(client, /学习分享/);
   assert.doesNotMatch(page, /forum-ambient|forum-categories|forum-guidelines|Blinga community/);
 
   assert.match(client, /fetch\("\/api\/forum\/posts\?limit=20"/);

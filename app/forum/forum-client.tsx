@@ -212,11 +212,11 @@ export default function ForumClient() {
       </header>
 
       <nav className="forum-tabs" aria-label="讨论分类">
-        {[["latest","最新讨论"],["help","编程求助"],["share","学习分享"],["resolved","已解决"]].map(([id,label]) => <button type="button" key={id} aria-pressed={view===id} className={view===id?"is-active":""} onClick={()=>setView(id)}>{label}</button>)}
+        {[["latest","最新讨论"],["help","编程求助"],["share","网站建议"],["resolved","已解决"]].map(([id,label]) => <button type="button" key={id} aria-pressed={view===id} className={view===id?"is-active":""} onClick={()=>setView(id)}>{label}</button>)}
       </nav>
       <div className="forum-layout"><div className="forum-primary">
       <section className="forum-composer" aria-label="发表留言">
-        <div className="forum-composer-head"><h2>发布讨论</h2><select aria-label="选择分类" value={category} onChange={event=>setCategory(event.target.value as "help"|"share")}><option value="help">编程求助</option><option value="share">学习分享</option></select></div>
+        <div className="forum-composer-head"><h2>发布讨论</h2><select aria-label="选择分类" value={category} onChange={event=>setCategory(event.target.value as "help"|"share")}><option value="help">编程求助</option><option value="share">网站建议</option></select></div>
         {viewer.authenticated ? (
           <div className="forum-editor">
             <label htmlFor="forum-message">{viewer.name}</label>
@@ -261,7 +261,7 @@ export default function ForumClient() {
                 <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString("zh-CN")}>
                   {relativeTime(post.createdAt)}
                 </time>
-                <span className="forum-post-category">{post.category === "share" ? "学习分享" : "编程求助"}{post.resolved ? " · 已解决" : ""}</span>
+                <span className="forum-post-category">{post.category === "share" ? "网站建议" : "编程求助"}{post.resolved ? " · 已解决" : ""}</span>
                 {post.mine && !post.resolved && post.category !== "share" && <button type="button" onClick={()=>void resolvePost(post)}>标记已解决</button>}
                 {post.mine && <button type="button" onClick={() => void remove(post)}>删除</button>}
               </header>
