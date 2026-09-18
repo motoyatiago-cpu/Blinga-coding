@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("uses a real shared forum feed with authenticated writes", async () => {
-  const [page, client, worker, workerEntry, schema, migration, css] = await Promise.all([
+  const [page, client, guide, worker, workerEntry, schema, migration, css] = await Promise.all([
     readFile(new URL("../app/forum/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/forum/forum-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/forum/community-guide.tsx", import.meta.url), "utf8"),
     readFile(new URL("../worker/forum.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -18,6 +19,10 @@ test("uses a real shared forum feed with authenticated writes", async () => {
   assert.match(client, /网站建议/);
   assert.doesNotMatch(client, /学习分享/);
   assert.doesNotMatch(page, /forum-ambient|forum-categories|forum-guidelines|Blinga community/);
+  assert.match(client, /<CommunityGuide \/>/);
+  assert.equal((guide.match(/^  "/gm) || []).length, 8);
+  assert.match(guide, /aria-pressed=\{paused\}/);
+  assert.match(guide, /<GuideList duplicate \/>/);
 
   assert.match(client, /fetch\("\/api\/forum\/posts\?limit=20"/);
   assert.match(client, /method: "POST"/);
@@ -53,4 +58,7 @@ test("uses a real shared forum feed with authenticated writes", async () => {
   assert.doesNotMatch(css, /box-shadow|backdrop-filter|linear-gradient|radial-gradient/);
   assert.match(css, /\.forum-post\{[\s\S]*?background:transparent/);
   assert.match(css, /\.forum-composer textarea\{[\s\S]*?border:0/);
+  assert.match(css, /@keyframes forum-guide-scroll/);
+  assert.match(css, /animation-play-state:paused/);
+  assert.match(css, /prefers-reduced-motion:reduce[\s\S]*?forum-guide-track\{animation:none\}/);
 });

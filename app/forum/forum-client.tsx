@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CommunityGuide from "./community-guide";
 import ForumReplies from "./forum-replies";
 
 type ForumPost = {
@@ -286,7 +287,7 @@ export default function ForumClient() {
           </button>
         )}
       </section>
-      </div><aside className="forum-aside"><section><h2>社区指南</h2><ol><li><b>1</b><span>友善交流，尊重每一位成员</span></li><li><b>2</b><span>提问请清晰描述问题和复现步骤</span></li><li><b>3</b><span>分享有价值的内容，帮助他人成长</span></li></ol></section><section><h2>热门标签</h2><div className="forum-tags">{["Python","C/C++","JavaScript","Java"].map(tag=><span key={tag}>{tag}</span>)}</div></section></aside></div>
+      </div><aside className="forum-aside"><CommunityGuide /><section><h2>热门标签</h2><div className="forum-tags">{["Python","C/C++","JavaScript","Java"].map(tag=><span key={tag}>{tag}</span>)}</div></section></aside></div>
     </div>
   );
 }

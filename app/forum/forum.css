@@ -296,6 +296,10 @@ html[data-theme="light"] .forum-composer textarea::placeholder{color:#98a2b3}
 
 @media(prefers-reduced-motion:reduce){
   .forum-post{transition:none}
+  .forum-guide-track{animation:none}
+  .forum-guide-list[aria-hidden="true"]{display:none}
+  .forum-guide-viewport{height:auto;overflow:visible}
+  .forum-guide-heading button{display:none}
 }
 .forum-replies{margin-top:12px;min-width:0}
 .forum-reply-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -335,9 +339,17 @@ html[data-theme="light"] .forum-composer textarea::placeholder{color:#98a2b3}
 .forum-composer:focus-within{background:var(--forum-surface)}
 .forum-aside{display:grid;gap:20px}
 .forum-aside section{padding:25px 24px;background:var(--forum-surface);border-radius:10px}
-.forum-aside ol{display:grid;gap:22px;margin:24px 0 0;padding:0;list-style:none}
-.forum-aside li{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;font-size:13px;line-height:1.6}
-.forum-aside li b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--forum-accent);background:var(--forum-hover)}
+.forum-guide-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.forum-guide-heading button{min-width:44px;min-height:44px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--forum-muted);font:inherit;font-size:13px;cursor:pointer}
+.forum-guide-heading button:hover,.forum-guide-heading button[aria-pressed="true"]{background:var(--forum-hover);color:var(--forum-text)}
+.forum-guide-heading button:focus-visible,.forum-guide-viewport:focus-visible{outline:2px solid var(--forum-accent);outline-offset:2px}
+.forum-guide-viewport{height:218px;margin-top:20px;overflow:hidden;border-radius:8px}
+.forum-guide-track{display:flex;flex-direction:column;gap:14px;will-change:transform;animation:forum-guide-scroll 34s linear infinite}
+.forum-guide-viewport:hover .forum-guide-track,.forum-guide-viewport:focus-within .forum-guide-track,.forum-guide-viewport.is-paused .forum-guide-track{animation-play-state:paused}
+.forum-guide-list{display:grid;gap:14px;margin:0;padding:0;list-style:none}
+.forum-guide-list li{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;min-height:42px;align-items:center;font-size:13px;line-height:1.55}
+.forum-guide-list li b{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;color:var(--forum-accent);background:var(--forum-hover)}
+@keyframes forum-guide-scroll{to{transform:translateY(calc(-50% - 7px))}}
 .forum-tags{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
 .forum-tags span{padding:8px;text-align:center;border:1px solid #30343e;border-radius:22px;font-size:14px}
 .forum-empty{display:grid;justify-items:center;padding:14px 0 28px;text-align:center}
