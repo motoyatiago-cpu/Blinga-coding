@@ -28,6 +28,7 @@ import {
   useState,
 } from "react";
 import AccountMenu from "./account-menu";
+import AiAssistantIcon from "./ai-assistant-icons";
 import ThemeToggle from "./theme-toggle";
 import { OPEN_AI_ASSISTANT_EVENT } from "./ai-assistant-events";
 import CodeViewerDialog, {
@@ -69,6 +70,20 @@ type KnowledgeNode = Node<KnowledgeData, "knowledge">;
 type AiResponse = {
   answer: string;
 };
+type SpeechRecognitionResultEventLike = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const MAX_SOURCE_FILE_CHARS = 12_000;
 const INITIAL_CHAT_MESSAGE = {
@@ -1925,6 +1940,8 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([{ ...INITIAL_CHAT_MESSAGE }]);
   const [aiBusy, setAiBusy] = useState(false);
+  const [chatActionStatus, setChatActionStatus] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const [sandboxContext, setSandboxContext] = useState<SandboxContext>({
     code: lessons.Python.code,
     stdin: "",
@@ -1936,6 +1953,9 @@ export default function Home() {
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatRequestRef = useRef(0);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const chatStatusTimerRef = useRef<number | null>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const {
     panelRef: chatPanelRef,
     interaction: chatPanelInteraction,
@@ -2060,6 +2080,10 @@ export default function Home() {
   useEffect(() => () => {
     searchAbortRef.current?.abort();
     chatAbortRef.current?.abort();
+    speechRecognitionRef.current?.stop();
+    if (chatStatusTimerRef.current !== null) {
+      window.clearTimeout(chatStatusTimerRef.current);
+    }
   }, []);
 
   useEffect(() => {
@@ -2297,6 +2321,88 @@ export default function Home() {
     chatAbortRef.current?.abort();
   }
 
+  function announceChatAction(message: string) {
+    setChatActionStatus(message);
+    if (chatStatusTimerRef.current !== null) {
+      window.clearTimeout(chatStatusTimerRef.current);
+    }
+    chatStatusTimerRef.current = window.setTimeout(() => {
+      setChatActionStatus("");
+      chatStatusTimerRef.current = null;
+    }, 2_400);
+  }
+
+  async function importAssistantFile(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 64 * 1024) {
+      announceChatAction("文件过大，请选择 64KB 以内的文本或代码文件");
+      return;
+    }
+    try {
+      const content = await file.text();
+      if (content.includes("\u0000")) throw new Error("binary");
+      setQuestion(`请分析文件 ${file.name}：\n\n${content.slice(0, MAX_SOURCE_FILE_CHARS)}`);
+      announceChatAction(`已载入 ${file.name}`);
+    } catch {
+      announceChatAction("无法读取该文件，请选择文本或代码文件");
+    } finally {
+      if (chatFileInputRef.current) chatFileInputRef.current.value = "";
+    }
+  }
+
+  function readLatestAnswer() {
+    if (!("speechSynthesis" in window)) {
+      announceChatAction("当前浏览器不支持语音朗读");
+      return;
+    }
+    const latestAnswer = [...messages].reverse().find((message) => message.role === "ai")?.text;
+    if (!latestAnswer) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(latestAnswer);
+    utterance.lang = "zh-CN";
+    window.speechSynthesis.speak(utterance);
+    announceChatAction("正在朗读最近一条回答");
+  }
+
+  function toggleSpeechInput() {
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    const voiceWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const Recognition = voiceWindow.SpeechRecognition || voiceWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      announceChatAction("当前浏览器不支持语音输入");
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.lang = "zh-CN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript?.trim();
+      if (transcript) {
+        setQuestion((current) => `${current}${current ? " " : ""}${transcript}`);
+        announceChatAction("语音内容已加入输入框");
+      }
+    };
+    recognition.onerror = () => announceChatAction("未能识别语音，请重试");
+    recognition.onend = () => {
+      speechRecognitionRef.current = null;
+      setIsListening(false);
+    };
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
   function clearConversation() {
     chatRequestRef.current += 1;
     chatAbortRef.current?.abort();
@@ -2304,6 +2410,7 @@ export default function Home() {
     setAiBusy(false);
     setQuestion("");
     setMessages([{ ...INITIAL_CHAT_MESSAGE }]);
+    announceChatAction("对话已清空");
   }
 
   return (
@@ -2428,17 +2535,42 @@ export default function Home() {
           id="ai-programming-assistant"
           className={`chat glass ai-floating-panel ${chatOpen ? "open" : ""} ${chatPanelInteraction ? `is-${chatPanelInteraction}` : ""}`}
           aria-hidden={!chatOpen}
+          aria-labelledby="ai-assistant-title"
+          role="dialog"
           data-lenis-prevent
         >
           <div
             className="chat-head ai-panel-drag-handle"
             tabIndex={chatOpen ? 0 : -1}
             aria-label="拖动 AI 助教窗口，使用方向键可以微调位置"
+            title="拖动窗口；双击恢复默认位置"
+            onDoubleClick={resetChatPanelLayout}
             {...chatDragHandleProps}
-          ><div><div><b>AI 助教</b></div></div><div className="chat-head-actions"><button className="chat-clear" onClick={clearConversation} disabled={messages.length === 1 && !aiBusy}>清空</button><button className="chat-reset-layout" onClick={resetChatPanelLayout}>还原</button><button onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教">×</button></div></div>
-          <div className="messages" ref={chatMessagesRef} aria-live="polite">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}{aiBusy && <div className="message ai ai-working"><i />正在组织答案，可随时停止…</div>}</div>
-          <div className="chips"><button disabled={aiBusy} onClick={() => ask("用生活化的例子解释当前知识点")}>解释知识点</button><button disabled={aiBusy} onClick={() => ask("分析这段代码可能出现的错误")}>分析报错</button><button disabled={aiBusy} onClick={() => ask("给出代码优化建议")}>优化代码</button></div>
-          <div className="chat-input"><textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的编程问题…"} /><button className={aiBusy ? "stop" : ""} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? "■" : "↑"}</button></div>
+          >
+            <div className="ai-panel-title"><b id="ai-assistant-title">AI 助教</b></div>
+            <div className="chat-head-actions"><button className="ai-panel-close" type="button" onClick={() => setChatOpen(false)} aria-label="关闭 AI 助教"><AiAssistantIcon name="close" /></button></div>
+          </div>
+          <div className={`ai-panel-body ${messages.length === 1 && !aiBusy ? "is-welcome" : ""}`}>
+            <div className="messages" ref={chatMessagesRef} aria-live="polite">
+              {messages.map((message, index) => <div key={index} className={`message-row ${message.role}`}>{message.role === "ai" && <img src="/web-pet/robot/idle.webp" alt="AI 助教" />}<div className={`message ${message.role}`}>{message.text}</div></div>)}
+              {aiBusy && <div className="message-row ai"><img src="/web-pet/robot/poses/thinking.webp" alt="" /><div className="message ai ai-working"><i />正在组织答案，可随时停止…</div></div>}
+            </div>
+            {messages.length === 1 && !aiBusy && <div className="ai-quick-actions" aria-label="快捷提问">
+              <button type="button" onClick={() => ask("请结合当前课程，用通俗易懂的方式解释核心概念，并给出一个简单示例。") }><span className="ai-quick-icon explain"><AiAssistantIcon name="book" /></span><b>解释核心概念</b></button>
+              <button type="button" onClick={() => ask("请分析当前编辑器中的代码报错，指出原因、位置并给出可执行的修复方案。") }><span className="ai-quick-icon debug"><AiAssistantIcon name="bug" /></span><b>分析代码报错</b></button>
+              <button type="button" onClick={() => ask("请审查当前编辑器中的代码，优化可读性、性能与健壮性，并说明修改原因。") }><span className="ai-quick-icon optimize"><AiAssistantIcon name="chart" /></span><b>优化现有代码</b></button>
+            </div>}
+            {messages.length > 1 && !aiBusy && <button type="button" className="ai-conversation-clear" onClick={clearConversation}>清空对话</button>}
+          </div>
+          <div className="ai-chat-status" role="status" aria-live="polite">{chatActionStatus}</div>
+          <div className="chat-input">
+            <input ref={chatFileInputRef} type="file" accept=".txt,.md,.py,.js,.jsx,.ts,.tsx,.java,.c,.cc,.cpp,.h,.hpp,.json,.html,.css" onChange={(event) => void importAssistantFile(event.target.files?.[0])} hidden />
+            <button type="button" className="ai-input-tool ai-attach" onClick={() => chatFileInputRef.current?.click()} aria-label="添加代码或文本文件" title="添加代码或文本文件"><AiAssistantIcon name="plus" /></button>
+            <textarea aria-label="向 AI 助教提问" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder={aiBusy ? "AI 正在回答，可先编辑下一个问题…" : "输入你的问题…"} />
+            <button type="button" className="ai-input-tool" onClick={readLatestAnswer} aria-label="朗读最近回答" title="朗读最近回答"><AiAssistantIcon name="wave" /></button>
+            <button type="button" className={`ai-input-tool ${isListening ? "is-active" : ""}`} onClick={toggleSpeechInput} aria-pressed={isListening} aria-label={isListening ? "停止语音输入" : "开始语音输入"} title={isListening ? "停止语音输入" : "开始语音输入"}><AiAssistantIcon name="microphone" /></button>
+            <button type="button" className={`ai-send ${aiBusy ? "stop" : ""}`} onClick={aiBusy ? stopAiAnswer : () => ask()} disabled={!aiBusy && !question.trim()} aria-label={aiBusy ? "停止 AI 回答" : "发送问题"}>{aiBusy ? <span aria-hidden="true">■</span> : <AiAssistantIcon name="send" />}</button>
+          </div>
           <button
             className="chat-resize-handle"
             type="button"

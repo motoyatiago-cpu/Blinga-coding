@@ -227,6 +227,33 @@ test("moves, resizes, and restores the existing AI assistant panel", async () =>
   assert.match(css, /touch-action:none/);
 });
 
+test("provides a streamlined visual AI tutor workspace with working learning actions", async () => {
+  const [page, icons, themeCss, hook] = await Promise.all([
+    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/ai-assistant-icons.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/theme.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/use-draggable-ai-panel.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /分享对话|复制对话|下载对话/);
+  assert.doesNotMatch(page, /buildConversationText|shareConversation|copyConversation|downloadConversation/);
+  assert.doesNotMatch(page, /className="ai-panel-title"><img/);
+  assert.match(page, /解释核心概念/);
+  assert.match(page, /分析代码报错/);
+  assert.match(page, /优化现有代码/);
+  assert.match(page, /chatFileInputRef/);
+  assert.match(page, /SpeechRecognition/);
+  assert.match(page, /speechSynthesis/);
+  assert.match(page, /\/web-pet\/robot\/idle\.webp/);
+  assert.match(icons, /name: AiAssistantIconName/);
+  assert.doesNotMatch(icons, /"share"|"copy"|"download"/);
+  assert.match(themeCss, /AI tutor — tactile, full-featured assistant surface/);
+  assert.match(themeCss, /\.ai-quick-actions/);
+  assert.doesNotMatch(themeCss, /\.ai-panel-tools/);
+  assert.match(themeCss, /@media\(max-width:650px\)/);
+  assert.match(hook, /blinga-ai-panel-layout-v2/);
+});
+
 test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
   const [smoothScroll, layout, css, packageJson, page] = await Promise.all([
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
@@ -610,7 +637,7 @@ test("applies the restrained dark reading hierarchy without touching the desktop
   assert.doesNotMatch(page, /className="lesson-card glass"/);
   assert.match(page, /<b>学习方式<\/b>/);
   assert.match(page, />进入练习<\/a>/);
-  assert.match(page, /<b>AI 助教<\/b>/);
+  assert.match(page, /id="ai-assistant-title">AI 助教<\/b>/);
   assert.doesNotMatch(page, /AI 编程助教/);
   assert.match(catalog, />开始第一节<\/a>/);
   assert.match(pet, /requestExistingAiAssistant/);

@@ -21,12 +21,12 @@ type PointerSession = {
   layout: PanelLayout;
 };
 
-const STORAGE_KEY = "blinga-ai-panel-layout-v1";
+const STORAGE_KEY = "blinga-ai-panel-layout-v2";
 const VIEWPORT_GAP = 12;
-const DEFAULT_WIDTH = 390;
-const DEFAULT_HEIGHT = 515;
-const MIN_WIDTH = 280;
-const MIN_HEIGHT = 330;
+const DEFAULT_WIDTH = 570;
+const DEFAULT_HEIGHT = 760;
+const MIN_WIDTH = 340;
+const MIN_HEIGHT = 440;
 const KEYBOARD_STEP = 18;
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -57,7 +57,7 @@ function getDefaultLayout(): PanelLayout {
     width,
     height,
     x: window.innerWidth - width - 18,
-    y: window.innerHeight - height - 18,
+    y: Math.max(VIEWPORT_GAP, (window.innerHeight - height) / 2),
   });
 }
 
