@@ -21,8 +21,10 @@ test("uses a real shared forum feed with authenticated writes", async () => {
   assert.doesNotMatch(page, /forum-ambient|forum-categories|forum-guidelines|Blinga community/);
   assert.match(client, /<CommunityGuide \/>/);
   assert.equal((guide.match(/^  "/gm) || []).length, 8);
-  assert.match(guide, /aria-pressed=\{paused\}/);
+  assert.doesNotMatch(guide, /<button|aria-pressed|useState/);
   assert.match(guide, /<GuideList duplicate \/>/);
+  assert.doesNotMatch(client, /<select|setCategory/);
+  assert.match(client, /category: view === "share" \? "share" : "help"/);
 
   assert.match(client, /fetch\("\/api\/forum\/posts\?limit=20"/);
   assert.match(client, /method: "POST"/);

@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-
 const COMMUNITY_GUIDELINES = [
   "友善交流，尊重每一位成员",
   "提问时写明环境、报错与复现步骤",
@@ -27,25 +23,13 @@ function GuideList({ duplicate = false }: { duplicate?: boolean }) {
 }
 
 export default function CommunityGuide() {
-  const [paused, setPaused] = useState(false);
-
   return (
     <section className="forum-guide">
-      <div className="forum-guide-heading">
-        <h2>社区指南</h2>
-        <button
-          type="button"
-          aria-pressed={paused}
-          aria-label={paused ? "继续滚动社区指南" : "暂停滚动社区指南"}
-          onClick={() => setPaused((current) => !current)}
-        >
-          {paused ? "继续" : "暂停"}
-        </button>
-      </div>
+      <h2>社区指南</h2>
       <div
-        className={`forum-guide-viewport${paused ? " is-paused" : ""}`}
+        className="forum-guide-viewport"
         tabIndex={0}
-        aria-label="社区指南，内容会向上滚动；悬停、聚焦或点击暂停按钮可暂停"
+        aria-label="社区指南，内容会向上滚动；悬停或聚焦可暂停"
       >
         <div className="forum-guide-track">
           <GuideList />

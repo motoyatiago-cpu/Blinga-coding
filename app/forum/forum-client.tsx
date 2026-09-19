@@ -84,7 +84,6 @@ export default function ForumClient() {
   const [stats, setStats] = useState<ForumPayload["stats"]>({ posts: 0, contributors: 0, mine: null });
   const [cursor, setCursor] = useState<string | null>(null);
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState<"help" | "share">("help");
   const [view, setView] = useState("latest");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const visiblePosts = posts.filter(post => view === "latest" || (view === "resolved" ? post.resolved : post.category === view));
@@ -146,7 +145,11 @@ export default function ForumClient() {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ content, category, requestId: requestIdRef.current }),
+        body: JSON.stringify({
+          content,
+          category: view === "share" ? "share" : "help",
+          requestId: requestIdRef.current,
+        }),
       });
       const data = await readJson<{ post: ForumPost }>(response);
       setPosts((current) => [data.post, ...current]);
@@ -225,7 +228,7 @@ export default function ForumClient() {
       </nav>
       <div className="forum-layout"><div className="forum-primary">
       <section className="forum-composer" aria-label="发表留言">
-        <div className="forum-composer-head"><h2>发布讨论</h2><select aria-label="选择分类" value={category} onChange={event=>setCategory(event.target.value as "help"|"share")}><option value="help">编程求助</option><option value="share">网站建议</option></select></div>
+        <div className="forum-composer-head"><h2>发布讨论</h2></div>
         {viewer.authenticated ? (
           <div className="forum-editor">
             <label htmlFor="forum-message">{viewer.name}</label>
