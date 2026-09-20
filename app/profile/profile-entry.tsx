@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { startProfileParticles } from "./profile-particles";
 import "./profile-entry.css";
 
-const MINIMUM_DISPLAY_MS = 120;
+const MINIMUM_DISPLAY_MS = 90;
 const REVEAL_FALLBACK_MS = 200;
 const REDUCED_REVEAL_FALLBACK_MS = 100;
 
