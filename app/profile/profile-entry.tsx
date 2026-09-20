@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { startProfileParticles } from "./profile-particles";
 import "./profile-entry.css";
 
+const MINIMUM_DISPLAY_MS = 120;
+const REVEAL_FALLBACK_MS = 200;
+const REDUCED_REVEAL_FALLBACK_MS = 100;
+
 export default function ProfileEntry({ ready, reduceMotion = false, children }: {
   ready: boolean; reduceMotion?: boolean; children?: ReactNode;
 }) {
@@ -30,13 +34,14 @@ export default function ProfileEntry({ ready, reduceMotion = false, children }: 
   useEffect(() => {
     if (!ready || phase !== "loading") return;
     const timer = window.setTimeout(() => setPhase("revealing"),
-      reduced ? 0 : Math.max(0, 300 - (performance.now() - started.current)));
+      reduced ? 0 : Math.max(0, MINIMUM_DISPLAY_MS - (performance.now() - started.current)));
     return () => window.clearTimeout(timer);
   }, [ready, phase, reduced]);
   useEffect(() => {
     if (phase !== "revealing") return;
     // Also works when transitionend is suppressed (background tab/reduced motion).
-    const timer = window.setTimeout(() => setPhase("done"), reduced ? 160 : 300);
+    const timer = window.setTimeout(() => setPhase("done"),
+      reduced ? REDUCED_REVEAL_FALLBACK_MS : REVEAL_FALLBACK_MS);
     return () => window.clearTimeout(timer);
   }, [phase, reduced]);
   return <div className="profile-entry" data-phase={phase} data-reduced={reduced} aria-busy={!ready}>
