@@ -249,6 +249,9 @@ test("provides a streamlined visual AI tutor workspace with working learning act
   assert.doesNotMatch(icons, /"share"|"copy"|"download"/);
   assert.match(themeCss, /AI tutor — tactile, full-featured assistant surface/);
   assert.match(themeCss, /\.ai-quick-actions/);
+  assert.match(themeCss, /\.ai-panel-body\.is-welcome\s*\{[\s\S]*?overflow-y:\s*auto/);
+  assert.match(themeCss, /\.ai-chat-status:empty\s*\{[\s\S]*?flex-basis:\s*0/);
+  assert.match(themeCss, /@media\(min-width:651px\) and \(max-height:720px\)/);
   assert.doesNotMatch(themeCss, /\.ai-panel-tools/);
   assert.match(themeCss, /@media\(max-width:650px\)/);
   assert.match(hook, /blinga-ai-panel-layout-v2/);
