@@ -67,8 +67,8 @@ npm run dev
 
 ```bash
 npm run typecheck
-npm run test:all
 npm run build
+npm run test:all
 ```
 
 其他质量检查：
@@ -131,8 +131,8 @@ CI 在推送到 `main` 或向 `main` 提交 Pull Request 时执行：
 1. `npm ci`
 2. `npm run lint`
 3. `npm run typecheck`
-4. `npm run test:all`
-5. `npm run build`
+4. `npm run build`
+5. `npm run test:all`
 
 CI 不会部署生产环境，也不需要第三方 Secret。
 

@@ -22,8 +22,8 @@ npm run dev
 ```bash
 npm run lint
 npm run typecheck
-npm run test:all
 npm run build
+npm run test:all
 ```
 
 数据库结构发生变化时，请同时更新 `db/schema.ts` 和 `drizzle/` 中的迁移。

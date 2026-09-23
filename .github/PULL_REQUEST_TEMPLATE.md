@@ -6,8 +6,8 @@
 
 - [ ] `npm run lint`
 - [ ] `npm run typecheck`
-- [ ] `npm run test:all`
 - [ ] `npm run build`
+- [ ] `npm run test:all`
 
 ## 检查项
 
