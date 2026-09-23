@@ -17,9 +17,15 @@
 /.next/
 /.vinext/
 /out/
+/dist/
+/output/
 
 # misc
 .DS_Store
+Thumbs.db
+*.tsbuildinfo
+*.tar.gz
+*.zip
 *.pem
 
 # debug
@@ -30,13 +36,20 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+.dev.vars*
 
 # vercel
 .vercel
 
 # typescript
 next-env.d.ts
-/dist/
 /.wrangler/
 /outputs/
 /work/
+
+# editors and local tooling
+/.idea/
+/.vscode/
+/.codex/
+/.agents/

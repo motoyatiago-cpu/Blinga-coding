@@ -8,9 +8,9 @@ import ts from 'typescript';
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL('../worker/password-kdf.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-const module = { exports: {} };
-new Function('require', 'module', 'exports', compiled)(require, module, module.exports);
-const { derivePasswordBytes } = module.exports;
+const passwordModule = { exports: {} };
+new Function('require', 'module', 'exports', compiled)(require, passwordModule, passwordModule.exports);
+const { derivePasswordBytes } = passwordModule.exports;
 
 test('preserves existing password hashes and works when native PBKDF2 rejects high iterations', async (t) => {
   t.mock.method(crypto.subtle, 'deriveBits', async () => { throw new DOMException('iteration counts above 100000 are not supported', 'NotSupportedError'); });

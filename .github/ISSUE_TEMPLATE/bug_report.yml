@@ -1,0 +1,45 @@
+name: Bug report
+description: 报告可复现的问题
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: 感谢反馈。请勿粘贴 API Key、Token、Cookie 或用户隐私数据。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述
+      description: 说明实际结果与预期结果。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 看到……
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: 主题
+      options:
+        - 深色
+        - 浅色
+        - 两者都有
+        - 不适用
+  - type: input
+    id: environment
+    attributes:
+      label: 浏览器与设备
+      placeholder: Chrome / Windows 11
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息
+      description: 可提供已脱敏的日志或截图。
