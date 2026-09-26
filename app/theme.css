@@ -666,6 +666,8 @@ html[data-theme="light"] .chat.ai-floating-panel{
   box-shadow:0 30px 90px rgba(14,35,72,.24),inset 0 1px rgba(255,255,255,.92);
   backdrop-filter:blur(28px) saturate(118%);
   -webkit-backdrop-filter:blur(28px) saturate(118%);
+  container-name:ai-assistant;
+  container-type:size;
   isolation:isolate;
   z-index:270;
 }
@@ -736,6 +738,7 @@ html[data-theme] .chat.ai-floating-panel .chat-head b{
 .ai-panel-body.is-welcome{
   overflow-x:hidden;
   overflow-y:auto;
+  padding-bottom:22px;
   overscroll-behavior:contain;
   scrollbar-gutter:stable;
 }
@@ -796,6 +799,7 @@ html[data-theme] .chat.ai-floating-panel .message.user{
 
 .ai-quick-actions{
   display:grid;
+  flex:0 0 auto;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:14px;
   padding:16px 4px 10px;
@@ -988,6 +992,43 @@ html[data-theme] .chat.ai-floating-panel .ai-panel-drag-handle:focus-visible{
 
 html[data-theme] .chat.ai-floating-panel .chat-resize-handle{
   border-radius:0 0 30px 0;
+}
+
+/* Keep the welcome layout spacious when the user shortens the draggable panel. */
+@container ai-assistant (max-height:680px){
+  .ai-panel-body{
+    padding-top:20px;
+  }
+
+  .ai-panel-body.is-welcome .messages{
+    padding-bottom:6px;
+  }
+
+  .message-row{
+    margin-bottom:8px;
+  }
+
+  .ai-quick-actions{
+    gap:10px;
+    padding-top:8px;
+  }
+
+  .ai-quick-actions>button{
+    min-height:132px;
+    gap:14px;
+    padding:14px 8px;
+  }
+
+  .ai-quick-icon{
+    width:58px;
+    height:58px;
+    border-radius:18px;
+  }
+
+  .ai-quick-icon svg{
+    width:34px;
+    height:34px;
+  }
 }
 
 @media(max-width:650px){
