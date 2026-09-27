@@ -241,6 +241,7 @@ test("provides a streamlined visual AI tutor workspace with working learning act
   assert.match(page, /解释核心概念/);
   assert.match(page, /分析代码报错/);
   assert.match(page, /优化现有代码/);
+  assert.match(page, /className="ai-welcome-spacer"/);
   assert.match(page, /chatFileInputRef/);
   assert.match(page, /SpeechRecognition/);
   assert.match(page, /speechSynthesis/);
@@ -252,6 +253,7 @@ test("provides a streamlined visual AI tutor workspace with working learning act
   assert.match(themeCss, /\.ai-panel-body\.is-welcome\s*\{[\s\S]*?overflow-y:\s*auto/);
   assert.match(themeCss, /container-name:\s*ai-assistant/);
   assert.match(themeCss, /@container ai-assistant \(max-height:680px\)/);
+  assert.match(themeCss, /\.ai-welcome-spacer\s*\{[\s\S]*?flex:\s*1 0 80px/);
   assert.match(themeCss, /\.ai-chat-status:empty\s*\{[\s\S]*?flex-basis:\s*0/);
   assert.match(themeCss, /@media\(min-width:651px\) and \(max-height:720px\)/);
   assert.doesNotMatch(themeCss, /\.ai-panel-tools/);

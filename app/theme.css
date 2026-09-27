@@ -805,6 +805,11 @@ html[data-theme] .chat.ai-floating-panel .message.user{
   padding:16px 4px 10px;
 }
 
+.ai-welcome-spacer{
+  min-height:80px;
+  flex:1 0 80px;
+}
+
 .ai-quick-actions>button{
   min-width:0;
   min-height:190px;
@@ -994,43 +999,6 @@ html[data-theme] .chat.ai-floating-panel .chat-resize-handle{
   border-radius:0 0 30px 0;
 }
 
-/* Keep the welcome layout spacious when the user shortens the draggable panel. */
-@container ai-assistant (max-height:680px){
-  .ai-panel-body{
-    padding-top:20px;
-  }
-
-  .ai-panel-body.is-welcome .messages{
-    padding-bottom:6px;
-  }
-
-  .message-row{
-    margin-bottom:8px;
-  }
-
-  .ai-quick-actions{
-    gap:10px;
-    padding-top:8px;
-  }
-
-  .ai-quick-actions>button{
-    min-height:132px;
-    gap:14px;
-    padding:14px 8px;
-  }
-
-  .ai-quick-icon{
-    width:58px;
-    height:58px;
-    border-radius:18px;
-  }
-
-  .ai-quick-icon svg{
-    width:34px;
-    height:34px;
-  }
-}
-
 @media(max-width:650px){
   html[data-theme="dark"] .chat.ai-floating-panel,
   html[data-theme="light"] .chat.ai-floating-panel{
@@ -1189,6 +1157,107 @@ html[data-theme] .chat.ai-floating-panel .chat-resize-handle{
     width:54px!important;
     height:54px;
     flex-basis:54px;
+  }
+}
+
+/* Panel-height adaptation must follow viewport media rules so it wins the cascade. */
+@container ai-assistant (max-height:680px){
+  html[data-theme] .chat.ai-floating-panel .chat-head{
+    min-height:64px;
+    padding:10px 20px;
+  }
+
+  html[data-theme] .chat.ai-floating-panel .chat-head b{
+    font-size:24px;
+  }
+
+  .chat-head-actions .ai-panel-close{
+    width:42px;
+    height:42px;
+  }
+
+  .ai-panel-body{
+    padding:14px 20px 0;
+  }
+
+  .ai-panel-body.is-welcome .messages{
+    padding-bottom:4px;
+  }
+
+  .message-row{
+    gap:8px;
+    margin-bottom:6px;
+  }
+
+  .message-row>img{
+    width:32px;
+    height:32px;
+    flex-basis:32px;
+  }
+
+  html[data-theme] .chat.ai-floating-panel .message{
+    padding:11px 14px;
+    border-radius:18px;
+    font-size:13px;
+    line-height:1.5;
+  }
+
+  .ai-quick-actions{
+    gap:10px;
+    padding:8px 4px 0;
+  }
+
+  .ai-quick-actions>button{
+    min-height:108px;
+    gap:10px;
+    padding:11px 7px;
+    border-radius:18px;
+  }
+
+  .ai-quick-actions>button b{
+    font-size:12px;
+  }
+
+  .ai-quick-icon{
+    width:50px;
+    height:50px;
+    border-radius:16px;
+  }
+
+  .ai-quick-icon svg{
+    width:29px;
+    height:29px;
+  }
+
+  .ai-welcome-spacer{
+    min-height:64px;
+    flex-basis:64px;
+  }
+
+  html[data-theme] .chat.ai-floating-panel .chat-input{
+    min-height:66px;
+    margin:0 14px 12px;
+    padding:6px;
+    border-radius:27px;
+  }
+
+  html[data-theme] .chat.ai-floating-panel .chat-input textarea{
+    height:44px;
+    min-height:44px;
+    padding:12px 4px 8px;
+    font-size:13px;
+  }
+
+  .ai-input-tool{
+    width:38px!important;
+    height:38px;
+    flex-basis:38px;
+  }
+
+  .ai-send{
+    width:48px!important;
+    height:48px;
+    flex-basis:48px;
   }
 }
 

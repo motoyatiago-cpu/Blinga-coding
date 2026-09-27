@@ -2560,6 +2560,7 @@ export default function Home() {
               <button type="button" onClick={() => ask("请分析当前编辑器中的代码报错，指出原因、位置并给出可执行的修复方案。") }><span className="ai-quick-icon debug"><AiAssistantIcon name="bug" /></span><b>分析代码报错</b></button>
               <button type="button" onClick={() => ask("请审查当前编辑器中的代码，优化可读性、性能与健壮性，并说明修改原因。") }><span className="ai-quick-icon optimize"><AiAssistantIcon name="chart" /></span><b>优化现有代码</b></button>
             </div>}
+            {messages.length === 1 && !aiBusy && <div className="ai-welcome-spacer" aria-hidden="true" />}
             {messages.length > 1 && !aiBusy && <button type="button" className="ai-conversation-clear" onClick={clearConversation}>清空对话</button>}
           </div>
           <div className="ai-chat-status" role="status" aria-live="polite">{chatActionStatus}</div>
