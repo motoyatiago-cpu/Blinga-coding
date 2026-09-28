@@ -806,8 +806,8 @@ html[data-theme] .chat.ai-floating-panel .message.user{
 }
 
 .ai-welcome-spacer{
-  min-height:80px;
-  flex:1 0 80px;
+  min-height:160px;
+  flex:1 0 160px;
 }
 
 .ai-quick-actions>button{
@@ -1230,8 +1230,8 @@ html[data-theme] .chat.ai-floating-panel .chat-resize-handle{
   }
 
   .ai-welcome-spacer{
-    min-height:64px;
-    flex-basis:64px;
+    min-height:112px;
+    flex-basis:112px;
   }
 
   html[data-theme] .chat.ai-floating-panel .chat-input{
