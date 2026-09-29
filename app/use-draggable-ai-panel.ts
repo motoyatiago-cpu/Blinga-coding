@@ -21,10 +21,10 @@ type PointerSession = {
   layout: PanelLayout;
 };
 
-const STORAGE_KEY = "blinga-ai-panel-layout-v2";
+const STORAGE_KEY = "blinga-ai-panel-layout-v3";
 const VIEWPORT_GAP = 12;
-const DEFAULT_WIDTH = 570;
-const DEFAULT_HEIGHT = 760;
+const DEFAULT_WIDTH = 520;
+const DEFAULT_HEIGHT = 700;
 const MIN_WIDTH = 340;
 const MIN_HEIGHT = 440;
 const KEYBOARD_STEP = 18;

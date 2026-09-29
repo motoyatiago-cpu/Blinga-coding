@@ -253,12 +253,14 @@ test("provides a streamlined visual AI tutor workspace with working learning act
   assert.match(themeCss, /\.ai-panel-body\.is-welcome\s*\{[\s\S]*?overflow-y:\s*auto/);
   assert.match(themeCss, /container-name:\s*ai-assistant/);
   assert.match(themeCss, /@container ai-assistant \(max-height:680px\)/);
-  assert.match(themeCss, /\.ai-welcome-spacer\s*\{[\s\S]*?flex:\s*1 0 160px/);
+  assert.match(themeCss, /\.ai-welcome-spacer\s*\{[\s\S]*?flex:\s*1 0 176px/);
   assert.match(themeCss, /\.ai-chat-status:empty\s*\{[\s\S]*?flex-basis:\s*0/);
   assert.match(themeCss, /@media\(min-width:651px\) and \(max-height:720px\)/);
   assert.doesNotMatch(themeCss, /\.ai-panel-tools/);
   assert.match(themeCss, /@media\(max-width:650px\)/);
-  assert.match(hook, /blinga-ai-panel-layout-v2/);
+  assert.match(hook, /blinga-ai-panel-layout-v3/);
+  assert.match(hook, /DEFAULT_WIDTH = 520/);
+  assert.match(hook, /DEFAULT_HEIGHT = 700/);
 });
 
 test("adds macOS graphite code surfaces and isolated Lenis scrolling", async () => {
