@@ -271,7 +271,7 @@ summary {
 
 .profile-rail {
   display: grid;
-  grid-template-rows: 45% 55%;
+  grid-template-rows: 42% 58%;
 }
 
 .visitor-panel {
@@ -354,6 +354,11 @@ summary {
   justify-content: center;
   gap: 15px;
   padding: 25px 23px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(156, 181, 255, 0.34) transparent;
+  scrollbar-width: thin;
 }
 
 .self-panel h2,
@@ -373,8 +378,8 @@ summary {
 .self-copy {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.82;
+  font-size: 13px;
+  line-height: 1.86;
 }
 
 .story-column {
