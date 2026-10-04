@@ -93,7 +93,7 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
     <div className="ambient one" /><div className="ambient two" />
     <header className="topbar glass">
       <a className="brand" href="/home"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
-      <nav><a href="/home">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href="/home#map">知识图谱</a><a href="/home#lab">在线实训</a></nav>
+      <nav><a href="/home">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href={`/projects#${slug}`}>项目实战</a><a href="/home#map">知识图谱</a><a href="/home#lab">在线实训</a></nav>
       <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href="/home">返回学习台 →</a></div>
     </header>
 

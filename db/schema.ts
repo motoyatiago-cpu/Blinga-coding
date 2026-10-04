@@ -198,6 +198,21 @@ export const wrongAnswers = sqliteTable("wrong_answers", {
   index("wrong_answers_run_idx").on(table.userKey, table.runId),
 ]);
 
+export const projectProgress = sqliteTable("project_progress", {
+  ownerKey: text("owner_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  projectSlug: text("project_slug").notNull(),
+  milestoneJson: text("milestone_json").notNull(),
+  status: text("status").notNull().default("not_started"),
+  writeWindowStartedAt: text("write_window_started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  writeCount: integer("write_count").notNull().default(0),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.ownerKey, table.language, table.projectSlug] }),
+  index("project_progress_owner_updated_idx").on(table.ownerKey, table.updatedAt),
+]);
+
 export const forumPosts = sqliteTable("forum_posts", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
