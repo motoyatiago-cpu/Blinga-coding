@@ -39,6 +39,7 @@ import { buildCourseUrl, courseTopicIndex, courseTopicNumber } from "./course-li
 import { useDraggableAiPanel } from "./use-draggable-ai-panel";
 
 type Lang = "Python" | "C/C++" | "JavaScript" | "Java";
+type WorkspaceView = "learn" | "lab" | "map" | "notes";
 type LearningProgress = {
   activeLanguage: Lang;
   topics: Record<Lang, number>;
@@ -90,6 +91,18 @@ const INITIAL_CHAT_MESSAGE = {
   role: "ai",
   text: "你好，我已读取当前课程。可以让我解释知识点、分析报错或优化代码。",
 };
+
+const workspaceViews: Array<{ id: WorkspaceView; label: string; description: string }> = [
+  { id: "learn", label: "学习", description: "概念与示例" },
+  { id: "lab", label: "练习", description: "编写与运行" },
+  { id: "map", label: "图谱", description: "梳理知识" },
+  { id: "notes", label: "笔记", description: "记录复习" },
+];
+
+function workspaceViewFromHash(hash: string): WorkspaceView {
+  const requestedView = hash.replace(/^#/, "") as WorkspaceView;
+  return workspaceViews.some((view) => view.id === requestedView) ? requestedView : "learn";
+}
 
 const lessons: Record<Lang, Course> = {
   Python: {
@@ -920,7 +933,7 @@ function KnowledgeGraph({ lesson, code }: { lesson: Course; code: string }) {
   }
 
   return (
-    <section className="feature-section" id="map">
+    <section className="feature-section" id="map" aria-labelledby="workspace-tab-map">
       <div className="section-heading">
         <div><h2>动态知识图谱</h2></div>
         <div className="toolbar">
@@ -1638,7 +1651,7 @@ function Sandbox({
   }
 
   return (
-    <section className={`feature-section ${focusMode ? "sandbox-focus-mode" : ""}`} id="lab">
+    <section className={`feature-section ${focusMode ? "sandbox-focus-mode" : ""}`} id="lab" aria-labelledby="workspace-tab-lab">
       <div className="section-heading">
         <div><h2>在线实训沙盒</h2></div>
         <div className="sandbox-heading-actions">
@@ -1894,7 +1907,7 @@ function LessonNotes({
   }, [content, lang, ready, topicIndex]);
 
   return (
-    <section className="lesson-notes glass" aria-labelledby="lesson-notes-title">
+    <section className="lesson-notes glass" id="notes" aria-labelledby="lesson-notes-title">
       <div className="lesson-notes-head">
         <div>
           <h2 id="lesson-notes-title">我的学习笔记</h2>
@@ -1929,6 +1942,8 @@ function GraphDocumentExport() {
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
   const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
+  const [activeView, setActiveView] = useState<WorkspaceView>("learn");
+  const [openedViews, setOpenedViews] = useState<WorkspaceView[]>(["learn"]);
   const [progressReady, setProgressReady] = useState(false);
   const [completedTopics, setCompletedTopics] = useState<Record<string, number[]>>({});
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1948,6 +1963,9 @@ export default function Home() {
     output: "终端已连接 · 等待输入",
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const searchDialogRef = useRef<HTMLDivElement>(null);
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null);
   const searchRequestRef = useRef(0);
   const searchAbortRef = useRef<AbortController | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
@@ -1988,6 +2006,53 @@ export default function Home() {
   const currentTopicCompleted = completedForCurrentLanguage.includes(selectedTopicIndex);
   const courseMatches = useMemo(() => findCourseMatches(searchQuery), [searchQuery]);
 
+  const openSearch = useCallback(() => {
+    searchReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : searchTriggerRef.current;
+    setSearchOpen(true);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    window.requestAnimationFrame(() => searchReturnFocusRef.current?.focus());
+  }, []);
+
+  const navigateToWorkspaceView = useCallback((nextView: WorkspaceView) => {
+    setActiveView(nextView);
+    setOpenedViews((current) => current.includes(nextView) ? current : [...current, nextView]);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.hash = nextView;
+    window.history.pushState(window.history.state, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    window.requestAnimationFrame(() => {
+      document.getElementById(nextView)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  function handleSearchDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearch();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const focusable = Array.from(searchDialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) || []).filter((element) => !element.hasAttribute("hidden"));
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function navigateToCourse(nextLanguage: Lang, nextTopicIndex: number, fromSearch = false) {
     const safeTopicIndex = Math.max(
       0,
@@ -1997,8 +2062,10 @@ export default function Home() {
 
     setLang(nextLanguage);
     setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopicIndex }));
+    setActiveView("learn");
+    setOpenedViews((current) => current.includes("learn") ? current : [...current, "learn"]);
     if (fromSearch) {
-      setSearchOpen(false);
+      closeSearch();
       setSearchResult(null);
       setSearchStatus("");
     }
@@ -2009,6 +2076,10 @@ export default function Home() {
         "",
         nextUrl,
       );
+    } else if (window.location.hash !== "#learn") {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.hash = "learn";
+      window.history.pushState(window.history.state, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     }
     window.requestAnimationFrame(() => {
       document.getElementById("learn")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2030,15 +2101,16 @@ export default function Home() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setSearchOpen(true);
+        openSearch();
       }
-      if (event.key === "Escape") setSearchOpen(false);
+      if (event.key === "Escape" && searchOpen) closeSearch();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [closeSearch, openSearch, searchOpen]);
 
   useEffect(() => {
     const openAssistant = (event: Event) => {
@@ -2063,8 +2135,38 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (searchOpen) window.setTimeout(() => searchInputRef.current?.focus(), 80);
+    if (!searchOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [searchOpen]);
+
+  useEffect(() => {
+    const syncViewFromHash = () => {
+      const nextView = workspaceViewFromHash(window.location.hash);
+      setActiveView(nextView);
+      setOpenedViews((current) => current.includes(nextView) ? current : [...current, nextView]);
+      window.requestAnimationFrame(() => {
+        document.getElementById(nextView)?.scrollIntoView({ block: "start" });
+      });
+    };
+    syncViewFromHash();
+    window.addEventListener("hashchange", syncViewFromHash);
+    window.addEventListener("popstate", syncViewFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncViewFromHash);
+      window.removeEventListener("popstate", syncViewFromHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (openedViews.includes("lab")) return;
+    setSandboxContext({ code: lesson.code, stdin: "", output: "终端已连接 · 等待输入" });
+  }, [lesson, openedViews]);
 
   useEffect(() => {
     if (!chatOpen) return;
@@ -2415,17 +2517,24 @@ export default function Home() {
 
   return (
     <ReactFlowProvider>
-      <main>
+      <main className="learning-workspace">
         <div className="ambient one" /><div className="ambient two" />
-        <header className="topbar glass">
-          <a className="brand" href="#learn"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
-          <nav><a className="active" href="#learn">学习中心</a><a href="#map">知识图谱</a><a href="#lab">在线实训</a></nav>
-          <div className="header-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}>⌕ <span>搜索知识点</span></button><ThemeToggle /><AccountMenu /></div>
+        <header className="topbar glass" inert={searchOpen ? true : undefined} aria-hidden={searchOpen || undefined}>
+          <a className="brand" href="#learn" onClick={(event) => { event.preventDefault(); navigateToWorkspaceView("learn"); }}><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
+          <nav aria-label="学习工作区快捷入口">
+            {workspaceViews.map((view) => <a
+              className={activeView === view.id ? "active" : ""}
+              href={`#${view.id}`}
+              key={view.id}
+              onClick={(event) => { event.preventDefault(); navigateToWorkspaceView(view.id); }}
+            >{view.label}</a>)}
+          </nav>
+          <div className="header-actions"><button ref={searchTriggerRef} className="search-trigger" onClick={openSearch}>⌕ <span>搜索知识点</span></button><ThemeToggle /><AccountMenu /></div>
         </header>
 
-        <div className={`search-overlay ${searchOpen ? "open" : ""}`} aria-hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) setSearchOpen(false); }}>
-          <div className="search-dialog glass" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
-            <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b></div><button onClick={() => setSearchOpen(false)} aria-label="关闭搜索">×</button></div>
+        <div className={`search-overlay ${searchOpen ? "open" : ""}`} hidden={!searchOpen} onMouseDown={(event) => { if (event.currentTarget === event.target) closeSearch(); }}>
+          <div ref={searchDialogRef} className="search-dialog glass" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onKeyDown={handleSearchDialogKeyDown}>
+            <div className="search-dialog-head"><div><b id="global-search-title">全站课程与 AI 搜索</b></div><button onClick={closeSearch} aria-label="关闭搜索">×</button></div>
             <div className="search-box"><input ref={searchInputRef} value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") search(); }} placeholder="例如：循环、指针、异步编程…" /><button onClick={search} disabled={!searchQuery.trim() || searchBusy}>{searchBusy ? "分析中" : "AI 智能问答"}</button></div>
             {searchQuery.trim() && <section className="course-search-results" aria-label="即时课程匹配">
               <header><span>即时课程匹配</span><b>{courseMatches.length ? `${courseMatches.length} 个结果` : "暂无匹配"}</b></header>
@@ -2453,7 +2562,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="workspace">
+        <div className="workspace" inert={searchOpen ? true : undefined} aria-hidden={searchOpen || undefined}>
           <aside className="sidebar glass" aria-label="课程导航">
             <a className="course-nav-back" href="/home">← 全部编程语言</a>
             <a className="language selected course-root-link" href={`/courses/${languageSlugs[lang]}`}>
@@ -2486,7 +2595,19 @@ export default function Home() {
             </div>
           </aside>
 
-          <section className="content" id="learn">
+          <section className="content">
+            <div className="mobile-chapter-navigation">
+              <label htmlFor="mobile-chapter-select">当前章节</label>
+              <select
+                id="mobile-chapter-select"
+                value={selectedTopicIndex}
+                onChange={(event) => navigateToTopic(Number(event.target.value))}
+              >
+                {lesson.topics.map((topic, index) => <option value={index} key={topic}>
+                  {String(index + 1).padStart(2, "0")} · {topic}
+                </option>)}
+              </select>
+            </div>
             <div className="breadcrumb">学习中心 <span>/</span> {lang} <span>/</span> 第 {String(topicByLang[lang] + 1).padStart(2, "0")} 节</div>
             <div className="lesson-head">
               <div><p>{lesson.kicker}</p><h1>{lesson.title}</h1><div className="meta"><span>◉ 3 个练习</span><span className="level">基础</span><span>{currentTopicCompleted ? "✓ 当前知识点已完成" : "通过自动判题后记录完成"}</span></div></div>
@@ -2509,34 +2630,65 @@ export default function Home() {
               </div>
             </div>
 
-            <article className="lesson-card"><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
-            <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
+            <nav className="workspace-view-tabs" aria-label="课程工作区视图">
+              {workspaceViews.map((view) => <a
+                id={`workspace-tab-${view.id}`}
+                className={activeView === view.id ? "active" : ""}
+                href={`#${view.id}`}
+                aria-current={activeView === view.id ? "page" : undefined}
+                key={view.id}
+                onClick={(event) => { event.preventDefault(); navigateToWorkspaceView(view.id); }}
+              >
+                <b>{view.label}</b>
+                <span>{view.description}</span>
+              </a>)}
+            </nav>
 
-            <div className="code-example glass">
-              <div className="pane-head code-example-actions"><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
-              <pre><code>{lesson.code}</code></pre>
-              <div className="example-foot"><a href="#lab">进入练习</a></div>
+            <div className="workspace-view" id="learn" aria-labelledby="workspace-tab-learn" hidden={activeView !== "learn"}>
+              <article className="lesson-card"><h2>{lesson.title}：核心概念与实践</h2><p>{lesson.desc}</p><div className="note"><b>学习方式</b><span>先理解概念和执行过程，再阅读代码示例，最后进入在线实训完成修改与验证。</span></div></article>
+              <DeepLesson lang={lang} topicIndex={selectedTopicIndex} />
+
+              <div className="code-example glass">
+                <div className="pane-head code-example-actions"><button onClick={() => navigator.clipboard?.writeText(lesson.code)}>复制代码</button></div>
+                <pre><code>{lesson.code}</code></pre>
+                <div className="example-foot"><a href="#lab" onClick={(event) => { event.preventDefault(); navigateToWorkspaceView("lab"); }}>进入练习</a></div>
+              </div>
             </div>
 
-            <LessonNotes
-              key={`${lang}:${selectedTopicIndex}`}
-              lang={lang}
-              topicIndex={selectedTopicIndex}
-              lessonTitle={lesson.title}
-            />
-            <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
-            <GraphDocumentExport />
-            <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />
+            <div className="workspace-view" data-workspace-view="notes" hidden={activeView !== "notes"}>
+              {openedViews.includes("notes") && <LessonNotes
+                key={`${lang}:${selectedTopicIndex}`}
+                lang={lang}
+                topicIndex={selectedTopicIndex}
+                lessonTitle={lesson.title}
+              />}
+            </div>
+            <div className="workspace-view" data-workspace-view="map" hidden={activeView !== "map"}>
+              {openedViews.includes("map") && <>
+                <StableKnowledgeGraph lesson={lesson} code={lesson.code} />
+                <GraphDocumentExport />
+              </>}
+            </div>
+            <div className="workspace-view" data-workspace-view="lab" hidden={activeView !== "lab"}>
+              {openedViews.includes("lab") && <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />}
+            </div>
           </section>
+
+          <nav className="mobile-lesson-pager glass" aria-label="章节翻页">
+            <button disabled={isFirstTopic} onClick={() => navigateToTopic(selectedTopicIndex - 1)} aria-label="进入上一节课程">← <span>上一节</span></button>
+            <strong>{selectedTopicIndex + 1} / {lesson.topics.length}</strong>
+            <button disabled={isLastTopic} onClick={() => navigateToTopic(selectedTopicIndex + 1)} aria-label="进入下一节课程"><span>下一节</span> →</button>
+          </nav>
         </div>
 
         <aside
           ref={chatPanelRef}
           id="ai-programming-assistant"
           className={`chat glass ai-floating-panel ${chatOpen ? "open" : ""} ${chatPanelInteraction ? `is-${chatPanelInteraction}` : ""}`}
-          aria-hidden={!chatOpen}
           aria-labelledby="ai-assistant-title"
           role="dialog"
+          inert={searchOpen ? true : undefined}
+          aria-hidden={searchOpen || !chatOpen}
           data-lenis-prevent
         >
           <div

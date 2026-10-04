@@ -37,19 +37,16 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /<title>Blinga coding · AI 编程学习平台<\/title>/i);
   assert.match(html, /学习中心/);
   assert.match(html, /Python 循环结构/);
-  assert.match(html, /动态知识图谱/);
-  assert.match(html, /在线实训沙盒/);
-  assert.match(html, /我的学习笔记/);
+  assert.match(html, /概念与示例/);
+  assert.match(html, /编写与运行/);
+  assert.match(html, /梳理知识/);
+  assert.match(html, /记录复习/);
+  assert.doesNotMatch(html, /动态知识图谱/);
+  assert.doesNotMatch(html, /在线实训沙盒/);
   assert.doesNotMatch(html, /停止输入 500ms 后自动保存/);
   assert.match(html, /全站课程与 AI 搜索/);
   assert.match(html, /AI 智能问答/);
-  assert.match(html, /清空/);
   assert.match(html, /发送问题/);
-  assert.match(html, /code-line-numbers/);
-  assert.match(html, /UTF-8 · Ln/);
-  assert.match(html, /专注模式/);
-  assert.match(html, /⇧ 导入/);
-  assert.match(html, /⇩ 下载/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
 });
 
@@ -683,7 +680,7 @@ test("removes passive microcopy while preserving functional error feedback", asy
   assert.doesNotMatch(page, /01 准备数据|02 逐个遍历|03 处理结果/);
   assert.doesNotMatch(catalog, /个核心知识点<\/small>/);
   assert.match(page, /<div className="pane-head code-example-actions"><button/);
-  assert.match(page, /<div className="example-foot"><a href="#lab">进入练习<\/a><\/div>/);
+  assert.match(page, /<div className="example-foot"><a href="#lab"[\s\S]*?>进入练习<\/a><\/div>/);
   assert.doesNotMatch(page, /仅保存到你的账号|输入后自动保存|停止输入 500ms 后自动保存/);
   assert.doesNotMatch(page, /实时通道|监听中|已同步编辑器/);
   assert.doesNotMatch(page, /className="lesson-notes-status"/);
