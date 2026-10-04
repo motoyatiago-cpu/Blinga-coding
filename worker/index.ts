@@ -10,6 +10,7 @@ import {
 import { handleProfileRequest, type ProfileEnv } from "./profile";
 import { handleForumRequest } from "./forum";
 import { handleReviewRequest, recordReviewResult } from "./review";
+import { handleProjectRequest } from "./projects";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -1066,6 +1067,9 @@ const worker = {
 
     const reviewResponse = await handleReviewRequest(request, env);
     if (reviewResponse) return reviewResponse;
+
+    const projectResponse = await handleProjectRequest(request, env);
+    if (projectResponse) return projectResponse;
 
     if (url.pathname === "/api/ai") {
       return handleAiRequest(request, env);
