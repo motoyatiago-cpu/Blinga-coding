@@ -236,6 +236,22 @@ export const forumReplies = sqliteTable("forum_replies", {
   index("forum_replies_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
+export const forumNotifications = sqliteTable("forum_notifications", {
+  id: text("id").primaryKey(),
+  recipientUserId: text("recipient_user_id").notNull(),
+  actorUserId: text("actor_user_id").notNull(),
+  postId: text("post_id").notNull(),
+  replyId: text("reply_id"),
+  kind: text("kind").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  readAt: text("read_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("forum_notifications_recipient_dedupe_idx").on(table.recipientUserId, table.dedupeKey),
+  index("forum_notifications_recipient_created_idx").on(table.recipientUserId, table.createdAt, table.id),
+  index("forum_notifications_recipient_unread_idx").on(table.recipientUserId, table.readAt, table.createdAt),
+]);
+
 export const forumUserStats = sqliteTable("forum_user_stats", {
   userId: text("user_id").primaryKey(),
   postCount: integer("post_count").notNull().default(0),

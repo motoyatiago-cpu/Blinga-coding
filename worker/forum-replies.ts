@@ -1,4 +1,5 @@
 import { getSessionUser, type AuthEnv, type SessionUser } from "./auth";
+import { ensureReplyNotifications } from "./forum-notifications";
 
 type ReplyRow = {
   id: string; post_id: string; user_id: string; reply_to_id: string | null;
@@ -108,7 +109,16 @@ export async function handleReplies(request: Request, env: AuthEnv): Promise<Res
   const replay = async (row: ReplyRow) => row.post_id === postId && row.reply_to_id === replyToId && (row.is_deleted || row.content === content)
     ? json({ reply: publicReply(row, viewer), replayed: true, replyCount: await replyCount(env.DB, postId) }) : json({ error: "请使用新的请求重新发送" }, 409);
   const existing = await readReply(env.DB, viewer!.id, requestId);
-  if (existing) return replay(existing);
+  if (existing) {
+    if (!existing.is_deleted) await ensureReplyNotifications(env.DB, {
+      actorUserId: viewer!.id,
+      postId: existing.post_id,
+      replyId: existing.id,
+      replyToId: existing.reply_to_id,
+      content: existing.content,
+    });
+    return replay(existing);
+  }
   if (replyToId && !await env.DB.prepare("SELECT id FROM forum_replies WHERE id = ? AND post_id = ? AND is_deleted = 0").bind(replyToId, postId).first()) {
     return json({ error: "回复对象不存在或已删除" }, 404);
   }
@@ -122,7 +132,16 @@ export async function handleReplies(request: Request, env: AuthEnv): Promise<Res
     ON CONFLICT(user_id, request_id) DO NOTHING`)
     .bind(id, postId, viewer!.id, replyToId, requestId, content, postId, replyToId, replyToId, postId, viewer!.id).run();
   const row = await readReply(env.DB, viewer!.id, requestId);
-  if (row) return result.meta.changes ? json({ reply: publicReply(row, viewer), replayed: false, replyCount: await replyCount(env.DB, postId) }, 201) : replay(row);
+  if (row) {
+    if (!row.is_deleted) await ensureReplyNotifications(env.DB, {
+      actorUserId: viewer!.id,
+      postId: row.post_id,
+      replyId: row.id,
+      replyToId: row.reply_to_id,
+      content: row.content,
+    });
+    return result.meta.changes ? json({ reply: publicReply(row, viewer), replayed: false, replyCount: await replyCount(env.DB, postId) }, 201) : replay(row);
+  }
   if (!await postExists(env.DB, postId)) return json({ error: "讨论不存在或已删除" }, 404);
   if (replyToId && !await env.DB.prepare("SELECT id FROM forum_replies WHERE id = ? AND post_id = ? AND is_deleted = 0").bind(replyToId, postId).first()) return json({ error: "回复对象不存在或已删除" }, 404);
   return json({ error: "回复过于频繁，请稍后再试" }, 429);

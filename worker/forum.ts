@@ -5,6 +5,7 @@ import {
   type SessionUser,
 } from "./auth";
 import { handleReplies } from "./forum-replies";
+import { ensureResolvedNotifications, handleNotifications } from "./forum-notifications";
 
 export interface ForumEnv extends AuthEnv {
   AVATARS?: R2Bucket;
@@ -61,6 +62,7 @@ export async function ensureForumSchema(database: D1Database): Promise<void> {
         forum_posts: ["id", "user_id", "request_id", "category", "resolved", "content", "status", "is_deleted", "created_at", "updated_at"],
         forum_user_stats: ["user_id", "post_count", "first_post_at", "last_post_at", "updated_at"],
         forum_replies: ["id", "post_id", "user_id", "reply_to_id", "request_id", "content", "is_deleted", "created_at", "updated_at"],
+        forum_notifications: ["id", "recipient_user_id", "actor_user_id", "post_id", "reply_id", "kind", "dedupe_key", "read_at", "created_at"],
       };
       for (const [table, columns] of Object.entries(required)) {
         const info = await database.prepare(`PRAGMA table_info(${table})`).all<{ name: string; type: string }>();
@@ -356,6 +358,11 @@ async function dispatchForumRequest(
     await ensureForumSchema(env.DB);
     return handleReplies(request, env);
   }
+  if (url.pathname.startsWith("/api/forum/notifications")) {
+    await ensureAuthSchema(env.DB);
+    await ensureForumSchema(env.DB);
+    return handleNotifications(request, env);
+  }
   if (url.pathname === "/api/forum/avatar") return publicAvatar(request, env);
   if (url.pathname === "/api/forum/stats") {
     if (request.method !== "GET") return forumJson({ error: "仅支持 GET 请求" }, 405);
@@ -372,8 +379,15 @@ async function dispatchForumRequest(
     if (!user) return forumJson({ error: "请先登录" }, 401);
     await ensureForumSchema(env.DB);
     const id = url.searchParams.get("id") || "";
-    const result = await env.DB.prepare("UPDATE forum_posts SET resolved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND is_deleted = 0 AND category = 'help'").bind(id, user.id).run();
-    return result.meta.changes ? forumJson({ resolved: true }) : forumJson({ error: "讨论不存在或无权修改" }, 404);
+    const result = await env.DB.prepare("UPDATE forum_posts SET resolved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND is_deleted = 0 AND status = 'published' AND category = 'help' AND resolved = 0").bind(id, user.id).run();
+    const owned = result.meta.changes ? true : Boolean(await env.DB.prepare(`
+      SELECT id FROM forum_posts
+      WHERE id = ? AND user_id = ? AND is_deleted = 0 AND status = 'published'
+        AND category = 'help' AND resolved = 1
+    `).bind(id, user.id).first());
+    if (!owned) return forumJson({ error: "讨论不存在或无权修改" }, 404);
+    await ensureResolvedNotifications(env.DB, id, user.id);
+    return forumJson({ resolved: true, replayed: !result.meta.changes });
   }
   if (request.method === "DELETE") return deletePost(request, env);
   return forumJson({ error: "不支持该请求方法" }, 405);
@@ -383,7 +397,7 @@ async function dispatchForumRequest(
 /** Catch awaited failures at the API boundary; never return SQL or HTML to clients. */
 export async function handleForumRequest(request: Request, env: ForumEnv): Promise<Response | null> {
   const path = new URL(request.url).pathname;
-  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar", "/api/forum/replies"].includes(path)) return null;
+  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar", "/api/forum/replies", "/api/forum/notifications", "/api/forum/notifications/count", "/api/forum/notifications/read"].includes(path)) return null;
   try {
     return await dispatchForumRequest(request, env);
   } catch (error) {

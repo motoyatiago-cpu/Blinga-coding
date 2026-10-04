@@ -46,6 +46,7 @@ test('schema errors return JSON and can recover after migration on the same bind
   let source = readFileSync(new URL('../worker/forum.ts', import.meta.url), 'utf8');
   source = source.replace(/import\s*\{[\s\S]*?\}\s*from "\.\/auth";/, 'const ensureAuthSchema = async () => {}; const getSessionUser = async () => null;');
   source = source.replace('import { handleReplies } from "./forum-replies";', 'const handleReplies = async () => null;');
+  source = source.replace('import { ensureResolvedNotifications, handleNotifications } from "./forum-notifications";', 'const ensureResolvedNotifications = async () => {}; const handleNotifications = async () => null;');
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   const api = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
   const db = new DatabaseSync(':memory:');
@@ -60,6 +61,7 @@ test('schema errors return JSON and can recover after migration on the same bind
   assert.doesNotMatch(JSON.stringify(body), /SQLITE|user_id|D1_ERROR/);
   repairForum(db, migrations);
   db.exec(readFileSync(new URL('../drizzle/0012_absurd_bromley.sql', import.meta.url), 'utf8'));
+  db.exec(readFileSync(new URL('../drizzle/0014_forum_notifications.sql', import.meta.url), 'utf8'));
   await api.ensureForumSchema(binding);
   await api.ensureForumSchema(binding);
 });
