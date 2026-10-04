@@ -160,6 +160,44 @@ export const learningActivity = sqliteTable("learning_activity", {
   index("learning_activity_user_idx").on(table.userId, table.id),
 ]);
 
+export const learningMastery = sqliteTable("learning_mastery", {
+  userKey: text("user_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  state: text("state").notNull().default("not_started"),
+  successfulJudges: integer("successful_judges").notNull().default(0),
+  failedJudges: integer("failed_judges").notNull().default(0),
+  consecutivePasses: integer("consecutive_passes").notNull().default(0),
+  lastAttemptAt: text("last_attempt_at"),
+  lastPassedAt: text("last_passed_at"),
+  reviewDueAt: text("review_due_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.userKey, table.language, table.topicIndex] }),
+  index("learning_mastery_queue_idx").on(table.userKey, table.state, table.reviewDueAt),
+]);
+
+export const wrongAnswers = sqliteTable("wrong_answers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userKey: text("user_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  runId: integer("run_id"),
+  errorSummary: text("error_summary").notNull(),
+  sourceCode: text("source_code").notNull(),
+  status: text("status").notNull().default("pending"),
+  retryCount: integer("retry_count").notNull().default(0),
+  reviewedAt: text("reviewed_at"),
+  lastRetriedAt: text("last_retried_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("wrong_answers_queue_idx").on(table.userKey, table.status, table.id),
+  index("wrong_answers_run_idx").on(table.userKey, table.runId),
+]);
+
 export const forumPosts = sqliteTable("forum_posts", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

@@ -9,6 +9,7 @@ import {
 } from "./auth";
 import { handleProfileRequest, type ProfileEnv } from "./profile";
 import { handleForumRequest } from "./forum";
+import { handleReviewRequest, recordReviewResult } from "./review";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -945,13 +946,14 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     }
 
     let runRecorded = false;
+    let runId: number | null = null;
     if (userKey) {
       try {
         await ensureRunHistorySchema(env.DB);
         const durationMs = result.time == null
           ? null
           : Math.max(0, Math.round(Number(result.time) * 1000));
-        await env.DB
+        const insertedRun = await env.DB
           .prepare(`
             INSERT INTO code_run_history (
               user_email, user_id, language, topic_index, mode, status_id,
@@ -975,6 +977,8 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
             code,
           )
           .run();
+        const insertedId = Number(insertedRun.meta.last_row_id || 0);
+        runId = Number.isSafeInteger(insertedId) && insertedId > 0 ? insertedId : null;
         await env.DB
           .prepare(`
             DELETE FROM code_run_history
@@ -998,6 +1002,25 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
         runRecorded = true;
       } catch {
         runRecorded = false;
+      }
+    }
+
+    if (principal && Number.isInteger(topicIndex) && topicIndex >= 0 && topicIndex <= 999) {
+      try {
+        const detail = [compileOutput, stderr, decodeRunnerText(result.message), judge?.tests.find((test) => !test.passed)?.name]
+          .map((value) => String(value || "").trim())
+          .find(Boolean);
+        await recordReviewResult(env.DB, principal, {
+          language,
+          topicIndex,
+          mode: body.judge ? "judge" : "run",
+          passed: Boolean(body.judge && judge && judge.passed === judge.total),
+          runId,
+          sourceCode: code,
+          errorSummary: `${String(result.status?.description || "Unknown")}${detail ? `：${detail}` : ""}`,
+        });
+      } catch {
+        // Review data is additive. A pending migration must never break code execution.
       }
     }
 
@@ -1040,6 +1063,9 @@ const worker = {
 
     const forumResponse = await handleForumRequest(request, env);
     if (forumResponse) return forumResponse;
+
+    const reviewResponse = await handleReviewRequest(request, env);
+    if (reviewResponse) return reviewResponse;
 
     if (url.pathname === "/api/ai") {
       return handleAiRequest(request, env);
