@@ -27,8 +27,9 @@ function projectJson(data: unknown, status = 200, extraHeaders?: HeadersInit): R
 }
 
 function sameOrigin(request: Request): boolean {
+  const url = new URL(request.url);
   const origin = request.headers.get("Origin");
-  return !origin || origin === new URL(request.url).origin;
+  return origin === url.origin && request.headers.get("Sec-Fetch-Site") !== "cross-site";
 }
 
 async function ensureProjectProgressSchema(database: D1Database): Promise<void> {
@@ -79,6 +80,19 @@ function withinRateWindow(value: string): boolean {
   return Number.isFinite(timestamp) && Date.now() - timestamp < 60_000;
 }
 
+async function readProgress(
+  database: D1Database,
+  ownerKey: string,
+  language: string,
+  projectSlug: string,
+): Promise<ProjectProgressRecord | null> {
+  return database.prepare(`
+    SELECT milestone_json, status, write_window_started_at, write_count, updated_at
+    FROM project_progress
+    WHERE owner_key = ? AND language = ? AND project_slug = ?
+  `).bind(ownerKey, language, projectSlug).first<ProjectProgressRecord>();
+}
+
 export async function handleProjectRequest(
   request: Request,
   env: AuthEnv,
@@ -100,11 +114,7 @@ export async function handleProjectRequest(
 
   await ensureProjectProgressSchema(env.DB);
   const milestoneIds = project.milestones.map((milestone) => milestone.id);
-  const existing = await env.DB.prepare(`
-    SELECT milestone_json, status, write_window_started_at, write_count, updated_at
-    FROM project_progress
-    WHERE owner_key = ? AND language = ? AND project_slug = ?
-  `).bind(principal.userKey, language, projectSlug).first<ProjectProgressRecord>();
+  const existing = await readProgress(env.DB, principal.userKey, language, projectSlug);
 
   if (request.method === "GET") {
     const milestones = existing
@@ -124,13 +134,15 @@ export async function handleProjectRequest(
   if (!Number.isFinite(contentLength) || contentLength > MAX_REQUEST_BYTES) {
     return projectJson({ error: "请求内容过大" }, 413);
   }
-  if (existing && withinRateWindow(existing.write_window_started_at) && existing.write_count >= MAX_WRITES_PER_MINUTE) {
-    return projectJson({ error: "更新过于频繁，请稍后再试" }, 429, { "Retry-After": "60" });
-  }
-
   let body: { milestoneId?: unknown; status?: unknown };
   try {
-    body = await request.json();
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).length > MAX_REQUEST_BYTES) {
+      return projectJson({ error: "请求内容过大" }, 413);
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    body = parsed as { milestoneId?: unknown; status?: unknown };
   } catch {
     return projectJson({ error: "请求格式无效" }, 400);
   }
@@ -140,35 +152,64 @@ export async function handleProjectRequest(
     return projectJson({ error: "里程碑进度无效" }, 400);
   }
 
-  const milestones = existing
-    ? normalizeSavedProgress(existing.milestone_json, milestoneIds)
-    : emptyMilestoneProgress(project);
-  milestones[milestoneId] = status;
-  const projectStatus = deriveProjectStatus(milestones);
-  const resetWindow = !existing || !withinRateWindow(existing.write_window_started_at);
+  // Compare-and-swap keeps concurrent updates from overwriting another device's
+  // milestone and makes a retried PUT idempotent without weakening the rate cap.
+  let current = existing;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const milestones = current
+      ? normalizeSavedProgress(current.milestone_json, milestoneIds)
+      : emptyMilestoneProgress(project);
+    if (milestones[milestoneId] === status) {
+      return projectJson({ saved: true, replayed: true, progress: { status: deriveProjectStatus(milestones), milestones } });
+    }
+    if (current && withinRateWindow(current.write_window_started_at) && current.write_count >= MAX_WRITES_PER_MINUTE) {
+      return projectJson({ error: "更新过于频繁，请稍后再试" }, 429, { "Retry-After": "60" });
+    }
 
-  await env.DB.prepare(`
-    INSERT INTO project_progress (
-      owner_key, user_id, language, project_slug, milestone_json, status,
-      write_window_started_at, write_count, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
-    ON CONFLICT(owner_key, language, project_slug) DO UPDATE SET
-      user_id = excluded.user_id,
-      milestone_json = excluded.milestone_json,
-      status = excluded.status,
-      write_window_started_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE write_window_started_at END,
-      write_count = CASE WHEN ? THEN 1 ELSE write_count + 1 END,
-      updated_at = CURRENT_TIMESTAMP
-  `).bind(
-    principal.userKey,
-    principal.userId,
-    language,
-    projectSlug,
-    JSON.stringify(milestones),
-    projectStatus,
-    resetWindow ? 1 : 0,
-    resetWindow ? 1 : 0,
-  ).run();
+    milestones[milestoneId] = status;
+    const projectStatus = deriveProjectStatus(milestones);
+    const resetWindow = !current || !withinRateWindow(current.write_window_started_at);
+    const result = current
+      ? await env.DB.prepare(`
+          UPDATE project_progress SET
+            user_id = ?, milestone_json = ?, status = ?,
+            write_window_started_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE write_window_started_at END,
+            write_count = CASE WHEN ? THEN 1 ELSE write_count + 1 END,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE owner_key = ? AND language = ? AND project_slug = ?
+            AND milestone_json = ? AND write_window_started_at = ? AND write_count = ?
+        `).bind(
+          principal.userId,
+          JSON.stringify(milestones),
+          projectStatus,
+          resetWindow ? 1 : 0,
+          resetWindow ? 1 : 0,
+          principal.userKey,
+          language,
+          projectSlug,
+          current.milestone_json,
+          current.write_window_started_at,
+          current.write_count,
+        ).run()
+      : await env.DB.prepare(`
+          INSERT INTO project_progress (
+            owner_key, user_id, language, project_slug, milestone_json, status,
+            write_window_started_at, write_count, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT(owner_key, language, project_slug) DO NOTHING
+        `).bind(
+          principal.userKey,
+          principal.userId,
+          language,
+          projectSlug,
+          JSON.stringify(milestones),
+          projectStatus,
+        ).run();
+    if (Number(result.meta.changes || 0) === 1) {
+      return projectJson({ saved: true, replayed: false, progress: { status: projectStatus, milestones } });
+    }
+    current = await readProgress(env.DB, principal.userKey, language, projectSlug);
+  }
 
-  return projectJson({ saved: true, progress: { status: projectStatus, milestones } });
+  return projectJson({ error: "进度刚刚被其他设备更新，请重试" }, 409);
 }

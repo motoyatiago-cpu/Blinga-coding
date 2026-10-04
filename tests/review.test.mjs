@@ -59,7 +59,8 @@ function fixture(t) {
   }
   const binding = createBinding(db);
   async function request(path, method = "GET", user = null, body, origin = "https://review.test") {
-    const headers = { Origin: origin, "Content-Type": "application/json" };
+    const headers = { "Content-Type": "application/json" };
+    if (origin !== null) headers.Origin = origin;
     if (user) headers.Cookie = `__Host-blinga_session=${tokens[user] || user}`;
     return worker.fetch(new Request(`https://review.test${path}`, {
       method,
@@ -181,6 +182,7 @@ test("review mutations enforce origin, validate limits, and support retry handof
   assert.equal((await request("/api/review?limit=51", "GET", "alice")).status, 400);
   assert.equal((await request("/api/review?cursor=nope", "GET", "alice")).status, 400);
   assert.equal((await request(`/api/review/${id}`, "PATCH", "alice", { action: "retry" }, "https://evil.test")).status, 403);
+  assert.equal((await request(`/api/review/${id}`, "PATCH", "alice", { action: "retry" }, null)).status, 403);
   assert.equal((await request(`/api/review/${id}`, "PATCH", "alice", { action: "invalid" })).status, 400);
 
   const retry = await request(`/api/review/${id}`, "PATCH", "alice", { action: "retry" });
@@ -196,6 +198,34 @@ test("review mutations enforce origin, validate limits, and support retry handof
   const list = await (await request("/api/review", "GET", "alice")).json();
   assert.deepEqual(list.queue, []);
   assert.equal(list.stats.pending, 0);
+});
+
+test("project progress rejects originless writes, preserves concurrent milestones, and scopes owners", async (t) => {
+  const { db, request } = fixture(t);
+  const path = "/api/projects/progress?language=python&project=study-scoreboard";
+
+  assert.equal((await request(path, "GET")).status, 401);
+  assert.equal((await request(path, "PUT", "alice", { milestoneId: "model-data", status: "in_progress" }, null)).status, 403);
+
+  const [first, second] = await Promise.all([
+    request(path, "PUT", "alice", { milestoneId: "model-data", status: "in_progress" }),
+    request(path, "PUT", "alice", { milestoneId: "calculate", status: "completed" }),
+  ]);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+
+  const alice = await (await request(path, "GET", "alice")).json();
+  assert.equal(alice.progress.milestones["model-data"], "in_progress");
+  assert.equal(alice.progress.milestones.calculate, "completed");
+  const beforeReplay = db.prepare("SELECT write_count FROM project_progress WHERE owner_key = 'user:alice'").get().write_count;
+  const replay = await request(path, "PUT", "alice", { milestoneId: "calculate", status: "completed" });
+  assert.equal(replay.status, 200);
+  assert.equal((await replay.json()).replayed, true);
+  assert.equal(db.prepare("SELECT write_count FROM project_progress WHERE owner_key = 'user:alice'").get().write_count, beforeReplay);
+
+  const bob = await (await request(path, "GET", "bob")).json();
+  assert.equal(bob.progress.milestones["model-data"], "not_started");
+  assert.equal(bob.progress.milestones.calculate, "not_started");
 });
 
 test("missing review migration is isolated from existing run API", async (t) => {

@@ -61,10 +61,11 @@ test("catalog and detail routes are server-first with a focused interactive work
 });
 
 test("project progress API is authenticated, owner-scoped, bounded, and CSRF protected", async () => {
-  const [worker, migration, schema] = await Promise.all([
+  const [worker, migration, schema, profile] = await Promise.all([
     source("../worker/projects.ts"),
     source("../drizzle/0015_project_learning.sql"),
     source("../db/schema.ts"),
+    source("../worker/profile.ts"),
   ]);
 
   assert.match(worker, /resolvePrincipal\(request, env\)/);
@@ -83,4 +84,6 @@ test("project progress API is authenticated, owner-scoped, bounded, and CSRF pro
   assert.match(migration, /project_progress_owner_updated_idx/);
   assert.match(migration, /PRAGMA optimize/);
   assert.match(schema, /export const projectProgress/);
+  assert.match(profile, /\["projectProgress", "project_progress", "owner_key"\]/);
+  assert.match(profile, /table === "project_progress"\s*\? "owner_key"/);
 });

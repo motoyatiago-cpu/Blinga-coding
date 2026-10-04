@@ -39,8 +39,9 @@ function reviewJson(data: unknown, status = 200): Response {
 }
 
 function sameOrigin(request: Request): boolean {
+  const url = new URL(request.url);
   const origin = request.headers.get("Origin");
-  return !origin || origin === new URL(request.url).origin;
+  return origin === url.origin && request.headers.get("Sec-Fetch-Site") !== "cross-site";
 }
 
 function schemaNotReady(): Response {
@@ -322,10 +323,18 @@ async function mutateReview(
 ): Promise<Response> {
   if (!sameOrigin(request)) return reviewJson({ error: "请求来源无效" }, 403);
   const contentLength = Number(request.headers.get("Content-Length") || "0");
-  if (contentLength > MAX_MUTATION_BYTES) return reviewJson({ error: "请求内容过大" }, 413);
+  if (!Number.isFinite(contentLength) || contentLength > MAX_MUTATION_BYTES) {
+    return reviewJson({ error: "请求内容过大" }, 413);
+  }
   let body: { action?: unknown };
   try {
-    body = await request.json();
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).length > MAX_MUTATION_BYTES) {
+      return reviewJson({ error: "请求内容过大" }, 413);
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    body = parsed as { action?: unknown };
   } catch {
     return reviewJson({ error: "请求格式无效" }, 400);
   }
