@@ -43,6 +43,7 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /记录复习/);
   assert.doesNotMatch(html, /动态知识图谱/);
   assert.doesNotMatch(html, /在线实训沙盒/);
+  assert.doesNotMatch(html, /knowledge-graph-[^"']+\.(?:js|css)/);
   assert.doesNotMatch(html, /停止输入 500ms 后自动保存/);
   assert.match(html, /全站课程与 AI 搜索/);
   assert.match(html, /AI 智能问答/);
@@ -342,9 +343,10 @@ test("removes decorative uppercase eyebrow labels across learning and profile pa
 });
 
 test("applies the Blinga coding V2 product design system without replacing feature modules", async () => {
-  const [css, page, motion, smoothScroll] = await Promise.all([
+  const [css, page, graph, motion, smoothScroll] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/knowledge-graph.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/hover-bounce.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/smooth-scroll.tsx", import.meta.url), "utf8"),
   ]);
@@ -356,7 +358,8 @@ test("applies the Blinga coding V2 product design system without replacing featu
   assert.match(css, /\.chat\{\s*right:18px/);
   assert.match(css, /\.graph-shell\{/);
   assert.match(css, /\.sandbox\{/);
-  assert.match(page, /<StableKnowledgeGraph lesson=\{lesson\} code=\{lesson\.code\}/);
+  assert.match(page, /<DynamicKnowledgeGraph lesson=\{lesson\} code=\{lesson\.code\}/);
+  assert.match(graph, /<ReactFlow/);
   assert.match(page, /<StableSandbox lang=\{lang\}/);
   assert.match(page, /\/api\/ai/);
   assert.match(motion, /gsap\.utils\.toArray/);
@@ -650,15 +653,15 @@ test("applies the restrained dark reading hierarchy without touching the desktop
 });
 
 test("keeps the account menu compact and exports mind maps as PDF only", async () => {
-  const [page, css] = await Promise.all([
-    readFile(new URL("../app/learning-workspace.tsx", import.meta.url), "utf8"),
+  const [graph, css] = await Promise.all([
+    readFile(new URL("../app/knowledge-graph.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/refined-dark-ui.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /function GraphDocumentExport\(\)/);
-  assert.match(page, /function exportPdf\(\)/);
-  assert.match(page, />⇩ 导出 PDF<\/button>/);
-  assert.doesNotMatch(page, /application\/msword|\.doc`|value="word"|导出 Word/);
+  assert.match(graph, /function GraphDocumentExport\(\)/);
+  assert.match(graph, /function exportPdf\(\)/);
+  assert.match(graph, />⇩ 导出 PDF<\/button>/);
+  assert.doesNotMatch(graph, /application\/msword|\.doc`|value="word"|导出 Word/);
   assert.match(css, /\.account-popover\.glass\s*\{[\s\S]*?width:\s*232px/);
   assert.match(css, /\.account-popover\.glass\s*\{[\s\S]*?background:\s*#07080a/);
   assert.match(css, /\.account-popover header b\s*\{[\s\S]*?color:\s*#fff/);

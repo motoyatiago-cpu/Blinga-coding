@@ -2425,6 +2425,13 @@ button.hover-bounce:focus-visible{
   margin-bottom:0;
 }
 
+.graph-module-loading{
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  font-size:14px;
+}
+
 .mobile-chapter-navigation,
 .mobile-lesson-pager{
   display:none;
