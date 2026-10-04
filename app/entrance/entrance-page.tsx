@@ -57,13 +57,25 @@ export default function EntrancePage({ author = false }: { author?: boolean }) {
       author ? import("./author-controller.js") : import("./entrance-controller.js"),
     ]).then(([water, behavior]) => {
       if (scope.signal.aborted) return;
-      waterScope = createRuntime(root);
-      try { water.startWater(root, waterScope); }
-      catch {
-        waterScope.dispose();
-        const fallback = root.getElementById("fail");
-        if (fallback) { fallback.hidden = false; fallback.textContent = "当前设备不支持水面效果，仍可正常使用页面。"; }
-      }
+      const motionPreference = author ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+      const syncWater = () => {
+        waterScope?.dispose();
+        const canvas = root.getElementById("c");
+        if (motionPreference?.matches) {
+          if (canvas) canvas.hidden = true;
+          return;
+        }
+        if (canvas) canvas.hidden = false;
+        waterScope = createRuntime(root);
+        try { water.startWater(root, waterScope); }
+        catch {
+          waterScope.dispose();
+          if (canvas) canvas.hidden = true;
+          const fallback = root.getElementById("fail");
+          if (fallback) { fallback.hidden = false; fallback.textContent = "当前设备不支持水面效果，仍可正常使用页面。"; }
+        }
+      };
+      syncWater();
       if ("startAuthor" in behavior) behavior.startAuthor(root, scope);
       else behavior.startEntrance(root, scope, createAuthHandlers(root, scope.signal), enter);
     }).catch(() => {
