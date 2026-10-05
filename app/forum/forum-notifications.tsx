@@ -149,7 +149,7 @@ export default function ForumNotifications({ authenticated }: { authenticated: b
       {!loading && loaded && !rows.length ? <p className="forum-notification-state">暂时没有通知</p> : null}
       {rows.length ? <ol className="forum-notification-list">
         {rows.map((item) => <li key={item.id} className={item.read ? "" : "is-unread"}>
-          <a href={`/forum#forum-post-${encodeURIComponent(item.postId)}`} onClick={() => { setOpen(false); void markRead(item); }}>
+          <a href={`/forum?post=${encodeURIComponent(item.postId)}#forum-post-${encodeURIComponent(item.postId)}`} onClick={() => { setOpen(false); void markRead(item); }}>
             <span className="forum-notification-avatar" aria-hidden="true">{Array.from(item.actor.name)[0]}</span>
             <span><b>{item.message}</b><time dateTime={item.createdAt.replace(" ", "T") + "Z"}>{formattedTime(item.createdAt)}</time></span>
           </a>

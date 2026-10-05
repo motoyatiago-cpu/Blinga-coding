@@ -134,3 +134,21 @@ test('notification pagination is bounded and rejects malformed cursors', async (
   assert.equal(new Set([...first.body.notifications, ...second.body.notifications].map((item) => item.id)).size, 45);
   assert.equal((await notifications('alice', '?cursor=invalid')).response.status, 400);
 });
+
+test('loads a notification target directly when it is outside the first feed page', async (t) => {
+  const { request } = fixture(t);
+  const response = await request('/api/forum/posts?id=post-a', 'GET', 'alice');
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.posts.length, 1);
+  assert.equal(body.posts[0].id, 'post-a');
+  assert.equal((await request('/api/forum/posts?id=missing', 'GET', 'alice')).status, 404);
+});
+
+test('notification links retain the post id for on-demand loading', () => {
+  const notificationsSource = readFileSync(new URL('../app/forum/forum-notifications.tsx', import.meta.url), 'utf8');
+  const forumSource = readFileSync(new URL('../app/forum/forum-client.tsx', import.meta.url), 'utf8');
+  assert.match(notificationsSource, /\/forum\?post=/);
+  assert.match(forumSource, /window\.location\.search\)\.get\("post"\)/);
+  assert.match(forumSource, /\/api\/forum\/posts\?id=/);
+});

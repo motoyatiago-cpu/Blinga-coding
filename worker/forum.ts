@@ -159,6 +159,30 @@ async function listPosts(request: Request, env: ForumEnv): Promise<Response> {
   await ensureForumSchema(env.DB);
   const viewer = await getSessionUser(request, env);
   const url = new URL(request.url);
+  const targetId = url.searchParams.get("id")?.trim() || "";
+  if (targetId) {
+    if (targetId.length > 64) return forumJson({ error: "留言不存在" }, 404);
+    const row = await env.DB.prepare(`
+      SELECT
+        p.id, p.user_id, p.category, p.resolved, p.content, p.created_at, p.updated_at,
+        u.display_name, u.username, u.avatar_type, u.avatar_value,
+        (SELECT COUNT(*) FROM forum_replies r WHERE r.post_id = p.id AND r.is_deleted = 0) AS reply_count
+      FROM forum_posts p
+      JOIN users u ON u.id = p.user_id
+      WHERE p.id = ? AND p.status = 'published' AND p.is_deleted = 0
+      LIMIT 1
+    `).bind(targetId).first<ForumPostRow>();
+    if (!row) return forumJson({ error: "留言不存在" }, 404);
+    return forumJson({
+      posts: [publicPost(row, viewer)],
+      nextCursor: null,
+      stats: await forumStats(env.DB, viewer),
+      viewer: viewer ? {
+        authenticated: true,
+        name: viewer.username || viewer.displayName,
+      } : { authenticated: false, name: null },
+    });
+  }
   const requestedLimit = Number(url.searchParams.get("limit") || PAGE_SIZE);
   const limit = Number.isInteger(requestedLimit)
     ? Math.max(1, Math.min(MAX_PAGE_SIZE, requestedLimit))

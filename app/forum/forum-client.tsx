@@ -111,16 +111,36 @@ export default function ForumClient() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const targetId = new URLSearchParams(window.location.search).get("post")?.trim() || "";
     void fetch("/api/forum/posts?limit=20", {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
       cache: "no-store",
       signal: controller.signal,
-    }).then(readJson<ForumPayload>).then((data) => {
-      setPosts(data.posts);
+    }).then(readJson<ForumPayload>).then(async (data) => {
+      let nextPosts = data.posts;
+      if (targetId && !nextPosts.some((post) => post.id === targetId)) {
+        try {
+          const target = await readJson<ForumPayload>(await fetch(`/api/forum/posts?id=${encodeURIComponent(targetId)}`, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            signal: controller.signal,
+          }));
+          nextPosts = [...target.posts, ...nextPosts];
+        } catch (reason) {
+          if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
+        }
+      }
+      setPosts(nextPosts);
       setCursor(data.nextCursor);
       setStats(data.stats);
       setViewer(data.viewer);
+      if (targetId) {
+        requestAnimationFrame(() => {
+          document.getElementById(`forum-post-${targetId}`)?.scrollIntoView({ block: "center" });
+        });
+      }
     }).catch((reason) => {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       setError(reason instanceof Error ? reason.message : "论坛暂时无法连接");
