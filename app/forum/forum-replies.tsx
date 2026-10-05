@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { groupReplyThreads } from "./reply-threads.mjs";
 
 type Reply = {
   id: string; postId: string; content: string; deleted: boolean; createdAt: string;
@@ -26,6 +27,21 @@ function Avatar({ author }: { author: NonNullable<Reply["author"]> }) {
     {author.avatarUrl && !failed ? <img src={author.avatarUrl} alt="" onError={() => setFailed(true)} /> : Array.from(author.name)[0]}
   </span>;
 }
+function ReplyItem({ row, id, sending, deleting, onReply, onDelete }: {
+  row: Reply; id: string; sending: boolean; deleting: string | null;
+  onReply: (row: Reply) => void; onDelete: (row: Reply) => void;
+}) {
+  return <article id={id} className="forum-reply" tabIndex={-1}>
+    {row.deleted ? <p className="forum-reply-deleted">该回复已删除</p> : <>
+      {row.author && <Avatar author={row.author} />}
+      <div className="forum-reply-body"><header><b>{row.author?.name}</b><time dateTime={row.createdAt.replace(" ", "T") + "Z"}>{new Date(row.createdAt.replace(" ", "T") + "Z").toLocaleString("zh-CN")}</time></header>
+        {row.replyTo && <span className="forum-reply-target">回复 {row.replyTo.deleted ? "已删除的回复" : row.replyTo.name}</span>}
+        <p>{row.content}</p>
+        <div className="forum-reply-actions"><button type="button" disabled={sending} onClick={() => onReply(row)}>回复</button>
+          {row.permissions.canDelete && <button type="button" disabled={deleting !== null} onClick={() => onDelete(row)}>{deleting === row.id ? "删除中" : "删除"}</button>}</div>
+      </div></>}
+  </article>;
+}
 
 export default function ForumReplies({ postId, authorName, authenticated, initialCount }: {
   postId: string; authorName: string; authenticated: boolean; initialCount: number;
@@ -41,9 +57,16 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
   const revision = useRef(0);
   const controller = useRef<AbortController | null>(null), alive = useRef(true);
   const attempt = useRef<{ key: string; id: string } | null>(null);
+  const pendingFocus = useRef<string | null>(null);
+  const threads = useMemo(() => groupReplyThreads(rows), [rows]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; controller.current?.abort(); }; }, []);
   useEffect(() => { if (target) input.current?.focus(); }, [target]);
   useEffect(() => { setCount(initialCount); }, [initialCount]);
+  useEffect(() => {
+    if (!pendingFocus.current) return;
+    document.getElementById(`${regionId}-reply-${pendingFocus.current}`)?.focus();
+    pendingFocus.current = null;
+  }, [rows, regionId]);
 
   async function load(next?: string) {
     if (loadingRef.current) return;
@@ -79,8 +102,8 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
       }));
       if (!alive.current) return;
       revision.current++; setCount(data.replyCount);
+      pendingFocus.current = data.reply.id;
       setRows(current => merge(current, [data.reply])); setContent(""); setTarget(null); attempt.current = null;
-      opener.current?.focus();
     } catch (reason) { if (alive.current) setError(reason instanceof Error ? reason.message : "回复发送失败"); }
     finally { sendingRef.current = false; if (alive.current) setSending(false); }
   }
@@ -91,6 +114,7 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
       await read(await fetch(`/api/forum/replies?id=${encodeURIComponent(row.id)}`, { method: "DELETE", credentials: "same-origin" }));
       if (!alive.current) return;
       revision.current++;
+      pendingFocus.current = row.id;
       setRows(current => current.map(item => item.id === row.id ? {
         ...item,
         deleted: true,
@@ -101,7 +125,6 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
         item.replyTo?.id === row.id ? { ...item, replyTo: { ...item.replyTo, name: null, deleted: true } } : item));
       setCount(value => Math.max(0, value - 1));
       if (target?.id === row.id) setTarget(null);
-      opener.current?.focus();
     } catch (reason) { if (alive.current) setError(reason instanceof Error ? reason.message : "回复删除失败"); }
     finally { deletingRef.current = false; if (alive.current) setDeleting(null); }
   }
@@ -111,18 +134,18 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
       <button type="button" aria-expanded={open} aria-controls={regionId} onClick={() => { setOpen(!open); if (!open && !loaded) void load(); }}>{open ? "收起回复" : "查看回复"}（{count}）</button>
     </div>
     <section id={regionId} hidden={!open} aria-label="帖子回复">
-      <div className="forum-reply-list" aria-busy={loading}>
-        {rows.map(row => <article className="forum-reply" key={row.id}>
-          {row.deleted ? <p className="forum-reply-deleted">该回复已删除</p> : <>
-            {row.author && <Avatar author={row.author} />}
-            <div className="forum-reply-body"><header><b>{row.author?.name}</b><time dateTime={row.createdAt.replace(" ", "T") + "Z"}>{new Date(row.createdAt.replace(" ", "T") + "Z").toLocaleString("zh-CN")}</time></header>
-              {row.replyTo && <span className="forum-reply-target">回复 {row.replyTo.deleted ? "已删除的回复" : row.replyTo.name}</span>}
-              <p>{row.content}</p>
-              <div className="forum-reply-actions"><button type="button" disabled={sending} onClick={() => reply({ id: row.id, name: row.author?.name || "用户" })}>回复</button>
-                {row.permissions.canDelete && <button type="button" disabled={deleting !== null} onClick={() => void remove(row)}>{deleting === row.id ? "删除中" : "删除"}</button>}</div>
-            </div></>}
-        </article>)}
-      </div>
+      <ol className="forum-reply-list" aria-busy={loading}>
+        {threads.map(({ root, replies }) => <li className="forum-reply-thread" key={root.id}>
+          <ReplyItem row={root} id={`${regionId}-reply-${root.id}`} sending={sending} deleting={deleting}
+            onReply={row => reply({ id: row.id, name: row.author?.name || "用户" })} onDelete={row => void remove(row)} />
+          {replies.length > 0 && <ol className="forum-reply-children" aria-label="楼中楼回复">
+            {replies.map(row => <li key={row.id}>
+              <ReplyItem row={row} id={`${regionId}-reply-${row.id}`} sending={sending} deleting={deleting}
+                onReply={item => reply({ id: item.id, name: item.author?.name || "用户" })} onDelete={item => void remove(item)} />
+            </li>)}
+          </ol>}
+        </li>)}
+      </ol>
       {loading && <p role="status">正在读取回复</p>}
       {loaded && !rows.length && !loading && <p className="forum-reply-empty">暂无回复</p>}
       {!loading && (!loaded || cursor) && <button type="button" className="forum-reply-more" onClick={() => void load(cursor || undefined)}>{loaded ? "查看更多回复" : "读取回复"}</button>}
