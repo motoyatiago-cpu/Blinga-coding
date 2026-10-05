@@ -160,6 +160,59 @@ export const learningActivity = sqliteTable("learning_activity", {
   index("learning_activity_user_idx").on(table.userId, table.id),
 ]);
 
+export const learningMastery = sqliteTable("learning_mastery", {
+  userKey: text("user_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  state: text("state").notNull().default("not_started"),
+  successfulJudges: integer("successful_judges").notNull().default(0),
+  failedJudges: integer("failed_judges").notNull().default(0),
+  consecutivePasses: integer("consecutive_passes").notNull().default(0),
+  lastAttemptAt: text("last_attempt_at"),
+  lastPassedAt: text("last_passed_at"),
+  reviewDueAt: text("review_due_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.userKey, table.language, table.topicIndex] }),
+  index("learning_mastery_queue_idx").on(table.userKey, table.state, table.reviewDueAt),
+]);
+
+export const wrongAnswers = sqliteTable("wrong_answers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userKey: text("user_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  topicIndex: integer("topic_index").notNull(),
+  runId: integer("run_id"),
+  errorSummary: text("error_summary").notNull(),
+  sourceCode: text("source_code").notNull(),
+  status: text("status").notNull().default("pending"),
+  retryCount: integer("retry_count").notNull().default(0),
+  reviewedAt: text("reviewed_at"),
+  lastRetriedAt: text("last_retried_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("wrong_answers_queue_idx").on(table.userKey, table.status, table.id),
+  index("wrong_answers_run_idx").on(table.userKey, table.runId),
+]);
+
+export const projectProgress = sqliteTable("project_progress", {
+  ownerKey: text("owner_key").notNull(),
+  userId: text("user_id"),
+  language: text("language").notNull(),
+  projectSlug: text("project_slug").notNull(),
+  milestoneJson: text("milestone_json").notNull(),
+  status: text("status").notNull().default("not_started"),
+  writeWindowStartedAt: text("write_window_started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  writeCount: integer("write_count").notNull().default(0),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.ownerKey, table.language, table.projectSlug] }),
+  index("project_progress_owner_updated_idx").on(table.ownerKey, table.updatedAt),
+]);
+
 export const forumPosts = sqliteTable("forum_posts", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -196,6 +249,22 @@ export const forumReplies = sqliteTable("forum_replies", {
   uniqueIndex("forum_replies_user_request_idx").on(table.userId, table.requestId),
   index("forum_replies_post_created_idx").on(table.postId, table.createdAt, table.id),
   index("forum_replies_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const forumNotifications = sqliteTable("forum_notifications", {
+  id: text("id").primaryKey(),
+  recipientUserId: text("recipient_user_id").notNull(),
+  actorUserId: text("actor_user_id").notNull(),
+  postId: text("post_id").notNull(),
+  replyId: text("reply_id"),
+  kind: text("kind").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  readAt: text("read_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("forum_notifications_recipient_dedupe_idx").on(table.recipientUserId, table.dedupeKey),
+  index("forum_notifications_recipient_created_idx").on(table.recipientUserId, table.createdAt, table.id),
+  index("forum_notifications_recipient_unread_idx").on(table.recipientUserId, table.readAt, table.createdAt),
 ]);
 
 export const forumUserStats = sqliteTable("forum_user_stats", {

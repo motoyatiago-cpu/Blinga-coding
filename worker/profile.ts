@@ -525,6 +525,9 @@ async function exportData(user: SessionUser, env: ProfileEnv): Promise<Response>
     ["completions", "lesson_completions", "user_email"],
     ["runHistory", "code_run_history", "user_email"],
     ["notes", "learning_notes", "user_email"],
+    ["mastery", "learning_mastery", "user_key"],
+    ["wrongAnswers", "wrong_answers", "user_key"],
+    ["projectProgress", "project_progress", "owner_key"],
   ];
   for (const [key, table, column] of tableQueries) {
     result[key] = (await tableExists(env.DB, table))
@@ -567,9 +570,17 @@ async function clearData(request: Request, user: SessionUser, env: ProfileEnv): 
     "lesson_completions",
     "code_run_history",
     "learning_notes",
+    "learning_mastery",
+    "wrong_answers",
+    "project_progress",
   ]) {
     if (await tableExists(env.DB, table)) {
-      statements.push(env.DB.prepare(`DELETE FROM ${table} WHERE user_email = ?`).bind(userKey));
+      const ownerColumn = table === "project_progress"
+        ? "owner_key"
+        : table === "learning_mastery" || table === "wrong_answers"
+          ? "user_key"
+          : "user_email";
+      statements.push(env.DB.prepare(`DELETE FROM ${table} WHERE ${ownerColumn} = ?`).bind(userKey));
     }
   }
   await env.DB.batch(statements);

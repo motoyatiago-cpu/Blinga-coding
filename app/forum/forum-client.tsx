@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CommunityGuide from "./community-guide";
+import ForumNotifications from "./forum-notifications";
 import ForumReplies from "./forum-replies";
 
 type ForumPost = {
@@ -110,16 +111,36 @@ export default function ForumClient() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const targetId = new URLSearchParams(window.location.search).get("post")?.trim() || "";
     void fetch("/api/forum/posts?limit=20", {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
       cache: "no-store",
       signal: controller.signal,
-    }).then(readJson<ForumPayload>).then((data) => {
-      setPosts(data.posts);
+    }).then(readJson<ForumPayload>).then(async (data) => {
+      let nextPosts = data.posts;
+      if (targetId && !nextPosts.some((post) => post.id === targetId)) {
+        try {
+          const target = await readJson<ForumPayload>(await fetch(`/api/forum/posts?id=${encodeURIComponent(targetId)}`, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            signal: controller.signal,
+          }));
+          nextPosts = [...target.posts, ...nextPosts];
+        } catch (reason) {
+          if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
+        }
+      }
+      setPosts(nextPosts);
       setCursor(data.nextCursor);
       setStats(data.stats);
       setViewer(data.viewer);
+      if (targetId) {
+        requestAnimationFrame(() => {
+          document.getElementById(`forum-post-${targetId}`)?.scrollIntoView({ block: "center" });
+        });
+      }
     }).catch((reason) => {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       setError(reason instanceof Error ? reason.message : "论坛暂时无法连接");
@@ -220,7 +241,10 @@ export default function ForumClient() {
     <div className="forum-content">
       <header className="forum-heading">
         <h1>用户论坛</h1>
-        {!loading && <span>{countText}</span>}
+        <div className="forum-heading-meta">
+          {!loading && <span>{countText}</span>}
+          <ForumNotifications authenticated={viewer.authenticated} />
+        </div>
       </header>
 
       <nav className="forum-tabs" aria-label="讨论分类">
@@ -265,7 +289,7 @@ export default function ForumClient() {
         {loading && <p className="forum-state">正在读取留言</p>}
         {!loading && !visiblePosts.length && <div className="forum-empty"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M18 5h28a13 13 0 0 1 13 13v14a13 13 0 0 1-13 13h-9l-8 8-8-8h-3A13 13 0 0 1 5 32V18A13 13 0 0 1 18 5Z"/><circle cx="20" cy="25" r="2"/><circle cx="32" cy="25" r="2"/><circle cx="44" cy="25" r="2"/></svg><h2>暂无讨论</h2><p>成为第一个发起讨论的人吧</p><button type="button" onClick={()=>{composerRef.current?.focus();composerRef.current?.scrollIntoView({block:"center",behavior:"smooth"});}}>写下第一条讨论</button></div>}
         {visiblePosts.map((post) => (
-          <article className="forum-post" key={post.id}>
+          <article className="forum-post" id={`forum-post-${post.id}`} key={post.id}>
             <ForumAvatar post={post} />
             <div>
               <header>

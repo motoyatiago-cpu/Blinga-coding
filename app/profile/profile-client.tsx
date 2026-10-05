@@ -450,7 +450,7 @@ export default function ProfileClient() {
       <div className="profile-orb one" /><div className="profile-orb two" />
       <header className="profile-topbar glass">
         <a className="profile-brand" href="/home"><i>&lt;/&gt;</i><span>Blinga <b>coding</b></span></a>
-        <div className="profile-topbar-actions"><ThemeToggle /><a href="/home">返回学习中心</a></div>
+        <div className="profile-topbar-actions"><ThemeToggle /><a href="/review">错题复习</a><a href="/home">返回学习中心</a></div>
       </header>
 
       <div className="profile-layout">
