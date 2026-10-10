@@ -797,6 +797,36 @@ html[data-theme] .chat.ai-floating-panel .message.user{
   border-color:transparent;
 }
 
+.ai-markdown{
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+.ai-markdown > :first-child{margin-top:0}
+.ai-markdown > :last-child{margin-bottom:0}
+.ai-markdown p,.ai-markdown ul,.ai-markdown ol,.ai-markdown blockquote,.ai-markdown pre,.ai-markdown table{margin:0 0 .85em}
+.ai-markdown :is(h1,h2,h3,h4){margin:1em 0 .45em;font-size:1em;line-height:1.4}
+.ai-markdown :is(ul,ol){padding-left:1.5em}
+.ai-markdown li+li{margin-top:.3em}
+.ai-markdown li>p{margin:.25em 0}
+.ai-markdown a{color:#4669d7;text-decoration:underline;text-underline-offset:2px}
+html[data-theme="dark"] .ai-markdown a{color:#a7b8ff}
+.ai-markdown :not(pre)>code,.ai-markdown pre{
+  border:1px solid color-mix(in srgb,currentColor 12%,transparent);
+  border-radius:6px;
+  background:color-mix(in srgb,currentColor 6%,transparent);
+  font-family:var(--font-geist-mono),monospace;
+}
+.ai-markdown :not(pre)>code{padding:.1em .3em;font-size:.9em}
+.ai-markdown pre{max-width:100%;padding:12px;overflow-x:auto;white-space:pre;line-height:1.55}
+.ai-markdown pre code{font:inherit;white-space:inherit}
+.ai-markdown blockquote{padding-left:1em;border-left:2px solid currentColor;opacity:.8}
+.ai-markdown table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}
+.ai-markdown th,.ai-markdown td{padding:.35em .55em;border:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.search-answer .ai-markdown{color:#aab4c4;font-size:12px;line-height:1.7}
+html[data-theme="light"] .search-answer .ai-markdown{color:var(--ui-chat-text)}
+
 .ai-quick-actions{
   display:grid;
   flex:0 0 auto;

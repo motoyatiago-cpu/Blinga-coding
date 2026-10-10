@@ -11,6 +11,7 @@ import {
 } from "react";
 import AccountMenu from "./account-menu";
 import AiAssistantIcon from "./ai-assistant-icons";
+import AiMarkdown from "./ai-markdown";
 import ThemeToggle from "./theme-toggle";
 import { OPEN_AI_ASSISTANT_EVENT } from "./ai-assistant-events";
 import CodeViewerDialog, {
@@ -2364,7 +2365,7 @@ export default function Home() {
             </section>}
             {searchStatus && <div className="search-answer search-answer-status" role="status"><p>{searchStatus}</p></div>}
             {searchResult && <div className="search-answer">
-              <p>{searchResult.answer}</p>
+              <AiMarkdown text={searchResult.answer} />
             </div>}
           </div>
         </div>
@@ -2508,7 +2509,7 @@ export default function Home() {
           </div>
           <div className={`ai-panel-body ${messages.length === 1 && !aiBusy ? "is-welcome" : ""}`}>
             <div className="messages" ref={chatMessagesRef} aria-live="polite">
-              {messages.map((message, index) => <div key={index} className={`message-row ${message.role}`}>{message.role === "ai" && <img src="/web-pet/robot/idle.webp" alt="AI 助教" />}<div className={`message ${message.role}`}>{message.text}</div></div>)}
+              {messages.map((message, index) => <div key={index} className={`message-row ${message.role}`}>{message.role === "ai" && <img src="/web-pet/robot/idle.webp" alt="AI 助教" />}<div className={`message ${message.role}`}>{message.role === "ai" ? <AiMarkdown text={message.text} /> : message.text}</div></div>)}
               {aiBusy && <div className="message-row ai"><img src="/web-pet/robot/poses/thinking.webp" alt="" /><div className="message ai ai-working"><i />正在组织答案，可随时停止…</div></div>}
             </div>
             {messages.length === 1 && !aiBusy && <div className="ai-quick-actions" aria-label="快捷提问">
