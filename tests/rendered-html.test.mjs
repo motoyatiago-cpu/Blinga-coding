@@ -104,7 +104,8 @@ test("uses AI knowledge answers without Brave or fabricated web sources", async 
   assert.match(envExample, /^LLM_MODEL=deepseek-flash$/m);
   assert.match(worker, /webSearched: false/);
   assert.match(worker, /sources: \[\]/);
-  assert.match(worker, /当前未执行联网搜索/);
+  const { systemPrompt } = await import("../worker/ai-response.ts");
+  assert.match(systemPrompt("search"), /当前未执行联网搜索/);
   assert.match(worker, /Authorization: `Bearer \$\{env.LLM_API_KEY\}`/);
   assert.match(page, /AI 智能问答/);
   assert.match(page, /即时课程匹配/);

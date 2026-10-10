@@ -1779,6 +1779,7 @@ export default function Home() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatRequestRef = useRef(0);
+  const chatHistoryRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatFileInputRef = useRef<HTMLInputElement>(null);
   const chatStatusTimerRef = useRef<number | null>(null);
@@ -2114,7 +2115,12 @@ export default function Home() {
     };
   }, []);
 
-  async function callAi(mode: "chat" | "search", prompt: string, signal?: AbortSignal) {
+  async function callAi(
+    mode: "chat" | "search",
+    prompt: string,
+    signal?: AbortSignal,
+    history: Array<{ role: "user" | "assistant"; content: string }> = [],
+  ) {
     const context = mode === "chat"
       ? [
           `当前课程：${lesson.kicker}`,
@@ -2139,7 +2145,7 @@ export default function Home() {
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, prompt, context }),
+      body: JSON.stringify({ mode, prompt, context, ...(mode === "chat" ? { history } : {}) }),
       signal,
     });
     const contentType = response.headers.get("Content-Type") || "";
@@ -2204,8 +2210,13 @@ export default function Home() {
     setQuestion("");
     setAiBusy(true);
     try {
-      const result = await callAi("chat", value, controller.signal);
+      const result = await callAi("chat", value, controller.signal, chatHistoryRef.current);
       if (requestId === chatRequestRef.current) {
+        chatHistoryRef.current = [
+          ...chatHistoryRef.current,
+          { role: "user" as const, content: value },
+          { role: "assistant" as const, content: result.answer },
+        ].slice(-6);
         setMessages((current) => [...current, { role: "ai", text: result.answer }].slice(-40));
       }
     } catch (error) {
@@ -2318,6 +2329,7 @@ export default function Home() {
     chatRequestRef.current += 1;
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
+    chatHistoryRef.current = [];
     setAiBusy(false);
     setQuestion("");
     setMessages([{ ...INITIAL_CHAT_MESSAGE }]);
