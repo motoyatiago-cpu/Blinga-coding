@@ -259,6 +259,9 @@ export const forumNotifications = sqliteTable("forum_notifications", {
   replyId: text("reply_id"),
   kind: text("kind").notNull(),
   dedupeKey: text("dedupe_key").notNull(),
+  contentExcerpt: text("content_excerpt").notNull().default(""),
+  actorName: text("actor_name").notNull().default(""),
+  isRead: integer("is_read").notNull().default(0),
   readAt: text("read_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

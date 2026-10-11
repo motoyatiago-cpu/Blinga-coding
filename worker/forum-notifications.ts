@@ -11,11 +11,19 @@ type NotificationRow = {
   post_id: string;
   reply_id: string | null;
   kind: NotificationKind;
+  content_excerpt: string;
+  reply_content: string | null;
+  actor_name: string;
+  is_read: number;
   read_at: string | null;
   created_at: string;
-  display_name: string;
+  target_post_id: string | null;
+  post_deleted: number | null;
+  target_reply_id: string | null;
+  reply_deleted: number | null;
+  display_name: string | null;
   username: string | null;
-  avatar_type: string;
+  avatar_type: string | null;
   avatar_value: string | null;
 };
 
@@ -54,39 +62,43 @@ export async function ensureReplyNotifications(database: D1Database, input: {
   content: string;
 }): Promise<void> {
   const key = `reply:${input.replyId}`;
+  const actor = await database.prepare("SELECT COALESCE(username, display_name) AS name FROM users WHERE id = ?")
+    .bind(input.actorUserId).first<{ name: string }>();
+  const actorName = actor?.name && !actor.name.includes("@") ? actor.name.slice(0, 80) : "一位用户";
+  const excerpt = input.content.replace(/\s+/g, " ").trim().slice(0, 160);
   const statements = [];
   if (input.replyToId) {
     statements.push(database.prepare(`
       INSERT INTO forum_notifications (
-        id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key
+        id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key, content_excerpt, actor_name
       )
-      SELECT lower(hex(randomblob(16))), target.user_id, ?, ?, ?, 'reply_reply', ?
+      SELECT lower(hex(randomblob(16))), target.user_id, ?, ?, ?, 'reply_reply', ?, ?, ?
       FROM forum_replies target
       WHERE target.id = ? AND target.post_id = ? AND target.is_deleted = 0
         AND target.user_id <> ?
       ON CONFLICT(recipient_user_id, dedupe_key) DO NOTHING
-    `).bind(input.actorUserId, input.postId, input.replyId, key, input.replyToId, input.postId, input.actorUserId));
+    `).bind(input.actorUserId, input.postId, input.replyId, key, excerpt, actorName, input.replyToId, input.postId, input.actorUserId));
   }
   statements.push(database.prepare(`
     INSERT INTO forum_notifications (
-      id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key
+      id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key, content_excerpt, actor_name
     )
-    SELECT lower(hex(randomblob(16))), post.user_id, ?, ?, ?, 'post_reply', ?
+    SELECT lower(hex(randomblob(16))), post.user_id, ?, ?, ?, 'post_reply', ?, ?, ?
     FROM forum_posts post
     WHERE post.id = ? AND post.status = 'published' AND post.is_deleted = 0
       AND post.user_id <> ?
     ON CONFLICT(recipient_user_id, dedupe_key) DO NOTHING
-  `).bind(input.actorUserId, input.postId, input.replyId, key, input.postId, input.actorUserId));
+  `).bind(input.actorUserId, input.postId, input.replyId, key, excerpt, actorName, input.postId, input.actorUserId));
   for (const username of mentionNames(input.content)) {
     statements.push(database.prepare(`
       INSERT INTO forum_notifications (
-        id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key
+        id, recipient_user_id, actor_user_id, post_id, reply_id, kind, dedupe_key, content_excerpt, actor_name
       )
-      SELECT lower(hex(randomblob(16))), mentioned.id, ?, ?, ?, 'mention', ?
+      SELECT lower(hex(randomblob(16))), mentioned.id, ?, ?, ?, 'mention', ?, ?, ?
       FROM users mentioned
       WHERE mentioned.username = ? AND mentioned.id <> ?
       ON CONFLICT(recipient_user_id, dedupe_key) DO NOTHING
-    `).bind(input.actorUserId, input.postId, input.replyId, key, username, input.actorUserId));
+    `).bind(input.actorUserId, input.postId, input.replyId, key, excerpt, actorName, username, input.actorUserId));
   }
   await database.batch(statements);
 }
@@ -109,7 +121,11 @@ export async function ensureResolvedNotifications(database: D1Database, postId: 
 }
 
 function publicNotification(row: NotificationRow) {
-  const name = row.username || (row.display_name.includes("@") ? "一位用户" : row.display_name);
+  const currentName = row.username || row.display_name;
+  const name = currentName && !currentName.includes("@") ? currentName
+    : row.actor_name && !row.actor_name.includes("@") ? row.actor_name
+      : currentName ? "一位用户" : "已注销用户";
+  const avatarType = row.avatar_type || "preset";
   const messages: Record<NotificationKind, string> = {
     post_reply: `${name} 回复了你的讨论`,
     reply_reply: `${name} 回复了你的回复`,
@@ -122,13 +138,17 @@ function publicNotification(row: NotificationRow) {
     replyId: row.reply_id,
     kind: row.kind,
     message: messages[row.kind],
-    read: Boolean(row.read_at),
+    content: row.content_excerpt || (row.reply_deleted ? "" : row.reply_content?.replace(/\s+/g, " ").trim().slice(0, 160)) || "",
+    read: Boolean(row.is_read || row.read_at),
+    isRead: Boolean(row.is_read || row.read_at),
+    targetDeleted: !row.target_post_id || Boolean(row.post_deleted)
+      || Boolean(row.reply_id && (!row.target_reply_id || row.reply_deleted)),
     createdAt: row.created_at,
     actor: {
       name,
-      avatarType: row.avatar_type,
-      avatarValue: row.avatar_type === "preset" ? row.avatar_value : null,
-      avatarUrl: row.avatar_type === "upload"
+      avatarType,
+      avatarValue: avatarType === "preset" ? row.avatar_value : null,
+      avatarUrl: avatarType === "upload"
         ? row.reply_id
           ? `/api/forum/avatar?reply=${encodeURIComponent(row.reply_id)}`
           : `/api/forum/avatar?post=${encodeURIComponent(row.post_id)}`
@@ -157,7 +177,7 @@ function decodeCursor(value: string | null): { createdAt: string; id: string } |
 async function unreadCount(database: D1Database, userId: string): Promise<number> {
   const row = await database.prepare(`
     SELECT COUNT(*) AS count FROM forum_notifications
-    WHERE recipient_user_id = ? AND read_at IS NULL
+    WHERE recipient_user_id = ? AND is_read = 0 AND read_at IS NULL
   `).bind(userId).first<{ count: number }>();
   return Number(row?.count || 0);
 }
@@ -171,10 +191,15 @@ async function listNotifications(request: Request, env: AuthEnv, viewer: Session
   const cursor = decodeCursor(url.searchParams.get("cursor"));
   if (cursor === undefined) return json({ error: "分页参数无效" }, 400);
   const result = await env.DB.prepare(`
-    SELECT n.id, n.post_id, n.reply_id, n.kind, n.read_at, n.created_at,
-      actor.display_name, actor.username, actor.avatar_type, actor.avatar_value
+    SELECT n.id, n.post_id, n.reply_id, n.kind, n.content_excerpt, n.actor_name,
+      n.is_read, n.read_at, n.created_at, actor.display_name, actor.username,
+      actor.avatar_type, actor.avatar_value, post.id AS target_post_id,
+      post.is_deleted AS post_deleted, reply.id AS target_reply_id,
+      reply.is_deleted AS reply_deleted, reply.content AS reply_content
     FROM forum_notifications n
-    JOIN users actor ON actor.id = n.actor_user_id
+    LEFT JOIN users actor ON actor.id = n.actor_user_id
+    LEFT JOIN forum_posts post ON post.id = n.post_id
+    LEFT JOIN forum_replies reply ON reply.id = n.reply_id AND reply.post_id = n.post_id
     WHERE n.recipient_user_id = ?
       ${cursor ? "AND (n.created_at < ? OR (n.created_at = ? AND n.id < ?))" : ""}
     ORDER BY n.created_at DESC, n.id DESC
@@ -190,8 +215,26 @@ async function listNotifications(request: Request, env: AuthEnv, viewer: Session
   });
 }
 
+async function markOneRead(env: AuthEnv, viewer: SessionUser, id: string): Promise<Response> {
+  if (!ID_PATTERN.test(id)) return json({ error: "通知不存在" }, 404);
+  const result = await env.DB.prepare(`
+    UPDATE forum_notifications SET is_read = 1, read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
+    WHERE id = ? AND recipient_user_id = ?
+  `).bind(id, viewer.id).run();
+  if (!result.meta.changes) return json({ error: "通知不存在" }, 404);
+  const count = await unreadCount(env.DB, viewer.id);
+  return json({ marked: 1, unreadCount: count, count });
+}
+
+async function markAllRead(env: AuthEnv, viewer: SessionUser): Promise<Response> {
+  const result = await env.DB.prepare(`
+    UPDATE forum_notifications SET is_read = 1, read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
+    WHERE recipient_user_id = ? AND (is_read = 0 OR read_at IS NULL)
+  `).bind(viewer.id).run();
+  return json({ marked: Number(result.meta.changes || 0), unreadCount: 0, count: 0 });
+}
+
 async function markRead(request: Request, env: AuthEnv, viewer: SessionUser): Promise<Response> {
-  if (!sameOrigin(request)) return json({ error: "请求来源无效" }, 403);
   if (Number(request.headers.get("Content-Length") || "0") > 1_000) return json({ error: "请求内容过长" }, 413);
   let body: { id?: unknown; all?: unknown };
   try {
@@ -202,20 +245,9 @@ async function markRead(request: Request, env: AuthEnv, viewer: SessionUser): Pr
     body = parsed as { id?: unknown; all?: unknown };
   }
   catch { return json({ error: "请求格式无效" }, 400); }
-  if (body.all === true) {
-    const result = await env.DB.prepare(`
-      UPDATE forum_notifications SET read_at = CURRENT_TIMESTAMP
-      WHERE recipient_user_id = ? AND read_at IS NULL
-    `).bind(viewer.id).run();
-    return json({ marked: Number(result.meta.changes || 0), unreadCount: 0 });
-  }
+  if (body.all === true) return markAllRead(env, viewer);
   if (typeof body.id !== "string" || !ID_PATTERN.test(body.id)) return json({ error: "通知不存在" }, 404);
-  const result = await env.DB.prepare(`
-    UPDATE forum_notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
-    WHERE id = ? AND recipient_user_id = ?
-  `).bind(body.id, viewer.id).run();
-  if (!result.meta.changes) return json({ error: "通知不存在" }, 404);
-  return json({ marked: 1, unreadCount: await unreadCount(env.DB, viewer.id) });
+  return markOneRead(env, viewer, body.id);
 }
 
 /** Called behind the forum API schema checks and error boundary. */
@@ -223,13 +255,32 @@ export async function handleNotifications(request: Request, env: AuthEnv): Promi
   const url = new URL(request.url);
   const viewer = await getSessionUser(request, env);
   if (!viewer) return json({ error: "登录后可以查看通知" }, 401);
+  if (url.pathname === "/api/notifications/unread-count") {
+    if (request.method !== "GET") return json({ error: "不支持该请求方法" }, 405);
+    return json({ count: await unreadCount(env.DB, viewer.id) });
+  }
+  if (url.pathname === "/api/notifications/read-all") {
+    if (request.method !== "POST") return json({ error: "不支持该请求方法" }, 405);
+    if (!sameOrigin(request)) return json({ error: "请求来源无效" }, 403);
+    return markAllRead(env, viewer);
+  }
+  const readId = url.pathname.match(/^\/api\/notifications\/([a-zA-Z0-9_-]{1,128})\/read$/)?.[1];
+  if (readId) {
+    if (request.method !== "POST") return json({ error: "不支持该请求方法" }, 405);
+    if (!sameOrigin(request)) return json({ error: "请求来源无效" }, 403);
+    return markOneRead(env, viewer, readId);
+  }
   if (url.pathname === "/api/forum/notifications/count") {
     if (request.method !== "GET") return json({ error: "不支持该请求方法" }, 405);
     return json({ unreadCount: await unreadCount(env.DB, viewer.id) });
   }
   if (url.pathname === "/api/forum/notifications/read") {
     if (request.method !== "PATCH") return json({ error: "不支持该请求方法" }, 405);
+    if (!sameOrigin(request)) return json({ error: "请求来源无效" }, 403);
     return markRead(request, env, viewer);
+  }
+  if (url.pathname !== "/api/notifications" && url.pathname !== "/api/forum/notifications") {
+    return json({ error: "通知接口不存在" }, 404);
   }
   if (request.method !== "GET") return json({ error: "不支持该请求方法" }, 405);
   return listNotifications(request, env, viewer);

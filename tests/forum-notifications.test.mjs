@@ -148,7 +148,44 @@ test('loads a notification target directly when it is outside the first feed pag
 test('notification links retain the post id for on-demand loading', () => {
   const notificationsSource = readFileSync(new URL('../app/forum/forum-notifications.tsx', import.meta.url), 'utf8');
   const forumSource = readFileSync(new URL('../app/forum/forum-client.tsx', import.meta.url), 'utf8');
-  assert.match(notificationsSource, /\/forum\?post=/);
-  assert.match(forumSource, /window\.location\.search\)\.get\("post"\)/);
+  const repliesSource = readFileSync(new URL('../app/forum/forum-replies.tsx', import.meta.url), 'utf8');
+  assert.match(notificationsSource, /new URLSearchParams\(\{ post: item\.postId \}\)/);
+  assert.match(notificationsSource, /params\.set\("reply", item\.replyId\)/);
+  assert.match(forumSource, /link\.get\("post"\)/);
+  assert.match(forumSource, /link\.get\("reply"\)/);
   assert.match(forumSource, /\/api\/forum\/posts\?id=/);
+  assert.match(repliesSource, /replyId: targetReplyId/);
+});
+
+test('canonical notification APIs isolate recipients and keep every rapid distinct reply', async (t) => {
+  const { request, reply } = fixture(t);
+  const first = await reply('bob', { content: '<script>alert(1)</script> first' });
+  const second = await reply('bob', { content: 'second' });
+  assert.equal(first.status, 201);
+  assert.equal(second.status, 201);
+  const list = await request('/api/notifications', 'GET', 'alice');
+  const data = await list.json();
+  assert.equal(data.notifications.length, 2);
+  assert.deepEqual(new Set(data.notifications.map(item => item.content)), new Set(['<script>alert(1)</script> first', 'second']));
+  assert.equal((await (await request('/api/notifications/unread-count', 'GET', 'alice')).json()).count, 2);
+  const id = data.notifications[0].id;
+  assert.equal((await request(`/api/notifications/${id}/read`, 'POST', 'bob')).status, 404);
+  assert.equal((await request(`/api/notifications/${id}/read`, 'POST', 'alice', undefined, 'https://evil.test')).status, 403);
+  assert.equal((await request(`/api/notifications/${id}/read`, 'POST', 'alice')).status, 200);
+  assert.equal((await (await request('/api/notifications/unread-count', 'GET', 'alice')).json()).count, 1);
+  assert.equal((await request('/api/notifications/read-all', 'POST', 'alice')).status, 200);
+  assert.equal((await (await request('/api/notifications/unread-count', 'GET', 'alice')).json()).count, 0);
+});
+
+test('notification retains a safe historical summary and handles deleted reply and actor', async (t) => {
+  const { db, request, reply } = fixture(t);
+  const posted = await reply('bob', { content: 'Historical reply' });
+  const replyId = (await posted.json()).reply.id;
+  assert.equal((await request(`/api/forum/replies?id=${replyId}`, 'DELETE', 'bob')).status, 200);
+  db.prepare("DELETE FROM users WHERE id = 'bob'").run();
+  const data = await (await request('/api/notifications', 'GET', 'alice')).json();
+  assert.equal(data.notifications.length, 1);
+  assert.equal(data.notifications[0].content, 'Historical reply');
+  assert.equal(data.notifications[0].targetDeleted, true);
+  assert.equal(data.notifications[0].actor.name, 'bob');
 });

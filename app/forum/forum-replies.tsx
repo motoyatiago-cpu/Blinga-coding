@@ -9,7 +9,7 @@ type Reply = {
   author: { name: string; avatarType: string; avatarValue: string | null; avatarUrl: string | null } | null;
   replyTo: { id: string; name: string | null; deleted: boolean } | null;
 };
-type Page = { replies: Reply[]; nextCursor: string | null; replyCount: number };
+type Page = { replies: Reply[]; nextCursor: string | null; replyCount: number; targetDeleted?: boolean };
 type Target = { id: string | null; name: string };
 async function read<T>(response: Response): Promise<T> {
   if (!response.headers.get("Content-Type")?.includes("application/json")) throw new Error("回复暂时无法连接，请重试");
@@ -43,8 +43,8 @@ function ReplyItem({ row, id, sending, deleting, onReply, onDelete }: {
   </article>;
 }
 
-export default function ForumReplies({ postId, authorName, authenticated, initialCount }: {
-  postId: string; authorName: string; authenticated: boolean; initialCount: number;
+export default function ForumReplies({ postId, authorName, authenticated, initialCount, targetReplyId }: {
+  postId: string; authorName: string; authenticated: boolean; initialCount: number; targetReplyId?: string | null;
 }) {
   const regionId = useId(), inputId = useId();
   const [open, setOpen] = useState(false), [loaded, setLoaded] = useState(false);
@@ -64,9 +64,35 @@ export default function ForumReplies({ postId, authorName, authenticated, initia
   useEffect(() => { setCount(initialCount); }, [initialCount]);
   useEffect(() => {
     if (!pendingFocus.current) return;
-    document.getElementById(`${regionId}-reply-${pendingFocus.current}`)?.focus();
-    pendingFocus.current = null;
+    const targetElement = document.getElementById(`${regionId}-reply-${pendingFocus.current}`);
+    if (targetElement) {
+      targetElement.focus({ preventScroll: true });
+      targetElement.scrollIntoView({ block: "center" });
+      pendingFocus.current = null;
+    }
   }, [rows, regionId]);
+
+  useEffect(() => {
+    if (!targetReplyId) return;
+    const targetController = new AbortController();
+    setOpen(true);
+    setLoading(true);
+    void fetch(`/api/forum/replies?${new URLSearchParams({ postId, replyId: targetReplyId })}`, {
+      credentials: "same-origin", cache: "no-store", signal: targetController.signal,
+    }).then(read<Page>).then(page => {
+      if (targetController.signal.aborted) return;
+      pendingFocus.current = targetReplyId;
+      setRows(current => merge(current, page.replies));
+      setCount(page.replyCount);
+      setLoaded(true);
+      if (page.targetDeleted) setError("这条回复已删除，通知记录仍保留");
+    }).catch(reason => {
+      if (!targetController.signal.aborted) setError(reason instanceof Error ? reason.message : "这条回复已删除或不存在");
+    }).finally(() => {
+      if (!targetController.signal.aborted) setLoading(false);
+    });
+    return () => targetController.abort();
+  }, [postId, targetReplyId]);
 
   async function load(next?: string) {
     if (loadingRef.current) return;

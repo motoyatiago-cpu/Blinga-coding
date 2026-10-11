@@ -81,6 +81,21 @@ test('two real sessions can reply to each other and themselves; public reads kee
   assert.equal((await send('bob')).status,201);
 });
 
+test('deep link returns a nested reply and its ancestors even when the target is deleted', async t => {
+  const { request, send } = fixture(t);
+  const parent = (await (await send('bob', { content: 'Parent' })).json()).reply;
+  const child = (await (await send('alice', { replyToId: parent.id, content: 'Child' })).json()).reply;
+  const targetUrl = `/api/forum/replies?postId=post-a&replyId=${child.id}`;
+  const page = await (await request(targetUrl)).json();
+  assert.deepEqual(new Set(page.replies.map(row => row.id)), new Set([parent.id, child.id]));
+  assert.equal(page.targetDeleted, false);
+  assert.equal((await request(`/api/forum/replies?postId=post-b&replyId=${child.id}`)).status, 404);
+  assert.equal((await request(`/api/forum/replies?id=${child.id}`, 'DELETE', 'alice')).status, 200);
+  const deleted = await (await request(targetUrl)).json();
+  assert.equal(deleted.targetDeleted, true);
+  assert.equal(deleted.replies.find(row => row.id === child.id).content, '');
+});
+
 test('rejects guests, forged sessions, cross-origin, invalid target and oversized content', async t => {
   const { send, request } = fixture(t);
   assert.equal((await send(null)).status,401);

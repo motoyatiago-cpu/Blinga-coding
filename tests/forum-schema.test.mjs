@@ -62,6 +62,7 @@ test('schema errors return JSON and can recover after migration on the same bind
   repairForum(db, migrations);
   db.exec(readFileSync(new URL('../drizzle/0012_absurd_bromley.sql', import.meta.url), 'utf8'));
   db.exec(readFileSync(new URL('../drizzle/0014_forum_notifications.sql', import.meta.url), 'utf8'));
+  db.exec(readFileSync(new URL('../drizzle/0016_bored_white_tiger.sql', import.meta.url), 'utf8'));
   await api.ensureForumSchema(binding);
   await api.ensureForumSchema(binding);
 });

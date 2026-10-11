@@ -62,7 +62,7 @@ export async function ensureForumSchema(database: D1Database): Promise<void> {
         forum_posts: ["id", "user_id", "request_id", "category", "resolved", "content", "status", "is_deleted", "created_at", "updated_at"],
         forum_user_stats: ["user_id", "post_count", "first_post_at", "last_post_at", "updated_at"],
         forum_replies: ["id", "post_id", "user_id", "reply_to_id", "request_id", "content", "is_deleted", "created_at", "updated_at"],
-        forum_notifications: ["id", "recipient_user_id", "actor_user_id", "post_id", "reply_id", "kind", "dedupe_key", "read_at", "created_at"],
+        forum_notifications: ["id", "recipient_user_id", "actor_user_id", "post_id", "reply_id", "kind", "dedupe_key", "content_excerpt", "actor_name", "is_read", "read_at", "created_at"],
       };
       for (const [table, columns] of Object.entries(required)) {
         const info = await database.prepare(`PRAGMA table_info(${table})`).all<{ name: string; type: string }>();
@@ -382,7 +382,7 @@ async function dispatchForumRequest(
     await ensureForumSchema(env.DB);
     return handleReplies(request, env);
   }
-  if (url.pathname.startsWith("/api/forum/notifications")) {
+  if (url.pathname.startsWith("/api/forum/notifications") || url.pathname.startsWith("/api/notifications")) {
     await ensureAuthSchema(env.DB);
     await ensureForumSchema(env.DB);
     return handleNotifications(request, env);
@@ -421,7 +421,8 @@ async function dispatchForumRequest(
 /** Catch awaited failures at the API boundary; never return SQL or HTML to clients. */
 export async function handleForumRequest(request: Request, env: ForumEnv): Promise<Response | null> {
   const path = new URL(request.url).pathname;
-  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar", "/api/forum/replies", "/api/forum/notifications", "/api/forum/notifications/count", "/api/forum/notifications/read"].includes(path)) return null;
+  if (!["/api/forum/posts", "/api/forum/stats", "/api/forum/avatar", "/api/forum/replies", "/api/forum/notifications", "/api/forum/notifications/count", "/api/forum/notifications/read", "/api/notifications", "/api/notifications/unread-count", "/api/notifications/read-all"].includes(path)
+    && !/^\/api\/notifications\/[a-zA-Z0-9_-]{1,128}\/read$/.test(path)) return null;
   try {
     return await dispatchForumRequest(request, env);
   } catch (error) {

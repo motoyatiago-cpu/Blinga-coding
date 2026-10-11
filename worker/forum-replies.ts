@@ -61,6 +61,28 @@ export async function handleReplies(request: Request, env: AuthEnv): Promise<Res
   if (request.method === "GET") {
     const postId = url.searchParams.get("postId");
     if (!validId(postId) || !await postExists(env.DB, postId)) return json({ error: "讨论不存在或已删除" }, 404);
+    const targetId = url.searchParams.get("replyId");
+    if (targetId !== null) {
+      if (!validId(targetId)) return json({ error: "回复标识无效" }, 400);
+      const targetRows = await env.DB.prepare(`${SELECT_REPLY} AND r.post_id = ? AND r.id IN (
+        WITH RECURSIVE chain(id, reply_to_id, depth) AS (
+          SELECT id, reply_to_id, 0 FROM forum_replies WHERE id = ? AND post_id = ?
+          UNION ALL
+          SELECT parent.id, parent.reply_to_id, chain.depth + 1
+          FROM forum_replies parent JOIN chain ON parent.id = chain.reply_to_id
+          WHERE parent.post_id = ? AND chain.depth < 20
+        ) SELECT id FROM chain
+      ) ORDER BY r.created_at ASC, r.id ASC`)
+        .bind(postId, targetId, postId, postId).all<ReplyRow>();
+      const target = targetRows.results.find((row) => row.id === targetId);
+      if (!target) return json({ error: "这条回复已删除或不存在" }, 404);
+      return json({
+        replyCount: await replyCount(env.DB, postId),
+        replies: targetRows.results.map((row) => publicReply(row, viewer)),
+        targetDeleted: Boolean(target.is_deleted),
+        nextCursor: null,
+      });
+    }
     let cursor: { createdAt: string; id: string } | null = null;
     const raw = url.searchParams.get("cursor");
     if (raw) {

@@ -92,6 +92,8 @@ export default function ForumClient() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  const [linkedTarget, setLinkedTarget] = useState<{ postId: string; replyId: string | null } | null>(null);
+  const [linkNotice, setLinkNotice] = useState("");
   const requestIdRef = useRef(crypto.randomUUID());
 
   const load = useCallback(async (nextCursor?: string) => {
@@ -111,7 +113,10 @@ export default function ForumClient() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const targetId = new URLSearchParams(window.location.search).get("post")?.trim() || "";
+    const link = new URLSearchParams(window.location.search);
+    const targetId = link.get("post")?.trim() || "";
+    const targetReplyId = link.get("reply")?.trim() || null;
+    if (targetId) setLinkedTarget({ postId: targetId, replyId: targetReplyId });
     void fetch("/api/forum/posts?limit=20", {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
@@ -130,6 +135,7 @@ export default function ForumClient() {
           nextPosts = [...target.posts, ...nextPosts];
         } catch (reason) {
           if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
+          setLinkNotice("对应讨论已删除或不可访问，通知记录仍保留");
         }
       }
       setPosts(nextPosts);
@@ -284,6 +290,7 @@ export default function ForumClient() {
       </section>
 
       {error && <p className="forum-error" role="status">{error}</p>}
+      {linkNotice && <p className="forum-error" role="status">{linkNotice}</p>}
 
       <section className="forum-feed" aria-label="论坛留言" aria-busy={loading}>
         {loading && <p className="forum-state">正在读取留言</p>}
@@ -304,7 +311,8 @@ export default function ForumClient() {
                 </span>}
               </header>
               <p>{post.content}</p>
-              <ForumReplies postId={post.id} authorName={post.author.name} authenticated={viewer.authenticated} initialCount={post.replyCount || 0} />
+              <ForumReplies postId={post.id} authorName={post.author.name} authenticated={viewer.authenticated} initialCount={post.replyCount || 0}
+                targetReplyId={linkedTarget?.postId === post.id ? linkedTarget.replyId : null} />
             </div>
           </article>
         ))}
