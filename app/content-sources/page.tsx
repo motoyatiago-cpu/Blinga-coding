@@ -11,7 +11,7 @@ export default function ContentSourcesPage() {
       <header>
         <p>CONTENT PROVENANCE</p>
         <h1>课程内容来源与许可证</h1>
-        <span>最后整理：2026-10-21</span>
+        <span>最后整理：2026-10-22</span>
       </header>
       <section>
         <h2>内容创作原则</h2>

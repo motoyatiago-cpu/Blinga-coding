@@ -13,6 +13,7 @@ import { handleReviewRequest, recordReviewResult } from "./review";
 import { handleProjectRequest } from "./projects";
 import { normalizeAiHistory, systemPrompt, type AiMode } from "./ai-response";
 import { lessonJudgeCases } from "../data/course-content";
+import { isCourseLanguage, languageOrder, languageSettings, type Lang } from "../data/languages";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -44,18 +45,13 @@ const MAX_RUNNER_OUTPUT = 16_000;
 const MAX_NOTE_INPUT = 8_000;
 const AI_UPSTREAM_TIMEOUT_MS = 45_000;
 
-type SupportedLanguage = "Python" | "C/C++" | "JavaScript" | "Java";
+type SupportedLanguage = Lang;
 type LearningProgress = {
   activeLanguage: string;
   topics: Record<string, number>;
 };
 
-const JUDGE0_LANGUAGE_IDS: Record<SupportedLanguage, number> = {
-  Python: 100,
-  "C/C++": 105,
-  JavaScript: 102,
-  Java: 91,
-};
+const JUDGE0_LANGUAGE_IDS = Object.fromEntries(languageOrder.map((language) => [language, languageSettings[language].judgeId])) as Record<SupportedLanguage, number>;
 
 async function ensureProgressSchema(database: D1Database): Promise<void> {
   await database.batch([
@@ -794,7 +790,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     ? LESSON_JUDGE_CASES[language]?.[topicIndex]
     : undefined;
   const stdin = String(judgeCase?.stdin ?? body.stdin ?? "").slice(0, MAX_STDIN_INPUT);
-  if (!(language in JUDGE0_LANGUAGE_IDS)) {
+  if (!isCourseLanguage(language)) {
     return jsonResponse({ error: "暂不支持该编程语言" }, 400);
   }
   if (!code.trim()) {

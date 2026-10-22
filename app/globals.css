@@ -2689,3 +2689,9 @@ html[data-theme="light"] .workspace-view-tabs a.active{
   .content-sources-document h1{font-size:31px}
   .content-source-list dl>div{grid-template-columns:1fr;gap:3px}
 }
+
+/* Course-language entry points remain reachable when the desktop rail collapses. */
+@media(max-width:980px){
+  .course-language-nav .course-switcher{display:block}
+  .course-language-nav .course-switcher a{min-height:44px;height:auto}
+}

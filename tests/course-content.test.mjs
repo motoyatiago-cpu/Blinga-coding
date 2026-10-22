@@ -4,38 +4,28 @@ import vm from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 
-async function loadCourseModule() {
-  const source = await readFile(new URL("../data/course-content/index.ts", import.meta.url), "utf8");
-  const output = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
-  const moduleRecord = { exports: {} };
-  vm.runInNewContext(output, {
-    module: moduleRecord,
-    exports: moduleRecord.exports,
-    Object,
-    Set,
-    Error,
-  });
-  return moduleRecord.exports;
-}
+import { loadCourseModule } from "./helpers/course-module.mjs";
 
-test("four courses expose ten complete lessons without moving legacy indexes", async () => {
+test("six courses expose 68 complete lessons without moving legacy indexes", async () => {
   const { courseDefinitions, validateCourseContent } = await loadCourseModule();
   assert.doesNotThrow(() => validateCourseContent());
-  assert.deepEqual(Object.keys(courseDefinitions), ["Python", "C/C++", "JavaScript", "Java"]);
+  assert.deepEqual(Object.keys(courseDefinitions), ["Python", "C/C++", "JavaScript", "Java", "TypeScript", "Go"]);
+  assert.equal(Object.values(courseDefinitions).reduce((sum, course) => sum + course.lessons.length, 0), 68);
 
   const expectedPrefixes = {
     Python: "python",
     "C/C++": "cpp",
     JavaScript: "javascript",
     Java: "java",
+    TypeScript: "typescript",
+    Go: "go",
   };
   for (const [language, course] of Object.entries(courseDefinitions)) {
-    assert.equal(course.lessons.length, 10, language);
+    const original = !["Go", "TypeScript"].includes(language);
+    assert.equal(course.lessons.length, original ? 12 : 10, language);
     assert.equal(
-      course.lessons.slice(0, 7).map((lesson) => lesson.id).join(","),
-      Array.from({ length: 7 }, (_, index) => `${expectedPrefixes[language]}-${String(index + 1).padStart(2, "0")}`).join(","),
+      course.lessons.slice(0, 10).map((lesson) => lesson.id).join(","),
+      Array.from({ length: 10 }, (_, index) => `${expectedPrefixes[language]}-${String(index + 1).padStart(2, "0")}`).join(","),
     );
     for (const lesson of course.lessons) {
       assert.equal(lesson.objectives.length, 3);
@@ -63,6 +53,42 @@ test("source registry is traceable and pins Exercism revisions", async () => {
     for (const lesson of course.lessons) {
       for (const sourceId of lesson.sourceRefs) assert.ok(ids.has(sourceId), `${lesson.id}: ${sourceId}`);
     }
+  }
+});
+
+test("legacy progress gains new language defaults without losing old indexes", () => {
+  const { normalizeCourseTopics } = loadCourseModule();
+  const old = { Python: 9, "C/C++": 4, JavaScript: 6, Java: 2 };
+  const result = normalizeCourseTopics(old);
+  for (const [language, index] of Object.entries(old)) assert.equal(result[language], index);
+  assert.equal(result.TypeScript, 0);
+  assert.equal(result.Go, 0);
+  assert.deepEqual(Object.keys(old), ["Python", "C/C++", "JavaScript", "Java"]);
+  const invalid = normalizeCourseTopics({ Python: 999, Go: -2, TypeScript: NaN, Java: "4" });
+  assert.equal(invalid.Python, 11);
+  assert.equal(invalid.Go, 0);
+  assert.equal(invalid.TypeScript, 0);
+  assert.equal(invalid.Java, 0);
+});
+
+test("all TypeScript examples pass strict type checking and match their output", async () => {
+  const { courseDefinitions } = loadCourseModule();
+  const options = { strict: true, noEmit: true, types: [], target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, skipLibCheck: true };
+  const host = ts.createCompilerHost(options);
+  const originalGetSourceFile = host.getSourceFile.bind(host);
+  for (const lesson of courseDefinitions.TypeScript.lessons) {
+    const file = `${process.cwd().replaceAll("\\", "/")}/${lesson.id}.ts`;
+    host.getSourceFile = (name, version, onError, fresh) => name === file
+      ? ts.createSourceFile(name, lesson.code, version, true)
+      : originalGetSourceFile(name, version, onError, fresh);
+    const program = ts.createProgram([file], options, host);
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    assert.equal(diagnostics.length, 0, `${lesson.id}: ${diagnostics.map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")).join("\n")}`);
+    const lines = [];
+    const js = ts.transpileModule(lesson.code, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
+    const result = vm.runInNewContext(js, { console: { log: (...values) => lines.push(values.join(" ")) } }, { timeout: 1000 });
+    if (result && typeof result.then === "function") await result;
+    assert.equal(lines.join("\n"), lesson.output, lesson.id);
   }
 });
 

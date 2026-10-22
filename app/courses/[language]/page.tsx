@@ -1,8 +1,7 @@
-import { courseDefinitions, type Lang } from "../../../data/course-content";
+import { courseDefinitions, languageOrder } from "../../../data/course-content";
 import { buildCourseUrl } from "../../course-links";
 import ThemeToggle from "../../theme-toggle";
 
-const languageOrder: Lang[] = ["Python", "C/C++", "JavaScript", "Java"];
 const courseBySlug = Object.fromEntries(
   languageOrder.map((language) => [courseDefinitions[language].slug, courseDefinitions[language]]),
 );
@@ -10,7 +9,7 @@ const courseBySlug = Object.fromEntries(
 const levels = [
   { name: "Level 01 · 入门基础", range: [0, 4], note: "建立运行环境、类型与控制流基础" },
   { name: "Level 02 · 核心能力", range: [4, 7], note: "掌握真实编程任务所需的核心工具" },
-  { name: "Level 03 · 进阶应用", range: [7, 10], note: "进入可靠性、工程化与资源管理" },
+  { name: "Level 03 · 进阶应用", range: [7, Infinity], note: "进入可靠性、工程化与资源管理" },
 ] as const;
 
 export default async function CoursePage({ params }: { params: Promise<{ language: string }> }) {
@@ -54,12 +53,12 @@ export default async function CoursePage({ params }: { params: Promise<{ languag
         </header>
 
         <div className="course-entry glass">
-          <div><h2>从左侧选择一个知识点开始学习</h2><p>原有七节课保持相同索引，新增内容顺延到第八至十节，已有进度、草稿和笔记不会错位。</p></div>
+          <div><h2>从左侧选择一个知识点开始学习</h2><p>共 {course.lessons.length} 节课程，包含完整示例、运行结果、分级练习与来源说明。按顺序学习，或选择需要巩固的主题。</p></div>
           <a href={buildCourseUrl(course.queryName, 0)}>开始第一节</a>
         </div>
         <div className="course-level-summary">
           {levels.map((level, index) => <article className="glass" key={level.name}>
-            <span>0{index + 1}</span><div><h3>{level.name}</h3><p>{level.note}</p></div><b>{level.range[1] - level.range[0]} 节</b>
+            <span>0{index + 1}</span><div><h3>{level.name}</h3><p>{level.note}</p></div><b>{Math.max(0, Math.min(course.lessons.length, level.range[1]) - level.range[0])} 节</b>
           </article>)}
         </div>
       </section>

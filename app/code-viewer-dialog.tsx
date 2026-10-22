@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildCourseUrl } from "./course-links";
+import { isCourseLanguage, languageSettings } from "../data/languages";
 
 export type CodeRecordRequest =
   | { kind: "draft"; language: string; topicIndex: number }
@@ -53,11 +54,7 @@ export function consumeCodeImport(language: string, topicIndex: number): string 
 }
 
 function fileExtension(language: string): string {
-  if (language === "Python") return "py";
-  if (language === "C/C++") return "cpp";
-  if (language === "JavaScript") return "js";
-  if (language === "Java") return "java";
-  return "txt";
+  return isCourseLanguage(language) ? languageSettings[language].fileName.split(".").pop()! : "txt";
 }
 
 function fileName(record: CodeRecord): string {

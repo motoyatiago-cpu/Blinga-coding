@@ -25,9 +25,11 @@ import {
   curriculum,
   lessons,
   sourceById,
+  normalizeCourseTopics,
   type Course,
   type Lang,
 } from "../data/course-content";
+import { isCourseLanguage, languageOrder, languageSettings } from "../data/languages";
 
 type WorkspaceView = "learn" | "lab" | "map" | "notes";
 type LearningProgress = {
@@ -77,25 +79,12 @@ function workspaceViewFromHash(hash: string): WorkspaceView {
   return workspaceViews.some((view) => view.id === requestedView) ? requestedView : "learn";
 }
 
-const languageSlugs: Record<Lang, string> = {
-  Python: "python",
-  "C/C++": "c-cpp",
-  JavaScript: "javascript",
-  Java: "java",
-};
+const languageSlugs = Object.fromEntries(languageOrder.map((language) => [language, languageSettings[language].slug])) as Record<Lang, string>;
 
-const sourceFileExtensions: Record<Lang, string[]> = {
-  Python: [".py", ".txt"],
-  "C/C++": [".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".txt"],
-  JavaScript: [".js", ".mjs", ".cjs", ".txt"],
-  Java: [".java", ".txt"],
-};
+const sourceFileExtensions: Record<Lang, string[]> = Object.fromEntries(languageOrder.map((language) => [language, languageSettings[language].extensions])) as Record<Lang, string[]>;
 
 function defaultSourceFileName(language: Lang): string {
-  if (language === "Python") return "main.py";
-  if (language === "C/C++") return "main.cpp";
-  if (language === "JavaScript") return "main.js";
-  return "Main.java";
+  return languageSettings[language].fileName;
 }
 
 
@@ -1188,7 +1177,7 @@ function LessonNotes({
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("Python");
-  const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>({ Python: 3, "C/C++": 0, JavaScript: 0, Java: 0 });
+  const [topicByLang, setTopicByLang] = useState<Record<Lang, number>>(() => normalizeCourseTopics({ Python: 3 }));
   const [activeView, setActiveView] = useState<WorkspaceView>("learn");
   const [openedViews, setOpenedViews] = useState<WorkspaceView[]>(["learn"]);
   const [progressReady, setProgressReady] = useState(false);
@@ -1443,12 +1432,12 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const requestedLanguage = params.get("lang") as Lang | null;
       const requestedTopicNumber = params.get("topic");
-      const hasRequestedLanguage = Boolean(requestedLanguage && requestedLanguage in lessons);
+      const hasRequestedLanguage = isCourseLanguage(requestedLanguage);
       const nextLanguage = hasRequestedLanguage
         ? requestedLanguage as Lang
-        : progress?.activeLanguage;
+        : isCourseLanguage(progress?.activeLanguage) ? progress.activeLanguage : undefined;
 
-      if (progress) setTopicByLang(progress.topics);
+      if (progress) setTopicByLang(normalizeCourseTopics(progress.topics ?? {}));
       if (nextLanguage) {
         setLang(nextLanguage);
         if (hasRequestedLanguage) {
@@ -1855,6 +1844,17 @@ export default function Home() {
 
           <section className="content">
             <div className="mobile-chapter-navigation">
+              <label htmlFor="mobile-language-select">编程语言</label>
+              <select
+                id="mobile-language-select"
+                value={lang}
+                onChange={(event) => {
+                  const language = event.target.value;
+                  if (isCourseLanguage(language)) navigateToCourse(language, topicByLang[language], false);
+                }}
+              >
+                {languageOrder.map((language) => <option key={language}>{language}</option>)}
+              </select>
               <label htmlFor="mobile-chapter-select">当前章节</label>
               <select
                 id="mobile-chapter-select"

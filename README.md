@@ -10,7 +10,7 @@ Blinga coding 是一个面向编程学习的全栈 Web 平台。它将结构化�
 
 ## 功能
 
-- Python、C/C++、JavaScript、Java 课程与章节导航
+- Python、C/C++、JavaScript、Java 各 12 节，TypeScript、Go 各 10 节，共 68 节课程与章节导航
 - 课程讲解、代码示例、知识图谱与 PDF 导出
 - 在线代码运行、标准输入、基础测试用例和自动判题
 - DeepSeek 驱动的 AI 助教、课程问答、报错分析与代码优化
@@ -79,6 +79,16 @@ npm test
 ```
 
 `npm test` 会先执行生产构建，再运行核心渲染回归测试；`npm run test:all` 会执行全部测试文件。
+
+课程正文与判题数据来自 `data/course-content/index.ts`，语言与执行器映射来自 `data/languages.ts`。新增章节只追加，保留原有章节 ID 和进度索引。TypeScript 示例面向 5.6，Go 面向 1.23；在线运行复用 Judge0，对应语言 ID 为 101 和 107，自托管执行器也需支持这两个版本。
+
+已安装相应编译器时，可逐节执行本地示例核验：
+
+```bash
+node scripts/check-course-examples.mjs Go Python C/C++ Java
+```
+
+该命令在临时目录运行例程并逐行核对预期输出；缺少所选编译器会明确失败。TypeScript 的严格类型检查和执行结果已包含在课程自动测试中。来源与许可证见 `THIRD_PARTY_NOTICES.md`、`/content-sources` 及各课来源折叠区。
 
 ## 环境变量
 

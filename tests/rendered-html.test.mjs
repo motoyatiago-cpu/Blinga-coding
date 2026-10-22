@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { loadCourseModule } from "./helpers/course-module.mjs";
 
 async function readLayout() {
   const sources = await Promise.all(["layout.tsx", "site-effects.tsx"].map((file) => readFile(new URL(`../app/${file}`, import.meta.url), "utf8")));
@@ -49,6 +50,61 @@ test("server-renders the Blinga coding learning workspace", async () => {
   assert.match(html, /AI 智能问答/);
   assert.match(html, /发送问题/);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/);
+});
+
+test("new language catalogs expose all ten lessons and cross-language links", async () => {
+  for (const [slug, name, lastTopic] of [["typescript", "TypeScript", "类型安全实战与测试"], ["go", "Go", "表驱动测试"]]) {
+    const response = await render(`/courses/${slug}`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.ok(html.replace(/<!--.*?-->/g, "").includes(`${name} 分级课程`));
+    assert.ok(html.includes(lastTopic));
+    assert.ok(html.includes(`lang=${name}&amp;topic=10#learn`));
+    assert.match(html, /\/courses\/python/);
+    assert.doesNotMatch(html, /新增内容顺延到第八至十节/);
+  }
+});
+
+test("expanded catalogs expose appended lessons without changing existing course links", async () => {
+  const response = await render("/courses/python");
+  const html = await response.text();
+  assert.match(html, /迭代器与生成器/);
+  assert.match(html, /JSON 与数据交换/);
+  assert.match(html, /lang=Python&amp;topic=12#learn/);
+  assert.match(html, /lang=Python&amp;topic=7#learn/);
+  const workspace = await (await render()).text();
+  assert.match(workspace, /id="mobile-language-select"/);
+  assert.match(workspace, /<option[^>]*>TypeScript<\/option>/);
+  assert.match(workspace, /<option[^>]*>Go<\/option>/);
+});
+
+test("new languages reach the existing judge adapter with isolated submissions", async (t) => {
+  const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url).href);
+  const { courseDefinitions } = loadCourseModule();
+  for (const [language, languageId] of [["TypeScript", 101], ["Go", 107]]) {
+    const lesson = courseDefinitions[language].lessons[9];
+    let called = false;
+    const mocked = t.mock.method(globalThis, "fetch", async (url, init) => {
+      called = true;
+      assert.ok(String(url).startsWith("https://runner.example/submissions?"));
+      const sent = JSON.parse(init.body);
+      assert.equal(sent.language_id, languageId);
+      assert.equal(sent.enable_network, false);
+      assert.equal(Buffer.from(sent.source_code, "base64").toString("utf8"), lesson.code);
+      return Response.json({ status: { id: 3, description: "Accepted" }, stdout: Buffer.from(lesson.output).toString("base64"), stderr: null, exit_code: 0 });
+    });
+    try {
+      const response = await worker.fetch(new Request("http://localhost/api/run", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language, code: lesson.code, topicIndex: 9, judge: true }),
+      }), { CODE_RUNNER_URL: "https://runner.example" }, { waitUntil() {}, passThroughOnException() {} });
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(called, true);
+      assert.equal(result.judge.passed, result.judge.total);
+      assert.equal(result.completionSaved, false, "guest execution must not write user progress");
+    } finally { mocked.mock.restore(); }
+  }
 });
 
 test("keeps the notes endpoint and persistent schema wired together", async () => {

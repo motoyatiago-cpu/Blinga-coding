@@ -7,6 +7,7 @@ import {
   type AuthProvider,
   type SessionUser,
 } from "./auth";
+import { isCourseLanguage } from "../data/languages";
 
 export interface ProfileEnv extends AuthEnv {
   AVATARS?: R2Bucket;
@@ -241,7 +242,7 @@ async function updateProfile(
     const editorFontSize = Number(body.preferences.editorFontSize ?? 14);
     const reduceMotion = Boolean(body.preferences.reduceMotion);
     const aiDetail = String(body.preferences.aiDetail || "balanced");
-    if (!["Python", "C/C++", "JavaScript", "Java"].includes(defaultLanguage)) {
+    if (!isCourseLanguage(defaultLanguage)) {
       return profileJson({ error: "默认语言无效" }, 400);
     }
     if (!Number.isInteger(editorFontSize) || editorFontSize < 12 || editorFontSize > 20) {
