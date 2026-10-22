@@ -606,6 +606,39 @@ html[data-theme="light"] :is(.code-example,.sandbox,.run-history,.code-viewer-di
   }
 }
 
+html[data-theme="light"] .lesson-foundation ul,
+html[data-theme="light"] .lesson-summary ul,
+html[data-theme="light"] .debugging-guide ol,
+html[data-theme="light"] .exercise-grid p,
+html[data-theme="light"] .exercise-grid small,
+html[data-theme="light"] .lesson-sources>div,
+html[data-theme="light"] .content-sources-document>header span,
+html[data-theme="light"] .content-sources-document>section>p,
+html[data-theme="light"] .content-source-list dd{
+  color:#65738a;
+}
+
+html[data-theme="light"] .exercise-grid article,
+html[data-theme="light"] .content-source-list>article{
+  background:rgba(232,237,246,.44);
+  border-color:rgba(22,34,52,.09);
+  box-shadow:none;
+}
+
+html[data-theme="light"] .expected-output{
+  background:#edf7f4;
+}
+
+html[data-theme="light"] .expected-output pre{
+  color:#176b55;
+}
+
+html[data-theme="light"] .lesson-section-nav a:hover,
+html[data-theme="light"] .lesson-section-nav a:focus-visible{
+  background:#5267f20e;
+  color:#4058df;
+}
+
 /* Restore the rounded course surfaces that visually carry a filled background. */
 .course-hero.glass{
   border-radius:20px;

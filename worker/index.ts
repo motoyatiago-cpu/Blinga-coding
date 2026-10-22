@@ -12,6 +12,7 @@ import { handleForumRequest } from "./forum";
 import { handleReviewRequest, recordReviewResult } from "./review";
 import { handleProjectRequest } from "./projects";
 import { normalizeAiHistory, systemPrompt, type AiMode } from "./ai-response";
+import { lessonJudgeCases } from "../data/course-content";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -598,44 +599,7 @@ async function handleNotesRequest(request: Request, env: Env): Promise<Response>
   return jsonResponse({ saved: true });
 }
 
-const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = {
-  Python: [
-    { stdin: "学习者\n", expected: "你好，学习者！\n欢迎来到 Blinga coding" },
-    { stdin: "", expected: "<class 'str'> <class 'int'>\nLin 的成绩：92.5，通过：True" },
-    { stdin: "", expected: "合格" },
-    { stdin: "", expected: "平均分：83.4" },
-    { stdin: "", expected: "平均分：84.0" },
-    { stdin: "", expected: "Lin 84.0\nMia 91.3" },
-    { stdin: "", expected: "Lin 84.0" },
-  ],
-  "C/C++": [
-    { stdin: "", expected: "Compiler ready: C++17" },
-    { stdin: "", expected: "完成率：87.5%" },
-    { stdin: "", expected: "合格" },
-    { stdin: "", expected: "总分：417" },
-    { stdin: "", expected: "更新后：90" },
-    { stdin: "", expected: "平均分：84" },
-    { stdin: "", expected: "Lin：92" },
-  ],
-  JavaScript: [
-    { stdin: "", expected: "你好，Lin！\n当前等级：1" },
-    { stdin: "", expected: "1\n2" },
-    { stdin: "", expected: "优秀人数：3\n优秀组总分：278" },
-    { stdin: "", expected: "当前为 Node.js 沙盒；浏览器中会修改 #title" },
-    { stdin: "", expected: "5：异步编程" },
-    { stdin: "", expected: "Lin · Shanghai · 86,92,100" },
-    { stdin: "", expected: "✓ 平均分\n✓ 空数组" },
-  ],
-  Java: [
-    { stdin: "", expected: "你好，Lin！\nJVM 已就绪" },
-    { stdin: "", expected: "完成率：87.5%" },
-    { stdin: "", expected: "合格" },
-    { stdin: "", expected: "总分：417" },
-    { stdin: "", expected: "平均分：84.0" },
-    { stdin: "", expected: "Lin：92" },
-    { stdin: "", expected: "18" },
-  ],
-};
+const LESSON_JUDGE_CASES: Record<SupportedLanguage, Array<{ stdin: string; expected: string }>> = lessonJudgeCases;
 
 function normalizeProgramOutput(value: string): string {
   return value.replace(/\r\n/g, "\n").trimEnd();
