@@ -124,7 +124,7 @@ export default function AuthorTemplate() {
 
       <aside className="history-rail" data-module="history" aria-labelledby="history-title" tabIndex={0}>
         <header>
-          <div className="rail-kicker" aria-hidden="true"><span>TIMELINE</span><i></i><b>///</b></div>
+          <div className="rail-kicker" aria-hidden="true"><span>TIMELINE</span><i></i><b>{"///"}</b></div>
           <h2 id="history-title">网站创作<br />历程</h2>
           <p>从一个想法<br />到一段持续生长的旅程。</p>
         </header>

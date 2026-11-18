@@ -78,6 +78,24 @@ test("expanded catalogs expose appended lessons without changing existing course
   assert.match(workspace, /<option[^>]*>Go<\/option>/);
 });
 
+test("unknown and prototype-named course routes return 404 without rendering a different language", async () => {
+  for (const slug of ["not-a-language", "constructor", "__proto__", "toString"]) {
+    const response = await render(`/courses/${slug}`);
+    assert.equal(response.status, 404, slug);
+    const html = await response.text();
+    assert.doesNotMatch(html, /class="course-catalog"/);
+  }
+});
+
+test("catalog workspace shortcuts retain the selected course language", async () => {
+  for (const language of ["typescript", "go"]) {
+    const html = await (await render(`/courses/${language}`)).text();
+    const name = language === "go" ? "Go" : "TypeScript";
+    assert.ok(html.includes(`lang=${name}&amp;topic=1#map`));
+    assert.ok(html.includes(`lang=${name}&amp;topic=1#lab`));
+  }
+});
+
 test("new languages reach the existing judge adapter with isolated submissions", async (t) => {
   const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url).href);
   const { courseDefinitions } = loadCourseModule();

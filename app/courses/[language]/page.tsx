@@ -1,8 +1,9 @@
 import { courseDefinitions, languageOrder } from "../../../data/course-content";
+import { notFound } from "next/navigation";
 import { buildCourseUrl } from "../../course-links";
 import ThemeToggle from "../../theme-toggle";
 
-const courseBySlug = Object.fromEntries(
+const courseBySlug = new Map<string, (typeof courseDefinitions)[typeof languageOrder[number]]>(
   languageOrder.map((language) => [courseDefinitions[language].slug, courseDefinitions[language]]),
 );
 
@@ -14,15 +15,16 @@ const levels = [
 
 export default async function CoursePage({ params }: { params: Promise<{ language: string }> }) {
   const { language } = await params;
-  const course = courseBySlug[language] || courseDefinitions.Python;
+  const course = courseBySlug.get(language);
+  if (!course) notFound();
   const slug = course.slug;
 
   return <main className="course-page">
     <div className="ambient one" /><div className="ambient two" />
     <header className="topbar glass">
       <a className="brand" href="/home"><span className="brandmark">&lt;/&gt;</span><span>Blinga <span>coding</span></span></a>
-      <nav><a href="/home">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href={`/projects#${slug}`}>项目实战</a><a href="/home#map">知识图谱</a><a href="/home#lab">在线实训</a></nav>
-      <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href="/home">返回学习台 →</a></div>
+      <nav><a href="/home">学习中心</a><a className="active" href={`/courses/${slug}`}>课程目录</a><a href={`/projects#${slug}`}>项目实战</a><a href={buildCourseUrl(course.queryName, 0, "map")}>知识图谱</a><a href={buildCourseUrl(course.queryName, 0, "lab")}>在线实训</a></nav>
+      <div className="course-topbar-actions"><ThemeToggle /><a className="course-back" href={buildCourseUrl(course.queryName, 0)}>返回学习台 →</a></div>
     </header>
 
     <div className="course-layout">

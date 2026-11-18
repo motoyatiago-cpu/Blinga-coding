@@ -241,3 +241,56 @@ test("missing review migration is isolated from existing run API", async (t) => 
   assert.equal(review.status, 503);
   assert.equal((await review.json()).code, "REVIEW_SCHEMA_NOT_READY");
 });
+
+test("run API rejects malformed payloads before submitting code or touching learning records", async (t) => {
+  const { db, request } = fixture(t);
+  const fetch = t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected upstream request"); });
+  const valid = { language: "Go", code: "package main\nfunc main() {}", topicIndex: 0 };
+  for (const body of [null, [], "bad", { ...valid, code: {} }, { ...valid, stdin: [] }, { ...valid, judge: "false" }, ...[-1, 999, 1.5, "1", null].map((topicIndex) => ({ ...valid, topicIndex })), { language: "Go", code: valid.code, judge: true }]) {
+    const response = await request("/api/run", "POST", "alice", body);
+    assert.equal(response.status, 400, JSON.stringify(body));
+    assert.equal(typeof (await response.json()).error, "string");
+  }
+  assert.equal(fetch.mock.callCount(), 0);
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM code_run_history").get().count, 0);
+});
+
+test("queued judging writes history and completion only after the final result", async (t) => {
+  const { db, request } = fixture(t);
+  let polls = 0;
+  t.mock.method(globalThis, "fetch", async (_url, init) => {
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM code_run_history").get().count, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM wrong_answers").get().count, 0);
+    if (init.method === "POST") return Response.json({ token: "queued-test" });
+    polls += 1;
+    return Response.json({ status: { id: 3, description: "Accepted" }, stdout: Buffer.from("合格").toString("base64"), exit_code: 0 });
+  });
+  const response = await request("/api/run", "POST", "alice", { language: "Python", code: "print('合格')", topicIndex: 2, judge: true });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(polls, 1);
+  assert.equal(result.judge.passed, 3);
+  assert.equal(result.completionSaved, true);
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM code_run_history").get().count, 1);
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM wrong_answers").get().count, 0);
+});
+
+test("unqueryable runner results do not alter mastery or wrong-answer records", async (t) => {
+  const { db, request } = fixture(t);
+  t.mock.method(globalThis, "fetch", async () => Response.json({ status: { id: 1 } }));
+  const response = await request("/api/run", "POST", "alice", { language: "Python", code: "print(1)", topicIndex: 0, judge: true });
+  assert.equal(response.status, 502);
+  for (const table of ["code_run_history", "learning_mastery", "wrong_answers", "lesson_completions"]) {
+    assert.equal(db.prepare(`SELECT COUNT(*) count FROM ${table}`).get().count, 0);
+  }
+});
+
+test("project runs without a lesson remain runnable without creating a fake course history", async (t) => {
+  const { db, request } = fixture(t);
+  mockRunner(t, "project result");
+  const response = await request("/api/run", "POST", "alice", { language: "JavaScript", code: "console.log('project result')" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).stdout, "project result");
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM code_run_history").get().count, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM learning_mastery").get().count, 0);
+});

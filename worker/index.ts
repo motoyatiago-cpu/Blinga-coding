@@ -14,6 +14,7 @@ import { handleProjectRequest } from "./projects";
 import { normalizeAiHistory, systemPrompt, type AiMode } from "./ai-response";
 import { lessonJudgeCases } from "../data/course-content";
 import { isCourseLanguage, languageOrder, languageSettings, type Lang } from "../data/languages";
+import { runSubmission, RunnerError } from "./code-runner";
 
 interface Env extends ProfileEnv {
   ASSETS: Fetcher;
@@ -776,23 +777,38 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ error: "代码内容过大" }, 413);
   }
 
-  let body: { language?: string; code?: string; stdin?: string; judge?: boolean; topicIndex?: number };
+  let input: unknown;
   try {
-    body = await request.json();
+    input = await request.json();
   } catch {
     return jsonResponse({ error: "请求格式无效" }, 400);
   }
 
-  const language = String(body.language || "") as SupportedLanguage;
-  const code = String(body.code || "").slice(0, MAX_CODE_INPUT);
-  const topicIndex = Number(body.topicIndex);
-  const judgeCase = body.judge && Number.isInteger(topicIndex)
-    ? LESSON_JUDGE_CASES[language]?.[topicIndex]
-    : undefined;
-  const stdin = String(judgeCase?.stdin ?? body.stdin ?? "").slice(0, MAX_STDIN_INPUT);
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return jsonResponse({ error: "请求格式无效" }, 400);
+  }
+  const body = input as { language?: unknown; code?: unknown; stdin?: unknown; judge?: unknown; topicIndex?: unknown };
+  const language = body.language;
   if (!isCourseLanguage(language)) {
     return jsonResponse({ error: "暂不支持该编程语言" }, 400);
   }
+  if (typeof body.code !== "string" || (body.stdin !== undefined && typeof body.stdin !== "string")
+    || (body.judge !== undefined && typeof body.judge !== "boolean")) {
+    return jsonResponse({ error: "代码、输入或判题参数格式无效" }, 400);
+  }
+  const topicIndex = body.topicIndex === undefined ? null : body.topicIndex;
+  if (topicIndex !== null && (typeof topicIndex !== "number" || !Number.isInteger(topicIndex)
+    || topicIndex < 0 || topicIndex >= lessonJudgeCases[language].length)) {
+    return jsonResponse({ error: "课程章节无效" }, 400);
+  }
+  if (body.topicIndex === null || (body.judge && topicIndex === null)) {
+    return jsonResponse({ error: "请选择有效的判题章节" }, 400);
+  }
+  const code = body.code.slice(0, MAX_CODE_INPUT);
+  const judgeCase = body.judge && Number.isInteger(topicIndex)
+    ? LESSON_JUDGE_CASES[language]?.[topicIndex as number]
+    : undefined;
+  const stdin = String(judgeCase?.stdin ?? body.stdin ?? "").slice(0, MAX_STDIN_INPUT);
   if (!code.trim()) {
     return jsonResponse({ error: "请输入需要运行的代码" }, 400);
   }
@@ -806,42 +822,20 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
     headers["X-Auth-Token"] = env.CODE_RUNNER_AUTH_TOKEN;
   }
 
+  const runnerSignal = AbortSignal.timeout(15_000);
   try {
-    const upstream = await fetch(
-      `${runnerBaseUrl}/submissions?base64_encoded=true&wait=true&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code`,
-      {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(15_000),
-        body: JSON.stringify({
-          source_code: encodeRunnerText(code),
-          language_id: JUDGE0_LANGUAGE_IDS[language],
-          stdin: encodeRunnerText(stdin),
-          cpu_time_limit: 2,
-          cpu_extra_time: 0.5,
-          wall_time_limit: 5,
-          memory_limit: 128_000,
-          stack_limit: 64_000,
-          max_file_size: 1_024,
-          enable_network: false,
-        }),
-      },
-    );
-
-    if (!upstream.ok) {
-      return jsonResponse({ error: `代码执行服务暂时不可用（${upstream.status}）` }, 502);
-    }
-
-    const result = (await upstream.json()) as {
-      stdout?: string | null;
-      stderr?: string | null;
-      compile_output?: string | null;
-      message?: string | null;
-      status?: { id?: number; description?: string };
-      time?: string | number | null;
-      memory?: number | null;
-      exit_code?: number | null;
-    };
+    const result = await runSubmission(runnerBaseUrl, headers, {
+      source_code: encodeRunnerText(code),
+      language_id: JUDGE0_LANGUAGE_IDS[language],
+      stdin: encodeRunnerText(stdin),
+      cpu_time_limit: 2,
+      cpu_extra_time: 0.5,
+      wall_time_limit: 5,
+      memory_limit: 128_000,
+      stack_limit: 64_000,
+      max_file_size: 1_024,
+      enable_network: false,
+    }, runnerSignal);
 
     const stdout = decodeRunnerText(result.stdout).slice(0, MAX_RUNNER_OUTPUT);
     const stderr = decodeRunnerText(result.stderr).slice(0, MAX_RUNNER_OUTPUT);
@@ -894,7 +888,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
 
     let runRecorded = false;
     let runId: number | null = null;
-    if (userKey) {
+    if (userKey && topicIndex !== null) {
       try {
         await ensureRunHistorySchema(env.DB);
         const durationMs = result.time == null
@@ -952,7 +946,7 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
       }
     }
 
-    if (principal && Number.isInteger(topicIndex) && topicIndex >= 0 && topicIndex <= 999) {
+    if (principal && typeof topicIndex === "number") {
       try {
         const detail = [compileOutput, stderr, decodeRunnerText(result.message), judge?.tests.find((test) => !test.passed)?.name]
           .map((value) => String(value || "").trim())
@@ -987,8 +981,12 @@ async function handleRunRequest(request: Request, env: Env): Promise<Response> {
       completionSaved,
       runRecorded,
     });
-  } catch {
-    return jsonResponse({ error: "代码执行超时或服务连接失败，请稍后重试" }, 504);
+  } catch (error) {
+    if (error instanceof RunnerError) return jsonResponse({ error: error.message }, error.httpStatus);
+    if (runnerSignal.aborted) {
+      return jsonResponse({ error: "代码执行等待超时，请稍后重试；本次未计入判题结果" }, 504);
+    }
+    return jsonResponse({ error: "代码执行服务连接失败，请稍后重试" }, 502);
   }
 }
 

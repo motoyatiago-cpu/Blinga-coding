@@ -442,6 +442,9 @@ function Sandbox({
   useEffect(() => {
     let active = true;
     const editRevisionAtLoad = 0;
+    runAbortRef.current?.abort();
+    runAbortRef.current = null;
+    setRunningMode(null);
     draftSaveRevisionRef.current += 1;
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftEditRevisionRef.current = editRevisionAtLoad;
@@ -510,6 +513,10 @@ function Sandbox({
     void loadDraft();
     return () => {
       active = false;
+      runAbortRef.current?.abort();
+      runAbortRef.current = null;
+      historyRevisionRef.current += 1;
+      analysisRevisionRef.current += 1;
     };
   }, [draftKey, lang, lesson, onContextChange, topicIndex]);
 
@@ -814,6 +821,7 @@ function Sandbox({
         }),
       });
       const result = await response.json() as RunResult & { error?: string };
+      if (controller.signal.aborted || runAbortRef.current !== controller) return;
       if (!response.ok) throw new Error(result.error || "代码执行失败");
       updateOutput(formatRunResult(result));
       if (
@@ -825,6 +833,7 @@ function Sandbox({
       }
       if (result.runRecorded) void loadRunHistory();
     } catch (error) {
+      if (controller.signal.aborted || runAbortRef.current !== controller) return;
       if (error instanceof DOMException && error.name === "AbortError") return;
       updateOutput(`✕ 运行失败\n\n${error instanceof Error ? error.message : "代码执行服务暂时不可用"}`);
     } finally {
@@ -1290,7 +1299,7 @@ export default function Home() {
     }
   }
 
-  function navigateToCourse(nextLanguage: Lang, nextTopicIndex: number, fromSearch = false) {
+  const navigateToCourse = useCallback((nextLanguage: Lang, nextTopicIndex: number, fromSearch = false, nextView: WorkspaceView = "learn") => {
     const safeTopicIndex = Math.max(
       0,
       Math.min(lessons[nextLanguage].topics.length - 1, nextTopicIndex),
@@ -1299,29 +1308,29 @@ export default function Home() {
 
     setLang(nextLanguage);
     setTopicByLang((current) => ({ ...current, [nextLanguage]: safeTopicIndex }));
-    setActiveView("learn");
-    setOpenedViews((current) => current.includes("learn") ? current : [...current, "learn"]);
+    setActiveView(nextView);
+    setOpenedViews((current) => current.includes(nextView) ? current : [...current, nextView]);
     if (fromSearch) {
       closeSearch();
       setSearchResult(null);
       setSearchStatus("");
     }
-    if (!isSameCourse) {
-      const nextUrl = buildCourseUrl(nextLanguage, safeTopicIndex);
+    const nextUrl = buildCourseUrl(nextLanguage, safeTopicIndex, nextView);
+    if (!isSameCourse || `${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl) {
       window.history.pushState(
         { lang: nextLanguage, topic: courseTopicNumber(safeTopicIndex) },
         "",
         nextUrl,
       );
-    } else if (window.location.hash !== "#learn") {
-      const nextUrl = new URL(window.location.href);
-      nextUrl.hash = "learn";
-      window.history.pushState(window.history.state, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     }
     window.requestAnimationFrame(() => {
-      document.getElementById("learn")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(nextView)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }
+  }, [closeSearch, lang, selectedTopicIndex]);
+
+  const selectSandboxLanguage = useCallback((language: Lang) => {
+    navigateToCourse(language, topicByLang[language], false, "lab");
+  }, [navigateToCourse, topicByLang]);
 
   function navigateToTopic(nextTopicIndex: number) {
     navigateToCourse(lang, nextTopicIndex);
@@ -1481,6 +1490,7 @@ export default function Home() {
     };
 
     const onPopState = () => readCourseFromUrl();
+    readCourseFromUrl();
     void loadProgress();
     window.addEventListener("popstate", onPopState);
     return () => {
@@ -1925,7 +1935,7 @@ export default function Home() {
               {openedViews.includes("map") && <DynamicKnowledgeGraph lesson={lesson} code={lesson.code} />}
             </div>
             <div className="workspace-view" data-workspace-view="lab" hidden={activeView !== "lab"}>
-              {openedViews.includes("lab") && <StableSandbox lang={lang} setLang={setLang} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />}
+              {openedViews.includes("lab") && <StableSandbox lang={lang} setLang={selectSandboxLanguage} lesson={lesson} topicIndex={selectedTopicIndex} onContextChange={syncSandboxContext} onLessonCompleted={markLessonCompleted} />}
             </div>
           </section>
 
