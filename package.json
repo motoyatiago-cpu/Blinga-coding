@@ -10,7 +10,7 @@
     "build": "vinext build",
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "test:all": "node --test --test-reporter=dot tests/*.test.mjs",
+    "test:all": "node --experimental-strip-types --test --test-reporter=dot tests/*.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
