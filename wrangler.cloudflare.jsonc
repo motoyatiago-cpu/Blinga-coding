@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blinga-coding",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blinga-coding-prod",
+      "database_id": "5545d3ac-95f6-49ae-9697-e4fea0b8b9f7",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

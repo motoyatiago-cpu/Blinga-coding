@@ -4,9 +4,10 @@ Blinga coding 是一个面向编程初学者的全栈学习平台，希望让系
 
 ## Demo
 
-- 当前部署：[https://codeatlas-learning-lab.tahdsiukahdi.chatgpt.site](https://codeatlas-learning-lab.tahdsiukahdi.chatgpt.site)
+- 公开 Cloudflare Workers 站点：[https://blinga-coding.motoyatiago.workers.dev](https://blinga-coding.motoyatiago.workers.dev)
+- 原 ChatGPT Sites 站点：[https://codeatlas-learning-lab.tahdsiukahdi.chatgpt.site](https://codeatlas-learning-lab.tahdsiukahdi.chatgpt.site)
 
-该地址由现有 ChatGPT Sites 项目提供，实际访问范围取决于站点的访问策略。完整公开部署建议使用 Cloudflare Workers，并配置独立的 D1、R2 与运行时密钥。
+Cloudflare 站点使用独立 D1，账户与学习数据不会自动与原 Sites 站点同步。注册、登录、论坛和在线运行已在公开站点验证；AI 助教仍需新的服务端密钥，头像上传需先启用 R2。原 Sites 站点的实际访问范围取决于其访问策略。
 
 ## 功能
 
@@ -27,7 +28,7 @@ Blinga coding 是一个面向编程初学者的全栈学习平台，希望让系
 
 - Next.js 16、React 19、TypeScript
 - [vinext](https://github.com/cloudflare/vinext)、Vite 8
-- Cloudflare Workers、D1、R2 和 Images
+- Cloudflare Workers、D1；R2 与 Images 为可选图片服务
 - Drizzle ORM / Drizzle Kit
 - React Flow、GSAP、Lenis、Lottie
 - DeepSeek 兼容的 Chat Completions API
@@ -81,6 +82,17 @@ npm test
 ```
 
 `npm test` 会先执行生产构建，再运行核心渲染回归测试；`npm run test:all` 会执行全部测试文件。
+
+## Cloudflare Workers 部署
+
+此项目包含 Worker API、D1 数据库和账号会话，不能作为纯静态 GitHub Pages 站点部署。独立 Cloudflare 部署使用 `wrangler.cloudflare.jsonc`，不会覆盖现有 ChatGPT Sites 配置。
+
+```bash
+npm run build:cloudflare
+npm run deploy:cloudflare
+```
+
+首次部署还需先初始化 D1，并在 Cloudflare 中配置 `AUTH_SESSION_SECRET` 等服务端密钥。完整步骤和当前可选功能限制见 [Cloudflare 部署说明](docs/cloudflare-deploy.md)。
 
 课程正文与判题数据来自 `data/course-content/index.ts`，语言与执行器映射来自 `data/languages.ts`。新增章节只追加，保留原有章节 ID 和进度索引。TypeScript 示例面向 5.6，Go 面向 1.23；在线运行复用 Judge0，对应语言 ID 为 101 和 107，自托管执行器也需支持这两个版本。
 
